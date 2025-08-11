@@ -214,7 +214,7 @@ def show_model_management():
                     if model_data:
                         obj_content, mtl_content, texture_data = load_model_files(model_data)
                         viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data)
-                        st.components.v1.html(viewer_html, height=400)
+                        st.components.v1.html(viewer_html, height=600, scrolling=False)
                 except Exception as e:
                     st.error(f"미리보기 로딩 중 오류: {str(e)}")
 

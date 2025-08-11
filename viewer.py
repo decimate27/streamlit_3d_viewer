@@ -22,7 +22,7 @@ def show_viewer_page(model_data):
         viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data)
         
         # 뷰어 표시
-        st.components.v1.html(viewer_html, height=700)
+        st.components.v1.html(viewer_html, height=800, scrolling=False)
         
         # 조작 안내
         with st.expander("조작법"):

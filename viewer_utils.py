@@ -16,17 +16,24 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
         <meta charset="utf-8">
         <title>3D Model Viewer</title>
         <style>
-            body {{ margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; }}
+            * {{ box-sizing: border-box; }}
+            html, body {{ 
+                margin: 0; 
+                padding: 0; 
+                width: 100%; 
+                height: 100%; 
+                overflow: hidden; 
+                background: #1a1a1a; 
+            }}
             #container {{ 
-                width: 100vw; 
-                height: 100vh; 
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                width: 100%; 
+                height: 100%; 
+                position: relative;
             }}
             canvas {{
+                width: 100% !important;
+                height: 100% !important;
                 display: block;
-                margin: 0 auto;
             }}
             .loading {{ 
                 position: absolute; 
@@ -67,13 +74,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     camera.position.set(0, 0, 5);
                     
                     // Renderer 생성
+                    const container = document.getElementById('container');
                     renderer = new THREE.WebGLRenderer({{ antialias: true }});
-                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
                     renderer.shadowMap.enabled = true;
                     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                    
-                    const container = document.getElementById('container');
                     container.appendChild(renderer.domElement);
                     
                     // Controls 생성
@@ -183,9 +189,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
             }}
             
             function onWindowResize() {{
-                camera.aspect = window.innerWidth / window.innerHeight;
+                const container = document.getElementById('container');
+                camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setSize(container.clientWidth, container.clientHeight);
             }}
             
             init();
