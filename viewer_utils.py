@@ -16,8 +16,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
         <meta charset="utf-8">
         <title>3D Model Viewer</title>
         <style>
-            body {{ margin: 0; padding: 0; overflow: hidden; }}
-            #container {{ width: 100%; height: 100vh; }}
+            body {{ margin: 0; padding: 0; overflow: hidden; background: #1a1a1a; }}
+            #container {{ 
+                width: 100vw; 
+                height: 100vh; 
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }}
+            canvas {{
+                display: block;
+                margin: 0 auto;
+            }}
             .loading {{ 
                 position: absolute; 
                 top: 50%; 
@@ -26,6 +36,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 color: white;
                 font-family: Arial, sans-serif;
                 font-size: 18px;
+                z-index: 100;
             }}
         </style>
     </head>
@@ -58,9 +69,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     // Renderer 생성
                     renderer = new THREE.WebGLRenderer({{ antialias: true }});
                     renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setPixelRatio(window.devicePixelRatio);
                     renderer.shadowMap.enabled = true;
                     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                    document.getElementById('container').appendChild(renderer.domElement);
+                    
+                    const container = document.getElementById('container');
+                    container.appendChild(renderer.domElement);
                     
                     // Controls 생성
                     controls = new THREE.OrbitControls(camera, renderer.domElement);
