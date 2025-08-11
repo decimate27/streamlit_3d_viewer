@@ -74,16 +74,21 @@ class ModelDatabase:
             ''')
             st.write("🆕 새 데이터베이스 테이블 생성")
         else:
-            # 구 스키마 감지 시 테이블 재생성
-            if 'obj_path' in columns and 'file_paths' not in columns:
-                st.write("🔄 구 스키마 감지 - 테이블 마이그레이션 시작")
+            # 스키마 문제가 있으면 강제로 새 테이블 생성
+            if 'obj_path' in columns or 'file_paths' not in columns:
+                st.write("🔄 스키마 문제 감지 - 데이터베이스 재생성")
                 
-                # 기존 데이터 백업
-                cursor.execute('SELECT * FROM models')
-                old_data = cursor.fetchall()
+                # 기존 데이터 백업 (선택적)
+                try:
+                    cursor.execute('SELECT * FROM models')
+                    old_data = cursor.fetchall()
+                    if old_data:
+                        st.write(f"📦 기존 데이터 {len(old_data)}개 발견")
+                except:
+                    old_data = []
                 
                 # 기존 테이블 삭제
-                cursor.execute('DROP TABLE models')
+                cursor.execute('DROP TABLE IF EXISTS models')
                 
                 # 새 테이블 생성
                 cursor.execute('''
@@ -93,7 +98,7 @@ class ModelDatabase:
                         description TEXT,
                         file_paths TEXT NOT NULL,
                         backup_paths TEXT,
-                        storage_type TEXT DEFAULT 'local',
+                        storage_type TEXT DEFAULT 'web',
                         share_token TEXT UNIQUE NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_accessed TIMESTAMP,
@@ -101,42 +106,42 @@ class ModelDatabase:
                     )
                 ''')
                 
-                # 기존 데이터 복원 (구 형식 → 신 형식)
+                st.success("✅ 새 스키마로 데이터베이스 재생성 완료")
+                
+                # 기존 데이터 복원 시도 (구 형식 → 신 형식)
+                restored_count = 0
                 for row in old_data:
                     try:
                         # 안전하게 데이터 추출
-                        obj_path = row[3] if len(row) > 3 and row[3] else ""
-                        mtl_path = row[4] if len(row) > 4 and row[4] else ""
-                        texture_paths_raw = row[5] if len(row) > 5 and row[5] else "[]"
-                        
-                        # JSON 파싱 안전하게 처리
-                        try:
-                            texture_paths = json.loads(texture_paths_raw)
-                        except:
-                            texture_paths = []
-                        
-                        old_file_paths = {
-                            'obj_path': obj_path,
-                            'mtl_path': mtl_path,
-                            'texture_paths': texture_paths
-                        }
-                        
-                        # share_token이 없으면 새로 생성
-                        share_token = row[6] if len(row) > 6 and row[6] else str(uuid.uuid4())
-                        created_at = row[7] if len(row) > 7 and row[7] else datetime.now().isoformat()
-                        access_count = row[9] if len(row) > 9 else 0
-                        
-                        cursor.execute('''
-                            INSERT INTO models (id, name, description, file_paths, 
-                                              storage_type, share_token, created_at, access_count)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (row[0], row[1], row[2], json.dumps(old_file_paths), 
-                              'local', share_token, created_at, access_count))
+                        if len(row) >= 6:  # 최소 필요 컬럼 수 확인
+                            # 구 스키마에서 file_paths 생성
+                            if len(row) > 3 and row[3]:  # obj_path가 있는 경우
+                                old_file_paths = {
+                                    'obj_path': row[3] if len(row) > 3 else "",
+                                    'mtl_path': row[4] if len(row) > 4 else "",
+                                    'texture_paths': json.loads(row[5]) if len(row) > 5 and row[5] else []
+                                }
+                            else:
+                                continue  # 유효하지 않은 데이터 스킵
+                            
+                            # share_token 확인
+                            share_token = row[6] if len(row) > 6 and row[6] else str(uuid.uuid4())
+                            created_at = row[7] if len(row) > 7 and row[7] else datetime.now().isoformat()
+                            access_count = row[9] if len(row) > 9 else 0
+                            
+                            cursor.execute('''
+                                INSERT INTO models (id, name, description, file_paths, 
+                                                  storage_type, share_token, created_at, access_count)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (row[0], row[1], row[2], json.dumps(old_file_paths), 
+                                  'local', share_token, created_at, access_count))
+                            restored_count += 1
                     except Exception as e:
-                        st.warning(f"데이터 마이그레이션 중 일부 오류: {str(e)}")
-                        st.write(f"문제 행 데이터: {row}")
+                        st.warning(f"데이터 복원 중 일부 오류: {str(e)}")
+                        continue
                 
-                st.success("✅ 데이터베이스 마이그레이션 완료")
+                if restored_count > 0:
+                    st.write(f"📥 {restored_count}개 기존 데이터 복원 완료")
             
             elif 'storage_type' not in columns:
                 # storage_type 컬럼만 추가
