@@ -30,13 +30,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 padding: 0; 
                 width: 100%; 
                 height: 100%; 
-                overflow: hidden; 
+                overflow: visible; 
                 background: {bg_color}; 
             }}
             #container {{ 
                 width: 100%; 
                 height: 100%; 
                 position: relative;
+                overflow: hidden;
             }}
             canvas {{
                 width: 100% !important;
@@ -54,29 +55,48 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 z-index: 100;
             }}
             .controls {{
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                z-index: 200;
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
                 display: flex;
                 flex-direction: column;
-                gap: 5px;
+                gap: 8px;
+                pointer-events: auto;
             }}
             .bg-btn {{
-                padding: 8px 12px;
-                border: none;
-                border-radius: 4px;
+                padding: 10px 15px;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-radius: 6px;
                 cursor: pointer;
-                font-size: 12px;
+                font-size: 14px;
+                font-weight: bold;
                 font-family: Arial, sans-serif;
-                transition: opacity 0.3s;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                min-width: 80px;
+                text-align: center;
             }}
             .bg-btn:hover {{
-                opacity: 0.8;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                border-color: rgba(255,255,255,0.6);
             }}
-            .bg-white {{ background: white; color: black; border: 1px solid #ccc; }}
-            .bg-gray {{ background: #808080; color: white; }}
-            .bg-black {{ background: black; color: white; }}
+            .bg-white {{ 
+                background: rgba(255,255,255,0.9); 
+                color: #333; 
+                border-color: #ccc;
+            }}
+            .bg-gray {{ 
+                background: rgba(128,128,128,0.9); 
+                color: white; 
+                border-color: #666;
+            }}
+            .bg-black {{ 
+                background: rgba(0,0,0,0.9); 
+                color: white; 
+                border-color: #333;
+            }}
         </style>
     </head>
     <body>
@@ -250,6 +270,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 배경색 변경 함수
             function changeBackground(color) {{
+                console.log('배경색 변경:', color);
+                
                 const colors = {{
                     'white': 0xffffff,
                     'gray': 0x808080,
@@ -265,6 +287,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // Three.js 렌더러 배경색 변경
                 if (renderer) {{
                     renderer.setClearColor(colors[color], 1);
+                    console.log('Three.js 배경색 변경됨:', color);
                 }}
                 
                 // HTML body 배경색 변경
@@ -276,6 +299,46 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     loadingEl.style.color = color === 'black' ? 'white' : 'black';
                 }}
             }}
+            
+            // 배경색 버튼 강제 생성
+            function createBackgroundButtons() {{
+                // 기존 컨트롤 제거
+                const existingControls = document.querySelector('.controls');
+                if (existingControls) {{
+                    existingControls.remove();
+                }}
+                
+                // 새 컨트롤 생성
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'controls';
+                controlsDiv.innerHTML = `
+                    <button class="bg-btn bg-white" onclick="changeBackground('white')">⚪ 흰색</button>
+                    <button class="bg-btn bg-gray" onclick="changeBackground('gray')">🔘 회색</button>
+                    <button class="bg-btn bg-black" onclick="changeBackground('black')">⚫ 검은색</button>
+                `;
+                
+                document.body.appendChild(controlsDiv);
+                console.log('배경색 버튼 강제 생성됨');
+            }}
+            
+            // 페이지 로드 후 버튼 확인 및 생성
+            window.addEventListener('load', function() {{
+                console.log('페이지 로드 완료');
+                
+                setTimeout(() => {{
+                    const controls = document.querySelector('.controls');
+                    const buttons = document.querySelectorAll('.bg-btn');
+                    console.log('컨트롤 요소:', controls);
+                    console.log('버튼 개수:', buttons.length);
+                    
+                    if (!controls || buttons.length === 0) {{
+                        console.log('버튼이 없음 - 강제 생성');
+                        createBackgroundButtons();
+                    }} else {{
+                        console.log('버튼이 정상적으로 존재함');
+                    }}
+                }}, 1000);
+            }});
             
             init();
         </script>

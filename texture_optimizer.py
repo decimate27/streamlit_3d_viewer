@@ -47,12 +47,26 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                         new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
                         img = img.resize(new_size, Image.Resampling.LANCZOS)
                     
-                    # RGB 모드로 변환 (JPEG 저장을 위해)
-                    if img.mode in ('RGBA', 'LA', 'P'):
-                        # 투명도가 있는 경우 PNG로 유지하되 크기만 조정
+                    # 투명도 검사를 더 정확하게 수행
+                    has_transparency = False
+                    if img.mode in ('RGBA', 'LA'):
+                        # 알파 채널이 있는 경우
+                        has_transparency = True
+                    elif img.mode == 'P':
+                        # 팔레트 모드에서 투명도 검사
+                        transparency = img.info.get('transparency')
+                        has_transparency = transparency is not None
+                    
+                    # 투명도 여부에 따라 포맷 결정
+                    if has_transparency:
+                        # 투명도가 있는 경우 PNG로 유지
                         output = io.BytesIO()
+                        if img.mode != 'RGBA':
+                            img = img.convert('RGBA')
                         img.save(output, format='PNG', optimize=True)
                         optimized_data[filename] = output.getvalue()
+                        final_filename = filename
+                        st.write(f"   📝 투명도 감지 - PNG 형식 유지")
                     else:
                         # 투명도가 없는 경우 JPEG로 압축
                         if img.mode != 'RGB':
@@ -60,20 +74,22 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                         
                         # 파일 확장자를 jpg로 변경
                         if filename.lower().endswith('.png'):
-                            new_filename = filename[:-4] + '.jpg'
+                            final_filename = filename[:-4] + '.jpg'
                         else:
-                            new_filename = filename
+                            final_filename = filename
                         
                         output = io.BytesIO()
                         img.save(output, format='JPEG', quality=quality, optimize=True)
-                        optimized_data[new_filename] = output.getvalue()
+                        optimized_data[final_filename] = output.getvalue()
+                        st.write(f"   📝 투명도 없음 - JPEG 형식으로 변환")
                     
-                    # 최적화 결과
-                    new_size = len(optimized_data.get(new_filename, optimized_data[filename]))
+                    # 최적화 결과 계산
+                    new_size = len(optimized_data[final_filename])
                     compression_ratio = (1 - new_size/original_size) * 100
                     
                     optimization_stats.append({
                         'filename': filename,
+                        'final_filename': final_filename,
                         'original_size': original_size,
                         'new_size': new_size,
                         'compression_ratio': compression_ratio,
@@ -81,7 +97,7 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                         'new_dimensions': img.size
                     })
                     
-                    st.success(f"✅ {filename}: {new_size:,} bytes ({compression_ratio:.1f}% 감소)")
+                    st.success(f"✅ {filename} → {final_filename}: {new_size:,} bytes ({compression_ratio:.1f}% 감소)")
                 
                 else:
                     # 최적화 불필요

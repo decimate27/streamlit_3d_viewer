@@ -18,7 +18,12 @@ def show_viewer_page(model_data):
     header {visibility: hidden;}
     .stApp > div:first-child {margin-top: -80px;}
     .stApp {margin: 0; padding: 0;}
-    iframe {width: 100vw !important; height: 100vh !important;}
+    iframe {
+        width: 100vw !important; 
+        height: 100vh !important;
+        border: none !important;
+        overflow: visible !important;
+    }
     </style>
     """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
