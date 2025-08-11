@@ -8,6 +8,7 @@ from PIL import Image
 import zipfile
 import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
+from mtl_generator import auto_generate_mtl
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 
@@ -51,10 +52,14 @@ class ModelProcessor:
         # 필수 파일 확인
         if not file_types['model']:
             return False, "OBJ 모델 파일이 필요합니다."
-        if not file_types['material']:
-            return False, "MTL 재질 파일이 필요합니다."
+        
+        # MTL 파일은 선택사항, 텍스처는 필수
         if not file_types['texture']:
             return False, "텍스처 이미지 파일이 필요합니다."
+        
+        # MTL 파일이 없으면 자동 생성됨을 알림
+        if not file_types['material']:
+            st.info("💡 MTL 파일이 없습니다. 텍스처를 기반으로 자동 생성됩니다.")
         
         return True, file_types
     
@@ -69,20 +74,47 @@ class ModelProcessor:
                 f.write(file.getbuffer())
             saved_files['model'] = file_path
         
-        # 재질 파일 저장
-        for file in file_types['material']:
-            file_path = os.path.join(temp_dir, file.name)
-            with open(file_path, 'wb') as f:
-                f.write(file.getbuffer())
-            saved_files['material'] = file_path
-        
         # 텍스처 파일들 저장
         saved_files['textures'] = []
+        texture_data = {}
         for file in file_types['texture']:
             file_path = os.path.join(temp_dir, file.name)
             with open(file_path, 'wb') as f:
-                f.write(file.getbuffer())
+                texture_content = file.getbuffer()
+                f.write(texture_content)
+                texture_data[file.name] = bytes(texture_content)
             saved_files['textures'].append(file_path)
+        
+        # MTL 파일 처리
+        if file_types['material']:
+            # MTL 파일이 있는 경우 그대로 사용
+            for file in file_types['material']:
+                file_path = os.path.join(temp_dir, file.name)
+                with open(file_path, 'wb') as f:
+                    f.write(file.getbuffer())
+                saved_files['material'] = file_path
+        else:
+            # MTL 파일이 없는 경우 자동 생성
+            st.info("🔧 MTL 파일을 자동 생성하는 중...")
+            
+            # OBJ 파일 내용 읽기
+            with open(saved_files['model'], 'r', encoding='utf-8', errors='ignore') as f:
+                obj_content = f.read()
+            
+            # MTL 자동 생성
+            updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, texture_data)
+            
+            # 수정된 OBJ 파일 저장
+            with open(saved_files['model'], 'w', encoding='utf-8') as f:
+                f.write(updated_obj_content)
+            
+            # 생성된 MTL 파일 저장
+            mtl_path = os.path.join(temp_dir, 'model.mtl')
+            with open(mtl_path, 'w', encoding='utf-8') as f:
+                f.write(generated_mtl_content)
+            saved_files['material'] = mtl_path
+            
+            st.success("✅ MTL 파일이 자동 생성되었습니다!")
         
         return saved_files
 
@@ -127,7 +159,7 @@ def show_upload_section():
         "모델 파일들을 선택하세요",
         type=['obj', 'mtl', 'png', 'jpg', 'jpeg'],
         accept_multiple_files=True,
-        help="OBJ 모델 파일, MTL 재질 파일, 그리고 텍스처 이미지 파일들이 필요합니다."
+        help="OBJ 모델 파일과 텍스처 이미지 파일이 필요합니다. MTL 파일은 선택사항입니다."
     )
     
     if uploaded_files and model_name:
@@ -138,7 +170,7 @@ def show_upload_section():
         
         if not is_valid:
             st.error(result)
-            st.info("필요한 파일: OBJ 모델 파일, MTL 재질 파일, 텍스처 이미지 파일")
+            st.info("필요한 파일: OBJ 모델 파일, 텍스처 이미지 파일 (MTL은 자동 생성됨)")
         else:
             file_types = result
             
@@ -260,9 +292,9 @@ def main():
         ### 🎯 사용법
         
         **1. 모델 업로드**
-        - OBJ 파일 (3D 모델)
-        - MTL 파일 (재질 정보) 
-        - 텍스처 이미지 (PNG, JPG)
+        - OBJ 파일 (3D 모델) - 필수
+        - 텍스처 이미지 (PNG, JPG) - 필수
+        - MTL 파일 (재질 정보) - 선택사항 (자동 생성됨)
         
         **2. 공유**
         - 업로드 후 생성되는 링크 복사
