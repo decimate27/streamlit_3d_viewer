@@ -30,14 +30,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 padding: 0; 
                 width: 100%; 
                 height: 100%; 
-                overflow: visible; 
+                overflow: hidden; 
                 background: {bg_color}; 
             }}
             #container {{ 
                 width: 100%; 
                 height: 100%; 
                 position: relative;
-                overflow: hidden;
             }}
             canvas {{
                 width: 100% !important;
@@ -57,7 +56,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             .controls {{
                 position: fixed;
                 top: 20px;
-                right: 20px;
+                left: 20px;
                 z-index: 9999;
                 display: flex;
                 flex-direction: column;
@@ -83,17 +82,17 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 border-color: rgba(255,255,255,0.6);
             }}
             .bg-white {{ 
-                background: rgba(255,255,255,0.9); 
+                background: #ffffff; 
                 color: #333; 
                 border-color: #ccc;
             }}
             .bg-gray {{ 
-                background: rgba(128,128,128,0.9); 
+                background: #808080; 
                 color: white; 
                 border-color: #666;
             }}
             .bg-black {{ 
-                background: rgba(0,0,0,0.9); 
+                background: #000000; 
                 color: white; 
                 border-color: #333;
             }}
@@ -126,7 +125,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // Scene 생성
                     scene = new THREE.Scene();
-                    scene.background = new THREE.Color(0xffffff);
+                    scene.background = new THREE.Color(0x{bg_color[1:]});
                     
                     // Camera 생성
                     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -270,7 +269,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 배경색 변경 함수
             function changeBackground(color) {{
-                console.log('배경색 변경:', color);
+                console.log('배경색 변경 시작:', color);
                 
                 const colors = {{
                     'white': 0xffffff,
@@ -284,20 +283,41 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     'black': '#000000'
                 }};
                 
+                // Three.js Scene 배경색 변경
+                if (scene) {{
+                    scene.background = new THREE.Color(colors[color]);
+                    console.log('Scene 배경색 변경됨:', color);
+                }}
+                
                 // Three.js 렌더러 배경색 변경
                 if (renderer) {{
                     renderer.setClearColor(colors[color], 1);
-                    console.log('Three.js 배경색 변경됨:', color);
+                    console.log('Renderer 배경색 변경됨:', color);
                 }}
                 
                 // HTML body 배경색 변경
                 document.body.style.background = bodyColors[color];
+                document.body.style.backgroundColor = bodyColors[color];
+                
+                // 컨테이너 배경색도 변경
+                const container = document.getElementById('container');
+                if (container) {{
+                    container.style.background = bodyColors[color];
+                    container.style.backgroundColor = bodyColors[color];
+                }}
                 
                 // 로딩 텍스트 색상 변경
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) {{
                     loadingEl.style.color = color === 'black' ? 'white' : 'black';
                 }}
+                
+                // 강제 렌더링
+                if (renderer && scene && camera) {{
+                    renderer.render(scene, camera);
+                }}
+                
+                console.log('배경색 변경 완료:', color);
             }}
             
             // 배경색 버튼 강제 생성
