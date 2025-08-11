@@ -356,6 +356,30 @@ def main():
                     st.error(f"❌ 연결 실패: {str(e)}")
             
             st.caption("💡 올바른 경로를 찾으면 개발자에게 알려주세요!")
+            
+            # 서버 모델 목록 조회
+            st.divider()
+            st.subheader("🗂️ 서버 모델 관리")
+            
+            if st.button("📋 서버 모델 목록 조회"):
+                from web_storage import WebServerStorage
+                web_storage = WebServerStorage()
+                server_models = web_storage.list_server_models()
+                
+                if server_models:
+                    st.success(f"✅ 서버에 {len(server_models)}개 모델 발견")
+                    
+                    for model in server_models:
+                        with st.expander(f"🎮 서버 모델: {model['model_id']}"):
+                            st.write(f"**파일 수**: {len(model['files'])}")
+                            for file_info in model['files']:
+                                file_size_mb = file_info['size'] / (1024 * 1024)
+                                st.write(f"- `{file_info['name']}` ({file_size_mb:.2f}MB)")
+                else:
+                    st.info("서버에 모델이 없거나 조회에 실패했습니다.")
+            
+            st.caption("⚠️ 이 기능은 디버깅 및 관리 목적으로 제공됩니다.")
+
 
 
 

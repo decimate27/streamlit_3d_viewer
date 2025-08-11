@@ -14,6 +14,7 @@ class WebServerStorage:
     def __init__(self):
         self.base_url = "http://decimate27.dothome.co.kr/streamlit_data"
         self.upload_url = f"{self.base_url}/upload.php"  # 업로드용 PHP 스크립트
+        self.delete_url = f"{self.base_url}/delete.php"  # 삭제용 PHP 스크립트
         self.download_url = f"{self.base_url}/files"     # 파일 다운로드 경로
         
     def upload_file(self, file_content, filename, model_id):
@@ -91,23 +92,47 @@ class WebServerStorage:
             return None
     
     def delete_model(self, model_id):
-        """모델 폴더 삭제"""
+        """웹서버에서 모델 삭제"""
         try:
+            st.write(f"🗑️ 웹서버에서 모델 삭제 중: {model_id}")
+            
             data = {
                 'model_id': model_id,
                 'action': 'delete'
             }
             
-            response = requests.post(self.upload_url, data=data, timeout=30, verify=False)
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.post(
+                self.delete_url, 
+                data=data, 
+                headers=headers,
+                timeout=30, 
+                verify=False
+            )
+            
+            st.write(f"🔍 삭제 응답 상태: {response.status_code}")
             
             if response.status_code == 200:
-                result = response.json()
-                return result.get('status') == 'success'
+                try:
+                    result = response.json()
+                    if result.get('status') == 'success':
+                        st.success(f"✅ 웹서버에서 삭제 성공: {result.get('message')}")
+                        return True
+                    else:
+                        st.error(f"❌ 웹서버 삭제 실패: {result.get('message')}")
+                        return False
+                except json.JSONDecodeError:
+                    st.error(f"웹서버 응답 파싱 오류: {response.text[:100]}...")
+                    return False
             else:
+                st.error(f"웹서버 삭제 오류: {response.status_code}")
                 return False
                 
         except Exception as e:
-            st.error(f"모델 삭제 중 오류: {str(e)}")
+            st.error(f"웹서버 삭제 중 네트워크 오류: {str(e)}")
             return False
     
     def save_model_to_server(self, model_id, obj_content, mtl_content, texture_data):
@@ -181,6 +206,41 @@ class WebServerStorage:
         except Exception as e:
             st.error(f"모델 로드 중 오류: {str(e)}")
             return None, None, None
+    
+    def list_server_models(self):
+        """웹서버의 모델 목록 조회 (디버깅용)"""
+        try:
+            data = {'action': 'list'}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.post(
+                self.delete_url, 
+                data=data, 
+                headers=headers,
+                timeout=30, 
+                verify=False
+            )
+            
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    if result.get('status') == 'success':
+                        return result.get('models', [])
+                    else:
+                        st.error(f"서버 목록 조회 실패: {result.get('message')}")
+                        return []
+                except json.JSONDecodeError:
+                    st.error(f"서버 응답 파싱 오류: {response.text[:100]}...")
+                    return []
+            else:
+                st.error(f"서버 목록 조회 오류: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            st.error(f"서버 목록 조회 중 오류: {str(e)}")
+            return []
 
 # 로컬 백업 저장소 (웹서버 실패 시 사용)
 class LocalBackupStorage:
