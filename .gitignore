@@ -37,3 +37,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# YoYo AI version control directory
+.yoyo/
