@@ -31,6 +31,29 @@ def show_viewer_page(model_data):
     a[href*="streamlit"] {display: none !important;}
     [data-testid="stSidebar"] {display: none !important;}
     
+    /* 스트림릿 하단 로고/아이콘 숨기기 - 추가 선택자들 */
+    [data-testid="stBottomBlockContainer"] {display: none !important;}
+    [data-testid="stBottom"] {display: none !important;}
+    .streamlit-footer {display: none !important;}
+    .streamlit-badge {display: none !important;}
+    
+    /* 스트림릿 특정 CSS 클래스들 숨기기 */
+    .st-emotion-cache-1ww3bz2 {display: none !important;}
+    .st-emotion-cache-10trblm {display: none !important;}
+    .st-emotion-cache-nahz7x {display: none !important;}
+    .st-emotion-cache-1y0tadg {display: none !important;}
+    
+    /* 모든 footer 관련 요소 제거 */
+    footer, .footer, [class*="footer"], [class*="Footer"] {display: none !important;}
+    
+    /* 깃허브/스트림릿 관련 모든 링크와 아이콘 제거 */
+    a[href*="github"], a[href*="streamlit"], a[href*="share.streamlit.io"] {display: none !important;}
+    img[alt*="GitHub"], img[alt*="Streamlit"], img[src*="github"], img[src*="streamlit"] {display: none !important;}
+    
+    /* 하단 고정 요소들 제거 */
+    [style*="position: fixed"][style*="bottom"], 
+    [style*="position: absolute"][style*="bottom"] {display: none !important;}
+    
     /* 전체 앱 여백 제거 */
     .stApp {
         margin: 0 !important; 

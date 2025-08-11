@@ -55,6 +55,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             .st-emotion-cache-1ww3bz2 {{ display: none !important; }}
             .st-emotion-cache-10trblm {{ display: none !important; }}
             
+            /* 추가 스트림릿 하단 요소 숨기기 */
+            [data-testid="stBottomBlockContainer"] {{ display: none !important; }}
+            .streamlit-footer {{ display: none !important; }}
+            .streamlit-badge {{ display: none !important; }}
+            .st-emotion-cache-nahz7x {{ display: none !important; }}
+            .st-emotion-cache-1y0tadg {{ display: none !important; }}
+            
+            /* 모든 footer 및 하단 링크 제거 */
+            .footer, [class*="footer"], [class*="Footer"] {{ display: none !important; }}
+            a[href*="streamlit"], a[href*="share.streamlit.io"] {{ display: none !important; }}
+            img[alt*="Streamlit"], img[src*="streamlit"] {{ display: none !important; }}
+            
+            /* 하단 고정 요소들 제거 */
+            [style*="position: fixed"][style*="bottom"], 
+            [style*="position: absolute"][style*="bottom"] {{ display: none !important; }}
+            
             /* 모든 여백 제거 */
             .main .block-container {{ 
                 padding: 0 !important; 
@@ -466,13 +482,28 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         'div[data-testid="stDecoration"]',
                         'div[data-testid="stStatusWidget"]',
                         'div[data-testid="stBottom"]',
+                        'div[data-testid="stBottomBlockContainer"]',
                         'footer',
+                        '.footer',
+                        '[class*="footer"]',
+                        '[class*="Footer"]',
                         '.stActionButton',
                         '.stDeployButton',
                         '.github-corner',
                         'a[href*="github"]',
                         'a[href*="streamlit"]',
-                        '[data-testid="stSidebar"]'
+                        'a[href*="share.streamlit.io"]',
+                        '[data-testid="stSidebar"]',
+                        '.streamlit-footer',
+                        '.streamlit-badge',
+                        '.st-emotion-cache-1ww3bz2',
+                        '.st-emotion-cache-10trblm',
+                        '.st-emotion-cache-nahz7x',
+                        '.st-emotion-cache-1y0tadg',
+                        'img[alt*="Streamlit"]',
+                        'img[src*="streamlit"]',
+                        '[style*="position: fixed"][style*="bottom"]',
+                        '[style*="position: absolute"][style*="bottom"]'
                     ];
                     
                     elementsToHide.forEach(selector => {{
@@ -507,7 +538,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 // 즉시 실행 및 주기적 실행
                 hideStreamlitElements();
-                setInterval(hideStreamlitElements, 1000);
+                setInterval(hideStreamlitElements, 500); // 더 빈번하게 실행
+                
+                // 추가적인 MutationObserver로 DOM 변화 감지
+                const observer = new MutationObserver(function(mutations) {{
+                    hideStreamlitElements();
+                }});
+                observer.observe(document.body, {{ 
+                    childList: true, 
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['style', 'class']
+                }});
                 
                 setTimeout(() => {{
                     const controls = document.querySelector('.controls');

@@ -28,6 +28,29 @@ st.set_page_config(
     layout="wide"
 )
 
+# 스트림릿 하단 요소 숨기기
+hide_streamlit_style = """
+<style>
+/* 스트림릿 하단 로고/아이콘 숨기기 */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+[data-testid="stBottomBlockContainer"] {display: none;}
+[data-testid="stBottom"] {display: none;}
+.streamlit-footer {display: none;}
+.streamlit-badge {display: none;}
+.st-emotion-cache-1ww3bz2 {display: none;}
+.st-emotion-cache-10trblm {display: none;}
+.st-emotion-cache-nahz7x {display: none;}
+.st-emotion-cache-1y0tadg {display: none;}
+.footer, [class*="footer"], [class*="Footer"] {display: none;}
+a[href*="streamlit"], a[href*="share.streamlit.io"] {display: none;}
+img[alt*="Streamlit"], img[src*="streamlit"] {display: none;}
+[style*="position: fixed"][style*="bottom"] {display: none;}
+[style*="position: absolute"][style*="bottom"] {display: none;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 class ModelProcessor:
     def __init__(self):
         self.supported_model_formats = ['.obj']
