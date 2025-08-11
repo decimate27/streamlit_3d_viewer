@@ -88,15 +88,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     controls.enablePan = true;
                     controls.enableRotate = true;
                     
-                    // 조명 추가 - 밝고 자연스럽게
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                    // 조명 설정 - 매트한 렌더링용
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // 밝은 주변광
                     scene.add(ambientLight);
                     
-                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+                    // 방향광은 매우 부드럽게
+                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.3);
                     directionalLight1.position.set(1, 1, 1);
                     scene.add(directionalLight1);
                     
-                    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+                    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.2);
                     directionalLight2.position.set(-1, -1, -1);
                     scene.add(directionalLight2);
                     
@@ -135,15 +136,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     const materials = mtlLoader.parse(`{mtl_content}`, '');
                     materials.preload();
                     
-                    // 텍스처 적용 보장
+                    // 모든 재질을 매트하게 처리
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
+                        
+                        // 반사도 제거 (매트 효과)
+                        material.shininess = 0;
+                        material.specular.setRGB(0, 0, 0);
+                        
+                        // 텍스처 적용 보장
                         if (material.map && !material.map.image) {{
-                            // 기본 텍스처가 없으면 첫 번째 텍스처 사용
                             const textureNames = Object.keys(textures);
                             if (textureNames.length > 0) {{
                                 material.map = textures[textureNames[0]];
                             }}
+                        }}
+                        
+                        // 추가 매트 설정
+                        if (material.map) {{
+                            material.map.minFilter = THREE.LinearFilter;
+                            material.map.magFilter = THREE.LinearFilter;
                         }}
                     }}
                     
