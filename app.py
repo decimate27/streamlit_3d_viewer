@@ -9,6 +9,7 @@ import zipfile
 import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
 from mtl_generator import auto_generate_mtl
+from viewer_utils import create_3d_viewer_html
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 
@@ -57,9 +58,9 @@ class ModelProcessor:
         if not file_types['texture']:
             return False, "텍스처 이미지 파일이 필요합니다."
         
-        # MTL 파일이 없으면 자동 생성됨을 알림
-        if not file_types['material']:
-            st.info("💡 MTL 파일이 없습니다. 텍스처를 기반으로 자동 생성됩니다.")
+        # MTL 파일은 무시됨 (항상 재생성)
+        if file_types['material']:
+            st.info("💡 업로드된 MTL 파일은 무시되고 텍스처를 기반으로 새로 생성됩니다.")
         
         return True, file_types
     
@@ -85,35 +86,29 @@ class ModelProcessor:
                 texture_data[file.name] = bytes(texture_content)
             saved_files['textures'].append(file_path)
         
-        # MTL 파일 처리
+        # MTL 파일 처리 - 항상 재생성
+        st.info("🔧 MTL 파일을 자동 생성하는 중...")
+        
+        # OBJ 파일 내용 읽기
+        with open(saved_files['model'], 'r', encoding='utf-8', errors='ignore') as f:
+            obj_content = f.read()
+        
+        # MTL 자동 생성 (기존 MTL 파일 무시)
+        updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, texture_data)
+        
+        # 수정된 OBJ 파일 저장
+        with open(saved_files['model'], 'w', encoding='utf-8') as f:
+            f.write(updated_obj_content)
+        
+        # 생성된 MTL 파일 저장
+        mtl_path = os.path.join(temp_dir, 'model.mtl')
+        with open(mtl_path, 'w', encoding='utf-8') as f:
+            f.write(generated_mtl_content)
+        saved_files['material'] = mtl_path
+        
         if file_types['material']:
-            # MTL 파일이 있는 경우 그대로 사용
-            for file in file_types['material']:
-                file_path = os.path.join(temp_dir, file.name)
-                with open(file_path, 'wb') as f:
-                    f.write(file.getbuffer())
-                saved_files['material'] = file_path
+            st.success("✅ 기존 MTL 파일을 무시하고 새로 생성했습니다!")
         else:
-            # MTL 파일이 없는 경우 자동 생성
-            st.info("🔧 MTL 파일을 자동 생성하는 중...")
-            
-            # OBJ 파일 내용 읽기
-            with open(saved_files['model'], 'r', encoding='utf-8', errors='ignore') as f:
-                obj_content = f.read()
-            
-            # MTL 자동 생성
-            updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, texture_data)
-            
-            # 수정된 OBJ 파일 저장
-            with open(saved_files['model'], 'w', encoding='utf-8') as f:
-                f.write(updated_obj_content)
-            
-            # 생성된 MTL 파일 저장
-            mtl_path = os.path.join(temp_dir, 'model.mtl')
-            with open(mtl_path, 'w', encoding='utf-8') as f:
-                f.write(generated_mtl_content)
-            saved_files['material'] = mtl_path
-            
             st.success("✅ MTL 파일이 자동 생성되었습니다!")
         
         return saved_files
@@ -249,6 +244,18 @@ def show_model_management():
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
                 st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
+                
+                # 배경색별 공유 링크
+                with st.expander("🎨 배경색별 링크"):
+                    bg_options = {
+                        "⚪ 흰색": "white",
+                        "🔘 회색": "gray", 
+                        "⚫ 검은색": "black"
+                    }
+                    
+                    for label, bg_color in bg_options.items():
+                        bg_url = f"{share_url}&bg={bg_color}"
+                        st.text_input(label, value=bg_url, key=f"bg_{bg_color}_{model['id']}")
             
             with col2:
                 # 미리보기 버튼
@@ -267,10 +274,24 @@ def show_model_management():
             # 미리보기 표시
             if st.session_state.get(f"show_preview_{model['id']}", False):
                 try:
+                    # 배경색 선택
+                    bg_colors = {
+                        "⚪ 흰색": "white",
+                        "🔘 회색": "gray",
+                        "⚫ 검은색": "black"
+                    }
+                    
+                    selected_bg = st.selectbox(
+                        "배경색 선택",
+                        options=list(bg_colors.keys()),
+                        key=f"bg_select_{model['id']}"
+                    )
+                    background_color = bg_colors[selected_bg]
+                    
                     model_data = db.get_model_by_token(model['share_token'])
                     if model_data:
                         obj_content, mtl_content, texture_data = load_model_files(model_data)
-                        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data)
+                        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
                         st.components.v1.html(viewer_html, height=600, scrolling=False)
                 except Exception as e:
                     st.error(f"미리보기 로딩 중 오류: {str(e)}")
@@ -294,7 +315,7 @@ def main():
         **1. 모델 업로드**
         - OBJ 파일 (3D 모델) - 필수
         - 텍스처 이미지 (PNG, JPG) - 필수
-        - MTL 파일 (재질 정보) - 선택사항 (자동 생성됨)
+        - MTL 파일 (재질 정보) - 업로드해도 자동 재생성됨
         
         **2. 공유**
         - 업로드 후 생성되는 링크 복사
@@ -308,6 +329,7 @@ def main():
         - 마우스 드래그: 회전
         - 마우스 휠: 확대/축소
         - 우클릭 드래그: 이동
+        - 우상단 버튼: 배경색 변경 (흰색/회색/검은색)
         
         **5. 보안**
         - 와이어프레임 모드 차단

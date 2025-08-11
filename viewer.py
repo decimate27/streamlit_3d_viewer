@@ -24,12 +24,16 @@ def show_viewer_page(model_data):
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
     
     try:
+        # URL 파라미터에서 배경색 가져오기 (기본값: white)
+        query_params = st.query_params
+        background_color = query_params.get("bg", "white")
+        
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)
         
-        # 3D 뷰어 HTML 생성
+        # 3D 뷰어 HTML 생성 (배경색 포함)
         from viewer_utils import create_3d_viewer_html
-        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data)
+        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
         
         # 전체 화면 뷰어 표시
         st.components.v1.html(viewer_html, width=None, height=1000, scrolling=False)

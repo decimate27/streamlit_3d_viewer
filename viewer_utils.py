@@ -1,8 +1,16 @@
 import base64
 from pathlib import Path
 
-def create_3d_viewer_html(obj_content, mtl_content, texture_data):
+def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white"):
     """Three.js 기반 3D 뷰어 HTML 생성"""
+    
+    # 배경색 설정
+    bg_colors = {
+        "white": "#ffffff",
+        "gray": "#808080", 
+        "black": "#000000"
+    }
+    bg_color = bg_colors.get(background_color, "#ffffff")
     
     # 텍스처를 base64로 인코딩
     texture_base64 = {}
@@ -23,7 +31,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 width: 100%; 
                 height: 100%; 
                 overflow: hidden; 
-                background: #ffffff; 
+                background: {bg_color}; 
             }}
             #container {{ 
                 width: 100%; 
@@ -40,16 +48,47 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 top: 50%; 
                 left: 50%; 
                 transform: translate(-50%, -50%);
-                color: black;
+                color: {'white' if background_color == 'black' else 'black'};
                 font-family: Arial, sans-serif;
                 font-size: 18px;
                 z-index: 100;
             }}
+            .controls {{
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 200;
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }}
+            .bg-btn {{
+                padding: 8px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+                transition: opacity 0.3s;
+            }}
+            .bg-btn:hover {{
+                opacity: 0.8;
+            }}
+            .bg-white {{ background: white; color: black; border: 1px solid #ccc; }}
+            .bg-gray {{ background: #808080; color: white; }}
+            .bg-black {{ background: black; color: white; }}
         </style>
     </head>
     <body>
         <div id="container">
             <div class="loading" id="loading">모델 로딩 중...</div>
+            
+            <!-- 배경색 변경 컨트롤 -->
+            <div class="controls">
+                <button class="bg-btn bg-white" onclick="changeBackground('white')">⚪ 흰색</button>
+                <button class="bg-btn bg-gray" onclick="changeBackground('gray')">🔘 회색</button>
+                <button class="bg-btn bg-black" onclick="changeBackground('black')">⚫ 검은색</button>
+            </div>
         </div>
         
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -78,6 +117,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     renderer = new THREE.WebGLRenderer({{ antialias: true }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
+                    renderer.setClearColor(0x{bg_color[1:]}, 1); // 초기 배경색 설정
                     container.appendChild(renderer.domElement);
                     
                     // Controls 생성
@@ -206,6 +246,35 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
+            }}
+            
+            // 배경색 변경 함수
+            function changeBackground(color) {{
+                const colors = {{
+                    'white': 0xffffff,
+                    'gray': 0x808080,
+                    'black': 0x000000
+                }};
+                
+                const bodyColors = {{
+                    'white': '#ffffff',
+                    'gray': '#808080', 
+                    'black': '#000000'
+                }};
+                
+                // Three.js 렌더러 배경색 변경
+                if (renderer) {{
+                    renderer.setClearColor(colors[color], 1);
+                }}
+                
+                // HTML body 배경색 변경
+                document.body.style.background = bodyColors[color];
+                
+                // 로딩 텍스트 색상 변경
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) {{
+                    loadingEl.style.color = color === 'black' ? 'white' : 'black';
+                }}
             }}
             
             init();
