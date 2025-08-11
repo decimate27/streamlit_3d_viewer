@@ -13,16 +13,64 @@ def show_viewer_page(model_data):
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stApp > div:first-child {margin-top: -80px;}
-    .stApp {margin: 0; padding: 0;}
+    /* Streamlit 기본 요소 숨기기 */
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    div[data-testid="stToolbar"] {display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
+    div[data-testid="stHeader"] {display: none !important;}
+    div[data-testid="stBottom"] {display: none !important;}
+    .stActionButton {display: none !important;}
+    .stDeployButton {display: none !important;}
+    
+    /* GitHub fork banner 및 Streamlit 로고 숨기기 */
+    .github-corner {display: none !important;}
+    a[href*="github"] {display: none !important;}
+    a[href*="streamlit"] {display: none !important;}
+    [data-testid="stSidebar"] {display: none !important;}
+    
+    /* 전체 앱 여백 제거 */
+    .stApp {
+        margin: 0 !important; 
+        padding: 0 !important;
+        top: 0 !important;
+        background: transparent !important;
+    }
+    .stApp > div:first-child {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    /* 메인 컨테이너 여백 제거 */
+    .main .block-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+    
+    /* iframe 전체 화면 */
     iframe {
         width: 100vw !important; 
         height: 100vh !important;
         border: none !important;
-        overflow: visible !important;
+        overflow: hidden !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 9999 !important;
+    }
+    
+    /* 전체 화면 body */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
     }
     </style>
     """
@@ -41,7 +89,7 @@ def show_viewer_page(model_data):
         viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
         
         # 전체 화면 뷰어 표시
-        st.components.v1.html(viewer_html, width=None, height=1000, scrolling=False)
+        st.components.v1.html(viewer_html, width=None, height=None, scrolling=False)
     
     except Exception as e:
         st.error(f"모델 로딩 중 오류가 발생했습니다: {str(e)}")

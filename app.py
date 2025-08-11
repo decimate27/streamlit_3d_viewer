@@ -220,19 +220,7 @@ def show_upload_section():
                             # 공유 링크 생성
                             share_url = generate_share_url(share_token)
                             st.markdown("### 🔗 공유 링크")
-                            
-                            # 공유 링크와 복사 버튼을 같은 행에 배치
-                            col_link, col_btn = st.columns([4, 1])
-                            with col_link:
-                                st.text_input("공유 링크", value=share_url, key="new_share_link", label_visibility="collapsed")
-                            with col_btn:
-                                if st.button("📋 복사", key="copy_new_link"):
-                                    # 링크를 별도로 표시하여 복사하기 쉽게 함
-                                    st.balloons()
-                                    st.success("아래 링크를 선택하여 복사하세요!")
-                            
-                            st.markdown("**복사할 링크:**")
-                            st.code(share_url, language="text")
+                            st.text_input("공유 링크", value=share_url, key="new_share_link")
                             st.markdown("위 링크를 복사하여 다른 사람들과 공유하세요!")
                     
                     except Exception as e:
@@ -286,16 +274,7 @@ def show_model_management():
                 
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
-                
-                # 공유 링크와 복사 버튼을 같은 행에 배치
-                col_link, col_btn = st.columns([4, 1])
-                with col_link:
-                    st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}", label_visibility="collapsed")
-                with col_btn:
-                    if st.button("📋 복사", key=f"copy_{model['id']}"):
-                        st.balloons()
-                        st.success("아래 링크를 선택하여 복사하세요!")
-                        st.code(share_url, language="text")
+                st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
             
             with col2:
                 # 미리보기 버튼

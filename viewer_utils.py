@@ -26,22 +26,64 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <style>
             * {{ box-sizing: border-box; }}
             html, body {{ 
-                margin: 0; 
-                padding: 0; 
-                width: 100%; 
-                height: 100%; 
-                overflow: hidden; 
-                background: {bg_color}; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                width: 100% !important; 
+                height: 100% !important; 
+                overflow: hidden !important; 
+                background: {bg_color} !important; 
+                border: none !important;
+                outline: none !important;
             }}
+            
+            /* Streamlit 요소 완전 숨기기 */
+            header[data-testid="stHeader"] {{ display: none !important; }}
+            div[data-testid="stToolbar"] {{ display: none !important; }}
+            div[data-testid="stDecoration"] {{ display: none !important; }}
+            div[data-testid="stStatusWidget"] {{ display: none !important; }}
+            div[data-testid="stBottom"] {{ display: none !important; }}
+            footer {{ display: none !important; }}
+            .stActionButton {{ display: none !important; }}
+            .stDeployButton {{ display: none !important; }}
+            
+            /* GitHub fork banner 숨기기 */
+            .github-corner {{ display: none !important; }}
+            a[href*="github"] {{ display: none !important; }}
+            
+            /* Streamlit 로고 및 메뉴 숨기기 */
+            [data-testid="stSidebar"] {{ display: none !important; }}
+            .st-emotion-cache-1ww3bz2 {{ display: none !important; }}
+            .st-emotion-cache-10trblm {{ display: none !important; }}
+            
+            /* 모든 여백 제거 */
+            .main .block-container {{ 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                max-width: none !important;
+                width: 100% !important;
+            }}
+            
             #container {{ 
-                width: 100%; 
-                height: 100%; 
-                position: relative;
+                width: 100vw !important; 
+                height: 100vh !important; 
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                z-index: 1000;
             }}
             canvas {{
                 width: 100% !important;
                 height: 100% !important;
-                display: block;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
             }}
             .loading {{ 
                 position: absolute; 
@@ -415,6 +457,57 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // 페이지 로드 후 버튼 확인 및 생성
             window.addEventListener('load', function() {{
                 console.log('페이지 로드 완료');
+                
+                // Streamlit 요소 강제 제거
+                function hideStreamlitElements() {{
+                    const elementsToHide = [
+                        'header[data-testid="stHeader"]',
+                        'div[data-testid="stToolbar"]', 
+                        'div[data-testid="stDecoration"]',
+                        'div[data-testid="stStatusWidget"]',
+                        'div[data-testid="stBottom"]',
+                        'footer',
+                        '.stActionButton',
+                        '.stDeployButton',
+                        '.github-corner',
+                        'a[href*="github"]',
+                        'a[href*="streamlit"]',
+                        '[data-testid="stSidebar"]'
+                    ];
+                    
+                    elementsToHide.forEach(selector => {{
+                        const elements = document.querySelectorAll(selector);
+                        elements.forEach(el => {{
+                            if (el) {{
+                                el.style.display = 'none';
+                                el.style.visibility = 'hidden';
+                                el.remove();
+                            }}
+                        }});
+                    }});
+                    
+                    // 부모 window에서도 제거 시도
+                    if (window.parent && window.parent !== window) {{
+                        try {{
+                            const parentDoc = window.parent.document;
+                            elementsToHide.forEach(selector => {{
+                                const elements = parentDoc.querySelectorAll(selector);
+                                elements.forEach(el => {{
+                                    if (el) {{
+                                        el.style.display = 'none';
+                                        el.style.visibility = 'hidden';
+                                    }}
+                                }});
+                            }});
+                        }} catch (e) {{
+                            // Cross-origin 에러 무시
+                        }}
+                    }}
+                }}
+                
+                // 즉시 실행 및 주기적 실행
+                hideStreamlitElements();
+                setInterval(hideStreamlitElements, 1000);
                 
                 setTimeout(() => {{
                     const controls = document.querySelector('.controls');
