@@ -1,0 +1,12 @@
+[project]
+name = "streamlit-3dviewer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.48.0",
+    "trimesh>=3.15.0",
+    "Pillow>=9.0.0",
+    "numpy>=1.21.0",
+]
