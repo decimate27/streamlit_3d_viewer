@@ -62,6 +62,7 @@ class ModelDatabase:
                 CREATE TABLE models (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    author TEXT,
                     description TEXT,
                     file_paths TEXT NOT NULL,
                     backup_paths TEXT,
@@ -95,6 +96,7 @@ class ModelDatabase:
                     CREATE TABLE models (
                         id TEXT PRIMARY KEY,
                         name TEXT NOT NULL,
+                        author TEXT,
                         description TEXT,
                         file_paths TEXT NOT NULL,
                         backup_paths TEXT,
@@ -147,11 +149,17 @@ class ModelDatabase:
                 # storage_type 컬럼만 추가
                 cursor.execute('ALTER TABLE models ADD COLUMN storage_type TEXT DEFAULT "local"')
                 st.write("📝 storage_type 컬럼 추가")
+            
+            # author 컬럼 추가 (없는 경우)
+            if 'author' not in columns:
+                cursor.execute('ALTER TABLE models ADD COLUMN author TEXT DEFAULT ""')
+                st.write("📝 author 컬럼 추가")
+                conn.commit()
         
         conn.commit()
         conn.close()
     
-    def save_model(self, name, description, obj_content, mtl_content, texture_data):
+    def save_model(self, name, author, description, obj_content, mtl_content, texture_data):
         """모델 저장 (웹서버 + 로컬 백업)"""
         model_id = str(uuid.uuid4()).replace('-', '')  # 하이픈 제거
         share_token = str(uuid.uuid4())
@@ -195,10 +203,10 @@ class ModelDatabase:
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO models (id, name, description, file_paths, backup_paths, 
+            INSERT INTO models (id, name, author, description, file_paths, backup_paths, 
                               storage_type, share_token)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (model_id, name, description, json.dumps(file_paths), 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (model_id, name, author, description, json.dumps(file_paths), 
               json.dumps(backup_paths) if backup_paths else None, 
               storage_type, share_token))
         
@@ -221,7 +229,7 @@ class ModelDatabase:
         if 'storage_type' in columns:
             # 새 스키마
             cursor.execute('''
-                SELECT id, name, description, created_at, access_count, share_token, storage_type
+                SELECT id, name, author, description, created_at, access_count, share_token, storage_type
                 FROM models ORDER BY created_at DESC
             ''')
         else:
@@ -233,15 +241,28 @@ class ModelDatabase:
         
         models = []
         for row in cursor.fetchall():
-            models.append({
-                'id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'created_at': row[3],
-                'access_count': row[4],
-                'share_token': row[5],
-                'storage_type': row[6] if len(row) > 6 else 'local'
-            })
+            if len(row) >= 7:  # 새 스키마 (author 포함)
+                models.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'author': row[2],
+                    'description': row[3],
+                    'created_at': row[4],
+                    'access_count': row[5],
+                    'share_token': row[6],
+                    'storage_type': row[7] if len(row) > 7 else 'local'
+                })
+            else:  # 구 스키마 (author 없음)
+                models.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'author': '',  # 기본값
+                    'description': row[2],
+                    'created_at': row[3],
+                    'access_count': row[4],
+                    'share_token': row[5],
+                    'storage_type': row[6] if len(row) > 6 else 'local'
+                })
         
         conn.close()
         return models
@@ -258,7 +279,7 @@ class ModelDatabase:
         if 'file_paths' in columns:
             # 새 스키마
             cursor.execute('''
-                SELECT id, name, description, file_paths, backup_paths, storage_type
+                SELECT id, name, author, description, file_paths, backup_paths, storage_type
                 FROM models WHERE share_token = ?
             ''', (share_token,))
         else:
@@ -284,16 +305,18 @@ class ModelDatabase:
                 model = {
                     'id': row[0],
                     'name': row[1],
-                    'description': row[2],
-                    'file_paths': json.loads(row[3]) if row[3] else {},
-                    'backup_paths': json.loads(row[4]) if row[4] else None,
-                    'storage_type': row[5] if len(row) > 5 else 'local'
+                    'author': row[2] if len(row) > 2 else '',
+                    'description': row[3] if len(row) > 3 else '',
+                    'file_paths': json.loads(row[4]) if len(row) > 4 and row[4] else {},
+                    'backup_paths': json.loads(row[5]) if len(row) > 5 and row[5] else None,
+                    'storage_type': row[6] if len(row) > 6 else 'local'
                 }
             else:
                 # 구 스키마 (호환성)
                 model = {
                     'id': row[0],
                     'name': row[1],
+                    'author': '',  # 기본값
                     'description': row[2],
                     'obj_path': row[3],
                     'mtl_path': row[4],

@@ -158,6 +158,7 @@ def show_upload_section():
     col1, col2 = st.columns(2)
     with col1:
         model_name = st.text_input("모델 이름", placeholder="예: 자동차 모델")
+        author_name = st.text_input("작성자", placeholder="작성자 이름을 입력하세요")
     with col2:
         model_description = st.text_area("설명 (선택사항)", placeholder="모델에 대한 간단한 설명")
     
@@ -169,7 +170,7 @@ def show_upload_section():
         help="OBJ 모델 파일과 텍스처 이미지 파일이 필요합니다. MTL 파일은 선택사항입니다. 큰 텍스처는 자동으로 최적화됩니다."
     )
     
-    if uploaded_files and model_name:
+    if uploaded_files and model_name and author_name:
         processor = ModelProcessor()
         
         # 파일 유효성 검사
@@ -206,6 +207,7 @@ def show_upload_section():
                             # 데이터베이스에 저장
                             model_id, share_token = db.save_model(
                                 model_name, 
+                                author_name,
                                 model_description,
                                 obj_content, 
                                 mtl_content, 
@@ -218,11 +220,27 @@ def show_upload_section():
                             # 공유 링크 생성
                             share_url = generate_share_url(share_token)
                             st.markdown("### 🔗 공유 링크")
+                            
+                            # 공유 링크와 복사 버튼을 같은 행에 배치
+                            col_link, col_btn = st.columns([4, 1])
+                            with col_link:
+                                st.text_input("공유 링크", value=share_url, key="new_share_link", label_visibility="collapsed")
+                            with col_btn:
+                                if st.button("📋 복사", key="copy_new_link"):
+                                    # 링크를 별도로 표시하여 복사하기 쉽게 함
+                                    st.balloons()
+                                    st.success("아래 링크를 선택하여 복사하세요!")
+                            
+                            st.markdown("**복사할 링크:**")
                             st.code(share_url, language="text")
                             st.markdown("위 링크를 복사하여 다른 사람들과 공유하세요!")
                     
                     except Exception as e:
                         st.error(f"모델 저장 중 오류가 발생했습니다: {str(e)}")
+    elif uploaded_files and model_name and not author_name:
+        st.warning("⚠️ 작성자 이름을 입력해주세요.")
+    elif uploaded_files and not model_name and author_name:
+        st.warning("⚠️ 모델 이름을 입력해주세요.")
 
 def show_model_management():
     """모델 관리 섹션"""
@@ -245,29 +263,39 @@ def show_model_management():
             storage_icon = "💾"
             storage_text = "로컬 임시 저장"
         
-        with st.expander(f"🎮 {model['name']} {storage_icon} (조회수: {model['access_count']})"):
+        # 날짜 포맷팅 (YYYY-MM-DD 형식으로)
+        created_date = model['created_at'][:10] if model['created_at'] else "날짜 없음"
+        author_text = model.get('author', '') or "작성자 없음"
+        description_text = model['description'] or ""
+        
+        # 제목 형식: "제목 🍀(조회수 : N) - 작성자 - YYYY-MM-DD : 설명(선택사항)"
+        if description_text:
+            title_format = f"{model['name']} 🍀(조회수 : {model['access_count']}) - {author_text} - {created_date} : {description_text}"
+        else:
+            title_format = f"{model['name']} 🍀(조회수 : {model['access_count']}) - {author_text} - {created_date}"
+        
+        with st.expander(f"{title_format} {storage_icon}"):
             col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
+                st.write(f"**모델명:** {model['name']}")
+                st.write(f"**작성자:** {author_text}")
                 st.write(f"**설명:** {model['description'] or '설명 없음'}")
                 st.write(f"**생성일:** {model['created_at']}")
                 st.write(f"**저장 위치:** {storage_text}")
                 
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
-                st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
                 
-                # 배경색별 공유 링크
-                with st.expander("🎨 배경색별 링크"):
-                    bg_options = {
-                        "⚪ 흰색": "white",
-                        "🔘 회색": "gray", 
-                        "⚫ 검은색": "black"
-                    }
-                    
-                    for label, bg_color in bg_options.items():
-                        bg_url = f"{share_url}&bg={bg_color}"
-                        st.text_input(label, value=bg_url, key=f"bg_{bg_color}_{model['id']}")
+                # 공유 링크와 복사 버튼을 같은 행에 배치
+                col_link, col_btn = st.columns([4, 1])
+                with col_link:
+                    st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}", label_visibility="collapsed")
+                with col_btn:
+                    if st.button("📋 복사", key=f"copy_{model['id']}"):
+                        st.balloons()
+                        st.success("아래 링크를 선택하여 복사하세요!")
+                        st.code(share_url, language="text")
             
             with col2:
                 # 미리보기 버튼
