@@ -94,11 +94,11 @@ def show_upload_section():
     db = ModelDatabase()
     current_count = db.get_model_count()
     
-    if current_count >= 10:
-        st.error("최대 10개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
+    if current_count >= 20:
+        st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
-    st.info(f"현재 저장된 모델: {current_count}/10 (임시 저장)")
+    st.info(f"현재 저장된 모델: {current_count}/20 (임시 저장)")
     
     # 모델 정보 입력
     col1, col2 = st.columns(2)
@@ -244,7 +244,7 @@ def main():
         - 링크를 통해 누구나 접근 가능
         
         **3. 관리**
-        - 최대 10개 모델 저장
+        - 최대 20개 모델 저장
         - 미리보기 및 삭제 가능
         
         **4. 뷰어 조작**
