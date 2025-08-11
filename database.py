@@ -194,7 +194,6 @@ def load_model_files(model_data):
 def generate_share_url(share_token, base_url=None):
     """공유 URL 생성"""
     if base_url is None:
-        # 실제 배포된 앱 URL로 변경 필요
-        base_url = "https://share.streamlit.io/decimate27/streamlit_3dviewer/main/app.py"
+        base_url = "https://airbible-3d-viewer.streamlit.app"
     
     return f"{base_url}?token={share_token}"
