@@ -98,7 +98,22 @@ def show_upload_section():
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
-    st.info(f"현재 저장된 모델: {current_count}/20 (임시 저장)")
+    # 저장된 모델들의 storage_type 확인
+    models = db.get_all_models()
+    web_count = sum(1 for model in models if model.get('storage_type') == 'web')
+    local_count = sum(1 for model in models if model.get('storage_type') == 'local')
+    
+    # 상태 메시지 생성
+    if web_count > 0 and local_count > 0:
+        storage_status = f"웹서버: {web_count}개, 로컬: {local_count}개"
+    elif web_count > 0:
+        storage_status = "웹서버 저장"
+    elif local_count > 0:
+        storage_status = "로컬 임시 저장"
+    else:
+        storage_status = "저장소 준비됨"
+    
+    st.info(f"현재 저장된 모델: {current_count}/20 ({storage_status})")
     
     # 모델 정보 입력
     col1, col2 = st.columns(2)
@@ -182,12 +197,22 @@ def show_model_management():
         return
     
     for model in models:
-        with st.expander(f"🎮 {model['name']} (조회수: {model['access_count']})"):
+        # 저장 타입에 따른 아이콘과 설명
+        storage_type = model.get('storage_type', 'local')
+        if storage_type == 'web':
+            storage_icon = "🌐"
+            storage_text = "웹서버 저장"
+        else:
+            storage_icon = "💾"
+            storage_text = "로컬 임시 저장"
+        
+        with st.expander(f"🎮 {model['name']} {storage_icon} (조회수: {model['access_count']})"):
             col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
                 st.write(f"**설명:** {model['description'] or '설명 없음'}")
                 st.write(f"**생성일:** {model['created_at']}")
+                st.write(f"**저장 위치:** {storage_text}")
                 
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
