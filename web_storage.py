@@ -65,7 +65,10 @@ class WebServerStorage:
                 return None
                 
         except Exception as e:
-            st.error(f"파일 업로드 중 오류: {str(e)}")
+            st.error(f"파일 업로드 중 네트워크 오류: {str(e)}")
+            st.write(f"🔍 업로드 URL: {self.upload_url}")
+            st.write(f"🔍 파일명: {filename}")
+            st.write(f"🔍 모델 ID: {model_id}")
             return None
     
     def download_file(self, file_path):

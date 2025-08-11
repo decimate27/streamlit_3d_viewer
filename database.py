@@ -41,31 +41,59 @@ class ModelDatabase:
                     access_count INTEGER DEFAULT 0
                 )
             ''')
+            st.write("🆕 새 데이터베이스 테이블 생성")
         else:
-            # 기존 테이블 마이그레이션
-            if 'storage_type' not in columns:
-                cursor.execute('ALTER TABLE models ADD COLUMN storage_type TEXT DEFAULT "local"')
-            
-            if 'file_paths' not in columns and 'obj_path' in columns:
-                # 구 스키마에서 신 스키마로 마이그레이션
-                cursor.execute('ALTER TABLE models ADD COLUMN file_paths TEXT')
-                cursor.execute('ALTER TABLE models ADD COLUMN backup_paths TEXT')
+            # 구 스키마 감지 시 테이블 재생성
+            if 'obj_path' in columns and 'file_paths' not in columns:
+                st.write("🔄 구 스키마 감지 - 테이블 마이그레이션 시작")
                 
-                # 기존 데이터를 새 형식으로 변환
-                cursor.execute('SELECT id, obj_path, mtl_path, texture_paths FROM models')
-                old_records = cursor.fetchall()
+                # 기존 데이터 백업
+                cursor.execute('SELECT * FROM models')
+                old_data = cursor.fetchall()
                 
-                for record in old_records:
-                    model_id, obj_path, mtl_path, texture_paths = record
-                    old_file_paths = {
-                        'obj_path': obj_path,
-                        'mtl_path': mtl_path,
-                        'texture_paths': json.loads(texture_paths)
-                    }
-                    cursor.execute(
-                        'UPDATE models SET file_paths = ? WHERE id = ?',
-                        (json.dumps(old_file_paths), model_id)
+                # 기존 테이블 삭제
+                cursor.execute('DROP TABLE models')
+                
+                # 새 테이블 생성
+                cursor.execute('''
+                    CREATE TABLE models (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT,
+                        file_paths TEXT NOT NULL,
+                        backup_paths TEXT,
+                        storage_type TEXT DEFAULT 'local',
+                        share_token TEXT UNIQUE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_accessed TIMESTAMP,
+                        access_count INTEGER DEFAULT 0
                     )
+                ''')
+                
+                # 기존 데이터 복원 (구 형식 → 신 형식)
+                for row in old_data:
+                    try:
+                        old_file_paths = {
+                            'obj_path': row[3],  # obj_path
+                            'mtl_path': row[4],  # mtl_path  
+                            'texture_paths': json.loads(row[5])  # texture_paths
+                        }
+                        
+                        cursor.execute('''
+                            INSERT INTO models (id, name, description, file_paths, 
+                                              storage_type, share_token, created_at, access_count)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (row[0], row[1], row[2], json.dumps(old_file_paths), 
+                              'local', row[6], row[7], row[9] if len(row) > 9 else 0))
+                    except Exception as e:
+                        st.warning(f"데이터 마이그레이션 중 일부 오류: {str(e)}")
+                
+                st.success("✅ 데이터베이스 마이그레이션 완료")
+            
+            elif 'storage_type' not in columns:
+                # storage_type 컬럼만 추가
+                cursor.execute('ALTER TABLE models ADD COLUMN storage_type TEXT DEFAULT "local"')
+                st.write("📝 storage_type 컬럼 추가")
         
         conn.commit()
         conn.close()
