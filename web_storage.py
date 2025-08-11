@@ -33,6 +33,9 @@ class WebServerStorage:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             
+            print(f"[DEBUG] 업로드 시작: {filename}, 크기: {len(file_content)} bytes")
+            st.write(f"🔍 업로드 시작: {filename}, 크기: {len(file_content)} bytes")
+            
             response = requests.post(
                 self.upload_url, 
                 files=files, 
@@ -41,12 +44,21 @@ class WebServerStorage:
                 verify=False  # SSL 검증 비활성화
             )
             
+            st.write(f"🔍 응답 상태: {response.status_code}")
+            if response.status_code != 200:
+                st.write(f"❌ 응답 내용: {response.text[:200]}...")
+            
             if response.status_code == 200:
-                result = response.json()
-                if result.get('status') == 'success':
-                    return result.get('file_path')
-                else:
-                    st.error(f"업로드 실패: {result.get('message')}")
+                try:
+                    result = response.json()
+                    if result.get('status') == 'success':
+                        st.write(f"✅ 업로드 성공: {result.get('file_path')}")
+                        return result.get('file_path')
+                    else:
+                        st.error(f"업로드 실패: {result.get('message')}")
+                        return None
+                except json.JSONDecodeError:
+                    st.error(f"서버 응답 파싱 오류: {response.text[:100]}...")
                     return None
             else:
                 st.error(f"서버 오류: {response.status_code}")
@@ -97,6 +109,9 @@ class WebServerStorage:
     
     def save_model_to_server(self, model_id, obj_content, mtl_content, texture_data):
         """모델을 웹서버에 저장"""
+        st.write(f"🔍 모델 저장 시작: {model_id}")
+        st.write(f"📊 OBJ 크기: {len(obj_content)}, MTL 크기: {len(mtl_content)}, 텍스처 파일 수: {len(texture_data)}")
+        
         file_paths = {}
         
         # OBJ 파일 업로드
@@ -104,6 +119,7 @@ class WebServerStorage:
         if obj_path:
             file_paths['obj_path'] = obj_path
         else:
+            st.error("OBJ 파일 업로드 실패")
             return None
         
         # MTL 파일 업로드
@@ -111,6 +127,7 @@ class WebServerStorage:
         if mtl_path:
             file_paths['mtl_path'] = mtl_path
         else:
+            st.error("MTL 파일 업로드 실패")
             return None
         
         # 텍스처 파일들 업로드
@@ -120,11 +137,13 @@ class WebServerStorage:
             if texture_path:
                 texture_paths.append(texture_path)
             else:
+                st.error(f"텍스처 파일 업로드 실패: {texture_name}")
                 # 업로드 실패 시 이미 업로드된 파일들 삭제
                 self.delete_model(model_id)
                 return None
         
         file_paths['texture_paths'] = texture_paths
+        st.success(f"✅ 웹서버에 모든 파일 업로드 완료!")
         return file_paths
     
     def load_model_from_server(self, file_paths):
