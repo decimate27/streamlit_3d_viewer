@@ -60,26 +60,61 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 z-index: 9999;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
                 pointer-events: auto;
             }}
             .bg-btn {{
-                padding: 10px 15px;
+                padding: 8px 12px;
                 border: 2px solid rgba(255,255,255,0.3);
-                border-radius: 6px;
+                border-radius: 4px;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: bold;
                 font-family: Arial, sans-serif;
                 transition: all 0.3s ease;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                min-width: 80px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                min-width: 60px;
                 text-align: center;
             }}
             .bg-btn:hover {{
                 transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
                 border-color: rgba(255,255,255,0.6);
+            }}
+            
+            /* 모바일 최적화 */
+            @media (max-width: 768px) {{
+                .controls {{
+                    top: 10px;
+                    left: 10px;
+                    gap: 4px;
+                }}
+                .bg-btn {{
+                    padding: 6px 8px;
+                    font-size: 10px;
+                    min-width: 40px;
+                    border-width: 1px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                }}
+                .bg-btn:hover {{
+                    transform: none;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                }}
+            }}
+            
+            /* 아주 작은 화면 (스마트폰) */
+            @media (max-width: 480px) {{
+                .controls {{
+                    top: 5px;
+                    left: 5px;
+                    gap: 3px;
+                }}
+                .bg-btn {{
+                    padding: 4px 6px;
+                    font-size: 9px;
+                    min-width: 30px;
+                    border-radius: 3px;
+                }}
             }}
             .bg-white {{ 
                 background: #ffffff; 
@@ -96,6 +131,24 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 color: white; 
                 border-color: #333;
             }}
+            
+            /* 텍스트 표시 제어 */
+            .btn-text-mobile {{
+                display: none;
+            }}
+            .btn-text-full {{
+                display: inline;
+            }}
+            
+            /* 모바일에서 텍스트 변경 */
+            @media (max-width: 768px) {{
+                .btn-text-mobile {{
+                    display: inline;
+                }}
+                .btn-text-full {{
+                    display: none;
+                }}
+            }}
         </style>
     </head>
     <body>
@@ -104,9 +157,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             <!-- 배경색 변경 컨트롤 -->
             <div class="controls">
-                <button class="bg-btn bg-white" onclick="changeBackground('white')">⚪ 흰색</button>
-                <button class="bg-btn bg-gray" onclick="changeBackground('gray')">🔘 회색</button>
-                <button class="bg-btn bg-black" onclick="changeBackground('black')">⚫ 검은색</button>
+                <button class="bg-btn bg-white" onclick="changeBackground('white')">
+                    <span class="btn-text-full">⚪ 흰색</span>
+                    <span class="btn-text-mobile">⚪</span>
+                </button>
+                <button class="bg-btn bg-gray" onclick="changeBackground('gray')">
+                    <span class="btn-text-full">🔘 회색</span>
+                    <span class="btn-text-mobile">🔘</span>
+                </button>
+                <button class="bg-btn bg-black" onclick="changeBackground('black')">
+                    <span class="btn-text-full">⚫ 검은색</span>
+                    <span class="btn-text-mobile">⚫</span>
+                </button>
             </div>
         </div>
         
@@ -332,9 +394,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'controls';
                 controlsDiv.innerHTML = `
-                    <button class="bg-btn bg-white" onclick="changeBackground('white')">⚪ 흰색</button>
-                    <button class="bg-btn bg-gray" onclick="changeBackground('gray')">🔘 회색</button>
-                    <button class="bg-btn bg-black" onclick="changeBackground('black')">⚫ 검은색</button>
+                    <button class="bg-btn bg-white" onclick="changeBackground('white')">
+                        <span class="btn-text-full">⚪ 흰색</span>
+                        <span class="btn-text-mobile">⚪</span>
+                    </button>
+                    <button class="bg-btn bg-gray" onclick="changeBackground('gray')">
+                        <span class="btn-text-full">🔘 회색</span>
+                        <span class="btn-text-mobile">🔘</span>
+                    </button>
+                    <button class="bg-btn bg-black" onclick="changeBackground('black')">
+                        <span class="btn-text-full">⚫ 검은색</span>
+                        <span class="btn-text-mobile">⚫</span>
+                    </button>
                 `;
                 
                 document.body.appendChild(controlsDiv);
