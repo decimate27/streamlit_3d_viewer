@@ -5,12 +5,16 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 import sqlite3
+from web_storage import WebServerStorage, LocalBackupStorage
+import streamlit as st
 
 class ModelDatabase:
     def __init__(self, db_path="data/models.db"):
         self.db_path = db_path
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.init_db()
+        self.web_storage = WebServerStorage()
+        self.local_backup = LocalBackupStorage()
     
     def init_db(self):
         """데이터베이스 초기화"""
@@ -22,9 +26,9 @@ class ModelDatabase:
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT,
-                obj_path TEXT NOT NULL,
-                mtl_path TEXT NOT NULL,
-                texture_paths TEXT NOT NULL,
+                file_paths TEXT NOT NULL,
+                backup_paths TEXT,
+                storage_type TEXT DEFAULT 'web',
                 share_token TEXT UNIQUE NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_accessed TIMESTAMP,
@@ -36,45 +40,60 @@ class ModelDatabase:
         conn.close()
     
     def save_model(self, name, description, obj_content, mtl_content, texture_data):
-        """모델 저장"""
+        """모델 저장 (웹서버 + 로컬 백업)"""
         model_id = str(uuid.uuid4())
         share_token = str(uuid.uuid4())
         
-        # 파일 저장 디렉토리 생성
-        model_dir = f"data/models/{model_id}"
-        os.makedirs(model_dir, exist_ok=True)
+        st.write(f"🚀 모델 저장 시작: {model_id}")
         
-        # 파일들 저장
-        obj_path = f"{model_dir}/model.obj"
-        mtl_path = f"{model_dir}/model.mtl"
+        # 웹서버에 저장 시도
+        st.write("🌐 웹서버 저장 시도 중...")
+        file_paths = self.web_storage.save_model_to_server(
+            model_id, obj_content, mtl_content, texture_data
+        )
         
-        with open(obj_path, 'w') as f:
-            f.write(obj_content)
+        storage_type = 'web'
+        backup_paths = None
         
-        with open(mtl_path, 'w') as f:
-            f.write(mtl_content)
-        
-        # 텍스처 파일들 저장
-        texture_paths = []
-        for texture_name, texture_content in texture_data.items():
-            texture_path = f"{model_dir}/{texture_name}"
-            with open(texture_path, 'wb') as f:
-                f.write(texture_content)
-            texture_paths.append(texture_path)
+        if file_paths:
+            st.success("✅ 웹서버 저장 성공!")
+            st.write(f"웹서버 경로: {file_paths}")
+            
+            # 성공 시 로컬 백업도 저장
+            st.write("💾 로컬 백업 저장 중...")
+            backup_paths = self.local_backup.save_model_backup(
+                model_id, obj_content, mtl_content, texture_data
+            )
+            if backup_paths:
+                st.write("✅ 로컬 백업 완료")
+        else:
+            st.error("❌ 웹서버 저장 실패 - 로컬 저장으로 폴백")
+            # 웹서버 실패 시 로컬에만 저장
+            file_paths = self.local_backup.save_model_backup(
+                model_id, obj_content, mtl_content, texture_data
+            )
+            storage_type = 'local'
+            
+            if not file_paths:
+                raise Exception("파일 저장에 실패했습니다.")
+            st.warning("⚠️ 로컬 저장으로 처리됨 (임시)")
         
         # 데이터베이스에 저장
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO models (id, name, description, obj_path, mtl_path, 
-                              texture_paths, share_token)
+            INSERT INTO models (id, name, description, file_paths, backup_paths, 
+                              storage_type, share_token)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (model_id, name, description, obj_path, mtl_path, 
-              json.dumps(texture_paths), share_token))
+        ''', (model_id, name, description, json.dumps(file_paths), 
+              json.dumps(backup_paths) if backup_paths else None, 
+              storage_type, share_token))
         
         conn.commit()
         conn.close()
+        
+        st.write(f"💾 데이터베이스 저장 완료 - 저장 타입: {storage_type}")
         
         return model_id, share_token
     
@@ -84,7 +103,7 @@ class ModelDatabase:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, name, description, created_at, access_count, share_token
+            SELECT id, name, description, created_at, access_count, share_token, storage_type
             FROM models ORDER BY created_at DESC
         ''')
         
@@ -96,7 +115,8 @@ class ModelDatabase:
                 'description': row[2],
                 'created_at': row[3],
                 'access_count': row[4],
-                'share_token': row[5]
+                'share_token': row[5],
+                'storage_type': row[6] if len(row) > 6 else 'local'
             })
         
         conn.close()
@@ -108,7 +128,7 @@ class ModelDatabase:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, name, description, obj_path, mtl_path, texture_paths
+            SELECT id, name, description, file_paths, backup_paths, storage_type
             FROM models WHERE share_token = ?
         ''', (share_token,))
         
@@ -127,9 +147,9 @@ class ModelDatabase:
                 'id': row[0],
                 'name': row[1],
                 'description': row[2],
-                'obj_path': row[3],
-                'mtl_path': row[4],
-                'texture_paths': json.loads(row[5])
+                'file_paths': json.loads(row[3]),
+                'backup_paths': json.loads(row[4]) if row[4] else None,
+                'storage_type': row[5] if len(row) > 5 else 'local'
             }
         else:
             model = None
@@ -143,14 +163,24 @@ class ModelDatabase:
         cursor = conn.cursor()
         
         # 모델 정보 조회
-        cursor.execute('SELECT obj_path FROM models WHERE id = ?', (model_id,))
+        cursor.execute('''
+            SELECT storage_type, backup_paths FROM models WHERE id = ?
+        ''', (model_id,))
         row = cursor.fetchone()
         
         if row:
-            # 파일 디렉토리 삭제
-            model_dir = os.path.dirname(row[0])
-            if os.path.exists(model_dir):
-                shutil.rmtree(model_dir)
+            storage_type = row[0] if row[0] else 'local'
+            backup_paths = row[1] if len(row) > 1 else None
+            
+            # 웹서버에서 삭제
+            if storage_type == 'web':
+                self.web_storage.delete_model(model_id)
+            
+            # 로컬 백업 삭제
+            if backup_paths:
+                self.local_backup.delete_model_backup(model_id)
+            elif storage_type == 'local':
+                self.local_backup.delete_model_backup(model_id)
             
             # 데이터베이스에서 삭제
             cursor.execute('DELETE FROM models WHERE id = ?', (model_id,))
@@ -174,22 +204,43 @@ class ModelDatabase:
 
 def load_model_files(model_data):
     """저장된 모델 파일들 로드"""
-    # OBJ 파일 읽기
-    with open(model_data['obj_path'], 'r') as f:
-        obj_content = f.read()
+    web_storage = WebServerStorage()
+    local_backup = LocalBackupStorage()
     
-    # MTL 파일 읽기
-    with open(model_data['mtl_path'], 'r') as f:
-        mtl_content = f.read()
+    storage_type = model_data.get('storage_type', 'local')
     
-    # 텍스처 파일들 읽기
-    texture_data = {}
-    for texture_path in model_data['texture_paths']:
-        texture_name = os.path.basename(texture_path)
-        with open(texture_path, 'rb') as f:
-            texture_data[texture_name] = f.read()
+    if storage_type == 'web':
+        # 웹서버에서 로드 시도
+        result = web_storage.load_model_from_server(model_data['file_paths'])
+        
+        if result[0] is not None:  # 성공
+            return result
+        
+        # 웹서버 실패 시 로컬 백업에서 로드
+        if model_data.get('backup_paths'):
+            return local_backup.load_model_backup(model_data['backup_paths'])
+    else:
+        # 구 형식 호환성 - obj_path가 있으면 구 형식
+        if 'obj_path' in model_data:
+            # 기존 로컬 저장 방식
+            with open(model_data['obj_path'], 'r') as f:
+                obj_content = f.read()
+            
+            with open(model_data['mtl_path'], 'r') as f:
+                mtl_content = f.read()
+            
+            texture_data = {}
+            for texture_path in model_data['texture_paths']:
+                texture_name = os.path.basename(texture_path)
+                with open(texture_path, 'rb') as f:
+                    texture_data[texture_name] = f.read()
+            
+            return obj_content, mtl_content, texture_data
+        else:
+            # 새 로컬 백업 방식
+            return local_backup.load_model_backup(model_data['file_paths'])
     
-    return obj_content, mtl_content, texture_data
+    return None, None, None
 
 def generate_share_url(share_token, base_url=None):
     """공유 URL 생성"""
