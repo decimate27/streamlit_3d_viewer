@@ -98,7 +98,7 @@ def show_upload_section():
         st.error("최대 10개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
-    st.info(f"현재 저장된 모델: {current_count}/10")
+    st.info(f"현재 저장된 모델: {current_count}/10 (임시 저장)")
     
     # 모델 정보 입력
     col1, col2 = st.columns(2)
