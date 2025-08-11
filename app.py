@@ -7,7 +7,7 @@ import trimesh
 from PIL import Image
 import zipfile
 import shutil
-from database import ModelDatabase, load_model_files, generate_share_url
+from database import ModelDatabase, load_model_files, generate_share_url, reset_database
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 
@@ -257,6 +257,20 @@ def main():
         - 파일 다운로드 불가
         - 텍스처 필수 적용
         """)
+        
+        # 데이터베이스 문제 해결 옵션
+        with st.expander("🔧 문제 해결"):
+            st.warning("데이터베이스 오류가 발생하면 아래 버튼을 클릭하세요.")
+            if st.button("🔄 데이터베이스 초기화", type="secondary"):
+                try:
+                    reset_database()
+                    st.success("데이터베이스가 초기화되었습니다. 페이지를 새로고침하세요.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"초기화 실패: {str(e)}")
+            
+            st.info("⚠️ 초기화하면 기존 모델 목록이 삭제됩니다. (파일은 백업됨)")
+
 
 if __name__ == "__main__":
     main()
