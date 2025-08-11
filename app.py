@@ -10,6 +10,7 @@ import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
 from mtl_generator import auto_generate_mtl
 from viewer_utils import create_3d_viewer_html
+from texture_optimizer import auto_optimize_textures
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 
@@ -75,15 +76,26 @@ class ModelProcessor:
                 f.write(file.getbuffer())
             saved_files['model'] = file_path
         
-        # 텍스처 파일들 저장
+        # 텍스처 파일들 저장 및 최적화
         saved_files['textures'] = []
         texture_data = {}
         for file in file_types['texture']:
-            file_path = os.path.join(temp_dir, file.name)
+            texture_content = file.getbuffer()
+            texture_data[file.name] = bytes(texture_content)
+        
+        # 🔧 텍스처 자동 최적화
+        st.write("🎨 텍스처 최적화 중...")
+        optimized_texture_data, should_continue = auto_optimize_textures(texture_data)
+        
+        if not should_continue:
+            st.error("텍스처 최적화에 실패했습니다.")
+            return None
+        
+        # 최적화된 텍스처 파일들을 디스크에 저장
+        for filename, data in optimized_texture_data.items():
+            file_path = os.path.join(temp_dir, filename)
             with open(file_path, 'wb') as f:
-                texture_content = file.getbuffer()
-                f.write(texture_content)
-                texture_data[file.name] = bytes(texture_content)
+                f.write(data)
             saved_files['textures'].append(file_path)
         
         # MTL 파일 처리 - 항상 재생성
@@ -94,7 +106,7 @@ class ModelProcessor:
             obj_content = f.read()
         
         # MTL 자동 생성 (기존 MTL 파일 무시)
-        updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, texture_data)
+        updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, optimized_texture_data)
         
         # 수정된 OBJ 파일 저장
         with open(saved_files['model'], 'w', encoding='utf-8') as f:
@@ -154,7 +166,7 @@ def show_upload_section():
         "모델 파일들을 선택하세요",
         type=['obj', 'mtl', 'png', 'jpg', 'jpeg'],
         accept_multiple_files=True,
-        help="OBJ 모델 파일과 텍스처 이미지 파일이 필요합니다. MTL 파일은 선택사항입니다."
+        help="OBJ 모델 파일과 텍스처 이미지 파일이 필요합니다. MTL 파일은 선택사항입니다. 큰 텍스처는 자동으로 최적화됩니다."
     )
     
     if uploaded_files and model_name:
@@ -331,7 +343,12 @@ def main():
         - 우클릭 드래그: 이동
         - 우상단 버튼: 배경색 변경 (흰색/회색/검은색)
         
-        **5. 보안**
+        **5. 자동 최적화**
+        - 큰 텍스처 파일 자동 압축
+        - 2MB 이상 또는 1024px 초과 시 최적화
+        - 투명도 유지 (PNG) 또는 JPEG 변환
+        
+        **6. 보안**
         - 와이어프레임 모드 차단
         - 파일 다운로드 불가
         - 텍스처 필수 적용
@@ -401,6 +418,36 @@ def main():
                     st.info("서버에 모델이 없거나 조회에 실패했습니다.")
             
             st.caption("⚠️ 이 기능은 디버깅 및 관리 목적으로 제공됩니다.")
+            
+            # 텍스처 최적화 테스트
+            st.divider()
+            st.subheader("🎨 텍스처 최적화 테스트")
+            
+            test_file = st.file_uploader(
+                "테스트할 이미지 파일",
+                type=['png', 'jpg', 'jpeg'],
+                key="texture_test"
+            )
+            
+            if test_file:
+                st.write(f"**원본 파일**: {test_file.name}")
+                st.write(f"**원본 크기**: {len(test_file.getbuffer()):,} bytes ({len(test_file.getbuffer())/(1024*1024):.2f}MB)")
+                
+                if st.button("🔧 최적화 테스트"):
+                    test_data = {test_file.name: test_file.getbuffer()}
+                    optimized_data, _ = auto_optimize_textures(test_data)
+                    
+                    for filename, data in optimized_data.items():
+                        st.write(f"**최적화 후**: {filename}")
+                        st.write(f"**새 크기**: {len(data):,} bytes ({len(data)/(1024*1024):.2f}MB)")
+                        
+                        # 최적화된 이미지 다운로드 제공
+                        st.download_button(
+                            label="최적화된 파일 다운로드",
+                            data=data,
+                            file_name=f"optimized_{filename}",
+                            mime="image/jpeg" if filename.endswith('.jpg') else "image/png"
+                        )
 
 
 
