@@ -78,8 +78,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     renderer = new THREE.WebGLRenderer({{ antialias: true }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
-                    renderer.shadowMap.enabled = true;
-                    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                     container.appendChild(renderer.domElement);
                     
                     // Controls 생성
@@ -90,14 +88,17 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     controls.enablePan = true;
                     controls.enableRotate = true;
                     
-                    // 조명 추가
-                    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                    // 조명 추가 - 밝고 자연스럽게
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
                     scene.add(ambientLight);
                     
-                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                    directionalLight.position.set(1, 1, 1);
-                    directionalLight.castShadow = true;
-                    scene.add(directionalLight);
+                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+                    directionalLight1.position.set(1, 1, 1);
+                    scene.add(directionalLight1);
+                    
+                    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+                    directionalLight2.position.set(-1, -1, -1);
+                    scene.add(directionalLight2);
                     
                     console.log('Scene setup complete');
                     
