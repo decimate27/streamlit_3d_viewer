@@ -191,6 +191,9 @@ def load_model_files(model_data):
     
     return obj_content, mtl_content, texture_data
 
-def generate_share_url(share_token, base_url="http://localhost:8501"):
+def generate_share_url(share_token, base_url=None):
     """공유 URL 생성"""
+    if base_url is None:
+        base_url = "https://airbible.streamlit.app"  # 실제 Streamlit Cloud URL로 변경
+    
     return f"{base_url}/?token={share_token}"
