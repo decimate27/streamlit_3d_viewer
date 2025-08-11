@@ -148,7 +148,7 @@ class ModelDatabase:
     
     def save_model(self, name, description, obj_content, mtl_content, texture_data):
         """모델 저장 (웹서버 + 로컬 백업)"""
-        model_id = str(uuid.uuid4())
+        model_id = str(uuid.uuid4()).replace('-', '')  # 하이픈 제거
         share_token = str(uuid.uuid4())
         
         st.write(f"🚀 모델 저장 시작: {model_id}")

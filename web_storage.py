@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class WebServerStorage:
     def __init__(self):
-        self.base_url = "https://airbible.kr/streamlit_data"
+        self.base_url = "http://decimate27.dothome.co.kr/streamlit_data"
         self.upload_url = f"{self.base_url}/upload.php"  # 업로드용 PHP 스크립트
         self.download_url = f"{self.base_url}/files"     # 파일 다운로드 경로
         

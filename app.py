@@ -270,6 +270,36 @@ def main():
                     st.error(f"초기화 실패: {str(e)}")
             
             st.info("⚠️ 초기화하면 기존 모델 목록이 삭제됩니다. (파일은 백업됨)")
+            
+            # 웹서버 연결 테스트
+            st.divider()
+            st.subheader("🌐 웹서버 연결 테스트")
+            
+            # 사용자 정의 URL 입력
+            custom_url = st.text_input(
+                "서버 URL 테스트", 
+                value="http://decimate27.dothome.co.kr/streamlit_data/upload.php",
+                help="정확한 upload.php 경로를 입력하세요"
+            )
+            
+            if st.button("🔍 서버 연결 테스트"):
+                import requests
+                try:
+                    response = requests.post(custom_url, data={}, timeout=10, verify=False)
+                    if response.status_code == 200:
+                        try:
+                            result = response.json()
+                            st.success(f"✅ 서버 연결 성공! 응답: {result}")
+                        except:
+                            st.warning(f"⚠️ 서버 응답은 있으나 JSON이 아님: {response.text[:100]}...")
+                    else:
+                        st.error(f"❌ 서버 오류: {response.status_code}")
+                        st.write(f"응답 내용: {response.text[:200]}...")
+                except Exception as e:
+                    st.error(f"❌ 연결 실패: {str(e)}")
+            
+            st.caption("💡 올바른 경로를 찾으면 개발자에게 알려주세요!")
+
 
 
 if __name__ == "__main__":
