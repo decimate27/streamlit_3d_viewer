@@ -6,12 +6,22 @@ def show_viewer_page(model_data):
     st.set_page_config(
         page_title=f"3D Model: {model_data['name']}",
         page_icon="🎮",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="collapsed"
     )
     
-    st.title(f"🎮 {model_data['name']}")
-    if model_data['description']:
-        st.markdown(f"*{model_data['description']}*")
+    # Streamlit UI 완전히 숨기기
+    hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stApp > div:first-child {margin-top: -80px;}
+    .stApp {margin: 0; padding: 0;}
+    iframe {width: 100vw !important; height: 100vh !important;}
+    </style>
+    """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
     
     try:
         # 모델 파일 로드
@@ -21,16 +31,8 @@ def show_viewer_page(model_data):
         from viewer_utils import create_3d_viewer_html
         viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data)
         
-        # 뷰어 표시
-        st.components.v1.html(viewer_html, height=800, scrolling=False)
-        
-        # 조작 안내
-        with st.expander("조작법"):
-            st.markdown("""
-            - **회전**: 마우스 드래그
-            - **확대/축소**: 마우스 휠
-            - **이동**: 마우스 오른쪽 버튼 드래그
-            """)
+        # 전체 화면 뷰어 표시
+        st.components.v1.html(viewer_html, width=None, height=1000, scrolling=False)
     
     except Exception as e:
         st.error(f"모델 로딩 중 오류가 발생했습니다: {str(e)}")
