@@ -21,20 +21,51 @@ class ModelDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS models (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT,
-                file_paths TEXT NOT NULL,
-                backup_paths TEXT,
-                storage_type TEXT DEFAULT 'web',
-                share_token TEXT UNIQUE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_accessed TIMESTAMP,
-                access_count INTEGER DEFAULT 0
-            )
-        ''')
+        # 기존 테이블 구조 확인
+        cursor.execute("PRAGMA table_info(models)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if not columns:
+            # 새 테이블 생성
+            cursor.execute('''
+                CREATE TABLE models (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    file_paths TEXT NOT NULL,
+                    backup_paths TEXT,
+                    storage_type TEXT DEFAULT 'web',
+                    share_token TEXT UNIQUE NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_accessed TIMESTAMP,
+                    access_count INTEGER DEFAULT 0
+                )
+            ''')
+        else:
+            # 기존 테이블 마이그레이션
+            if 'storage_type' not in columns:
+                cursor.execute('ALTER TABLE models ADD COLUMN storage_type TEXT DEFAULT "local"')
+            
+            if 'file_paths' not in columns and 'obj_path' in columns:
+                # 구 스키마에서 신 스키마로 마이그레이션
+                cursor.execute('ALTER TABLE models ADD COLUMN file_paths TEXT')
+                cursor.execute('ALTER TABLE models ADD COLUMN backup_paths TEXT')
+                
+                # 기존 데이터를 새 형식으로 변환
+                cursor.execute('SELECT id, obj_path, mtl_path, texture_paths FROM models')
+                old_records = cursor.fetchall()
+                
+                for record in old_records:
+                    model_id, obj_path, mtl_path, texture_paths = record
+                    old_file_paths = {
+                        'obj_path': obj_path,
+                        'mtl_path': mtl_path,
+                        'texture_paths': json.loads(texture_paths)
+                    }
+                    cursor.execute(
+                        'UPDATE models SET file_paths = ? WHERE id = ?',
+                        (json.dumps(old_file_paths), model_id)
+                    )
         
         conn.commit()
         conn.close()
@@ -102,10 +133,22 @@ class ModelDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('''
-            SELECT id, name, description, created_at, access_count, share_token, storage_type
-            FROM models ORDER BY created_at DESC
-        ''')
+        # 테이블 구조 확인
+        cursor.execute("PRAGMA table_info(models)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'storage_type' in columns:
+            # 새 스키마
+            cursor.execute('''
+                SELECT id, name, description, created_at, access_count, share_token, storage_type
+                FROM models ORDER BY created_at DESC
+            ''')
+        else:
+            # 구 스키마 (호환성)
+            cursor.execute('''
+                SELECT id, name, description, created_at, access_count, share_token
+                FROM models ORDER BY created_at DESC
+            ''')
         
         models = []
         for row in cursor.fetchall():
@@ -127,10 +170,22 @@ class ModelDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('''
-            SELECT id, name, description, file_paths, backup_paths, storage_type
-            FROM models WHERE share_token = ?
-        ''', (share_token,))
+        # 테이블 구조 확인
+        cursor.execute("PRAGMA table_info(models)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'file_paths' in columns:
+            # 새 스키마
+            cursor.execute('''
+                SELECT id, name, description, file_paths, backup_paths, storage_type
+                FROM models WHERE share_token = ?
+            ''', (share_token,))
+        else:
+            # 구 스키마 (호환성)
+            cursor.execute('''
+                SELECT id, name, description, obj_path, mtl_path, texture_paths
+                FROM models WHERE share_token = ?
+            ''', (share_token,))
         
         row = cursor.fetchone()
         if row:
@@ -143,14 +198,27 @@ class ModelDatabase:
             ''', (share_token,))
             conn.commit()
             
-            model = {
-                'id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'file_paths': json.loads(row[3]),
-                'backup_paths': json.loads(row[4]) if row[4] else None,
-                'storage_type': row[5] if len(row) > 5 else 'local'
-            }
+            if 'file_paths' in columns:
+                # 새 스키마
+                model = {
+                    'id': row[0],
+                    'name': row[1],
+                    'description': row[2],
+                    'file_paths': json.loads(row[3]) if row[3] else {},
+                    'backup_paths': json.loads(row[4]) if row[4] else None,
+                    'storage_type': row[5] if len(row) > 5 else 'local'
+                }
+            else:
+                # 구 스키마 (호환성)
+                model = {
+                    'id': row[0],
+                    'name': row[1],
+                    'description': row[2],
+                    'obj_path': row[3],
+                    'mtl_path': row[4],
+                    'texture_paths': json.loads(row[5]),
+                    'storage_type': 'local'
+                }
         else:
             model = None
         
