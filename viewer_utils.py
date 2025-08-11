@@ -23,7 +23,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 width: 100%; 
                 height: 100%; 
                 overflow: hidden; 
-                background: #1a1a1a; 
+                background: #ffffff; 
             }}
             #container {{ 
                 width: 100%; 
@@ -40,7 +40,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                 top: 50%; 
                 left: 50%; 
                 transform: translate(-50%, -50%);
-                color: white;
+                color: black;
                 font-family: Arial, sans-serif;
                 font-size: 18px;
                 z-index: 100;
@@ -67,7 +67,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data):
                     
                     // Scene 생성
                     scene = new THREE.Scene();
-                    scene.background = new THREE.Color(0x222222);
+                    scene.background = new THREE.Color(0xffffff);
                     
                     // Camera 생성
                     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
