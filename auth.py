@@ -75,13 +75,18 @@ def check_password():
             st.session_state["password_correct"] = True
             record_successful_login()
             del st.session_state["password"]  # 입력된 비밀번호는 즉시 삭제
-            st.success("✅ 로그인 성공!")
-            time.sleep(1)
-            st.rerun()
+            st.session_state["login_success_flag"] = True  # 리런을 위한 플래그 설정
         else:
             st.session_state["password_correct"] = False
             record_failed_attempt()
 
+    # 로그인 성공 플래그 확인 후 리런
+    if st.session_state.get("login_success_flag", False):
+        del st.session_state["login_success_flag"]
+        st.success("✅ 로그인 성공!")
+        time.sleep(1)
+        st.rerun()
+    
     # 세션에 인증 상태가 없거나 인증 실패한 경우
     if "password_correct" not in st.session_state or not st.session_state["password_correct"]:
         # 계정 잠금 확인
