@@ -23,7 +23,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>3D Model Viewer</title>
+        
+        <!-- 캐시 정책 설정 -->
+        <meta http-equiv="Cache-Control" content="max-age=3600, must-revalidate">
+        
+        <!-- Three.js CDN with cache -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+                crossorigin="anonymous" 
+                referrerpolicy="no-referrer"></script>
         <style>
             * {{ box-sizing: border-box; }}
             html, body {{ 
@@ -571,6 +580,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             제출완료
         </button>
         
+        <!-- 캐시 상태 표시 -->
+        <div id="cacheStatus" style="position: fixed; bottom: 10px; right: 10px; 
+                                     background: rgba(0,0,0,0.7); color: white; 
+                                     padding: 5px 10px; border-radius: 5px; 
+                                     font-size: 11px; z-index: 1000; display: none;">
+            <span id="cacheText">💾 캐시 준비중...</span>
+            <button onclick="clearCache()" style="margin-left: 10px; padding: 2px 5px; 
+                                                  font-size: 10px; cursor: pointer;">
+                Clear
+            </button>
+        </div>
+        
         <div id="container">
             <div class="loading-container" id="loading">
                 <div class="logo-container">
@@ -622,10 +643,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             </div>
         </div>
         
-        <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-        <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-        <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-        <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+        <!-- Three.js 라이브러리 (CDN with cache) -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+                integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qrmA==" 
+                crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
         
         <script>
             let scene, camera, renderer, controls;
@@ -1041,6 +1065,47 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 annotations = [];
             }}
             
+            // 캐시 관리 함수들
+            function updateCacheStatus() {{
+                const cacheStatus = document.getElementById('cacheStatus');
+                const cacheText = document.getElementById('cacheText');
+                
+                if (window.modelCache && cacheStatus) {{
+                    cacheStatus.style.display = 'block';
+                    
+                    // 캐시 크기 계산
+                    if (navigator.storage && navigator.storage.estimate) {{
+                        navigator.storage.estimate().then(estimate => {{
+                            const used = (estimate.usage / 1024 / 1024).toFixed(1);
+                            const quota = (estimate.quota / 1024 / 1024).toFixed(0);
+                            cacheText.textContent = `💾 캐시: ${{used}}MB / ${{quota}}MB`;
+                        }});
+                    }} else {{
+                        cacheText.textContent = '💾 캐시 활성화됨';
+                    }}
+                }}
+            }}
+            
+            function clearCache() {{
+                if (confirm('모든 캐시된 3D 모델을 삭제하시겠습니까?')) {{
+                    if (window.modelCache) {{
+                        window.modelCache.clearAll().then(() => {{
+                            showMessage('✅ 캐시가 삭제되었습니다', 'success');
+                            updateCacheStatus();
+                        }});
+                    }}
+                    
+                    // Service Worker 캐시도 삭제
+                    if ('caches' in window) {{
+                        caches.keys().then(names => {{
+                            names.forEach(name => {{
+                                caches.delete(name);
+                            }});
+                        }});
+                    }}
+                }}
+            }}
+            
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
                 // 로고 색상 업데이트
@@ -1148,6 +1213,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Scene setup complete');
                     
+                    // 캐시 상태 업데이트
+                    updateCacheStatus();
+                    
                     // 모델 로드
                     loadModel();
                     
@@ -1164,9 +1232,31 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            function loadModel() {{
+            // 캐시 모듈 로드
+            const script = document.createElement('script');
+            script.src = '/static/model-cache.js';
+            document.head.appendChild(script);
+            
+            async function loadModel() {{
                 try {{
                     console.log('Starting model load...');
+                    
+                    // 모델 토큰 확인
+                    const modelToken = '{model_token if model_token else ""}';
+                    
+                    // 캐시 확인
+                    let cachedModel = null;
+                    if (modelToken && window.modelCache) {{
+                        try {{
+                            await window.modelCache.init();
+                            cachedModel = await window.modelCache.getModel(modelToken);
+                            if (cachedModel) {{
+                                console.log('🚀 Model loaded from cache!');
+                            }}
+                        }} catch (e) {{
+                            console.log('Cache not available:', e);
+                        }}
+                    }}
                     
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                     const isAndroid = /Android/i.test(navigator.userAgent);
@@ -1176,8 +1266,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const textureLoader = new THREE.TextureLoader();
                     const textures = {{}};
                     
-                    // 텍스처 로딩
-                    {create_texture_loading_code(texture_base64)}
+                    // 캐시된 데이터가 있으면 사용, 없으면 Base64 데이터 사용
+                    if (cachedModel && cachedModel.textures) {{
+                        // 캐시된 텍스처 사용
+                        for (const [name, data] of Object.entries(cachedModel.textures)) {{
+                            const tex = textureLoader.load(data);
+                            tex.encoding = THREE.LinearEncoding;
+                            tex.flipY = true;
+                            tex.generateMipmaps = false;
+                            tex.minFilter = THREE.LinearFilter;
+                            tex.magFilter = THREE.LinearFilter;
+                            tex.anisotropy = 1;
+                            tex.wrapS = THREE.ClampToEdgeWrapping;
+                            tex.wrapT = THREE.ClampToEdgeWrapping;
+                            tex.needsUpdate = true;
+                            textures[name] = tex;
+                        }}
+                        console.log('Textures loaded from cache');
+                    }} else {{
+                        // 텍스처 로딩 (기존 Base64 방식)
+                        {create_texture_loading_code(texture_base64)}
+                        
+                        // 캐시에 저장할 텍스처 데이터 준비
+                        if (modelToken && window.modelCache) {{
+                            const textureData = {{}};
+                            {str(texture_base64).replace("'", '"') if texture_base64 else '{}'}
+                            // 나중에 캐시에 저장
+                        }}
+                    }}
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     
@@ -1353,6 +1469,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     camera.lookAt(0, 0, 0);
                     
                     console.log('Model loaded successfully');
+                    
+                    // 캐시에 저장 (처음 로딩 시)
+                    if (modelToken && window.modelCache && !cachedModel) {{
+                        try {{
+                            // Base64 텍스처 데이터 수집
+                            const textureData = {{}};
+                            const textureBase64 = {str(texture_base64) if texture_base64 else '{}'};
+                            
+                            // 모델 데이터 캐시에 저장
+                            await window.modelCache.saveModel(
+                                modelToken,
+                                `{obj_content}`,
+                                `{mtl_content}`,
+                                textureBase64
+                            );
+                            console.log('📦 Model saved to cache');
+                        }} catch (e) {{
+                            console.log('Failed to cache model:', e);
+                        }}
+                    }}
                     
                     // 모바일 GPU 워밍업 및 지연 표시
                     if (isMobile) {{
@@ -1594,6 +1730,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 초기화 완료 후 버튼 상태 확인
             window.addEventListener('DOMContentLoaded', function() {{
+                // Service Worker 등록 (HTTPS 환경에서만)
+                if ('serviceWorker' in navigator && location.protocol === 'https:') {{
+                    navigator.serviceWorker.register('/static/service-worker.js')
+                        .then(registration => {{
+                            console.log('Service Worker registered:', registration);
+                        }})
+                        .catch(error => {{
+                            console.log('Service Worker registration failed:', error);
+                        }});
+                }}
+                
+                // IndexedDB 캐시 초기화
+                if (window.modelCache) {{
+                    window.modelCache.init().then(() => {{
+                        console.log('Model cache initialized');
+                    }}).catch(e => {{
+                        console.log('Model cache init failed:', e);
+                    }});
+                }}
+                
                 const annotationBtn = document.getElementById('annotationBtn');
                 if (annotationBtn) {{
                     console.log('수정점 표시 버튼 발견:', annotationBtn);
