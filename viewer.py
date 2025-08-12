@@ -34,7 +34,7 @@ def show_viewer_page(model_data):
                         data = json.loads(decoded)
                         
                         if data.get('model_token') == share_token:
-                            # 각 annotation 저장
+                            # 새 annotation 저장
                             saved_count = 0
                             for ann in data.get('annotations', []):
                                 try:
@@ -49,10 +49,33 @@ def show_viewer_page(model_data):
                                     print(f"Error saving annotation: {e}")
                                     st.error(f"수정점 저장 오류: {str(e)}")
                             
-                            if saved_count > 0:
-                                st.success(f"✅ {saved_count}개의 수정점이 제출완료되었습니다!")
+                            # 기존 annotation 변경사항 처리
+                            changed_count = 0
+                            for change in data.get('changes', []):
+                                try:
+                                    if change['action'] == 'complete':
+                                        db.update_annotation_status(int(change['id']), True)
+                                        changed_count += 1
+                                        print(f"Annotation {change['id']} marked as completed")
+                                    elif change['action'] == 'delete':
+                                        db.delete_annotation(int(change['id']))
+                                        changed_count += 1
+                                        print(f"Annotation {change['id']} deleted")
+                                except Exception as e:
+                                    print(f"Error processing change for annotation {change['id']}: {e}")
+                                    st.error(f"수정점 변경 오류: {str(e)}")
+                            
+                            # 결과 메시지
+                            total_changes = saved_count + changed_count
+                            if total_changes > 0:
+                                message_parts = []
+                                if saved_count > 0:
+                                    message_parts.append(f"{saved_count}개의 새 수정점")
+                                if changed_count > 0:
+                                    message_parts.append(f"{changed_count}개의 변경사항")
+                                st.success(f"✅ {', '.join(message_parts)}이 제출완료되었습니다!")
                             else:
-                                st.warning("저장된 수정점이 없습니다.")
+                                st.warning("저장된 변경사항이 없습니다.")
                             
                             # 성공 후 token 파라미터만 유지하고 리다이렉트
                             import time

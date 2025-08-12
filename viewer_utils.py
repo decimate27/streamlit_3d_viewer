@@ -708,6 +708,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 // 초기 상태 설정
                 hasChanges = false;
+                changedAnnotations = [];
                 
                 // 제출완료 버튼 초기 상태 설정
                 updateDbSaveButton();
@@ -879,6 +880,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // 수정사항이 있는지 추적하는 변수
             let hasChanges = false;
             
+            // 변경된 기존 수정점들을 추적
+            let changedAnnotations = [];
+            
             // 서버에 수정점 저장 (로컬에만 저장)
             async function saveAnnotationToServer(point, text) {{
                 if (!modelToken) {{
@@ -920,9 +924,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function updateDbSaveButton() {{
                 const btn = document.getElementById('dbSaveBtn');
                 if (btn) {{
-                    if (pendingAnnotations.length > 0 || hasChanges) {{
-                        const changeCount = pendingAnnotations.length + (hasChanges ? 1 : 0);
-                        btn.textContent = `제출완료 (변경사항 있음)`;
+                    const newCount = pendingAnnotations.length;
+                    const changeCount = changedAnnotations.length;
+                    const totalChanges = newCount + changeCount;
+                    
+                    if (totalChanges > 0 || hasChanges) {{
+                        let buttonText = '제출완료';
+                        if (newCount > 0 && changeCount > 0) {{
+                            buttonText = `제출완료 (신규 ${{newCount}}, 변경 ${{changeCount}})`;
+                        }} else if (newCount > 0) {{
+                            buttonText = `제출완료 (신규 ${{newCount}})`;
+                        }} else if (changeCount > 0) {{
+                            buttonText = `제출완료 (변경 ${{changeCount}})`;
+                        }} else {{
+                            buttonText = '제출완료 (변경사항 있음)';
+                        }}
+                        btn.textContent = buttonText;
                         btn.disabled = false;
                     }} else {{
                         btn.textContent = '제출완료';
@@ -944,14 +961,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     return;
                 }}
                 
-                // 새 수정점이 있는 경우 서버에 전송
-                if (pendingAnnotations.length > 0) {{
-                    // 저장할 데이터를 JSON으로 인코딩
-                    const dataToSave = {{
-                        model_token: modelToken,
-                        annotations: pendingAnnotations
-                    }};
-                    
+                // 제출할 데이터 구성
+                const dataToSave = {{
+                    model_token: modelToken,
+                    annotations: pendingAnnotations,
+                    changes: changedAnnotations
+                }};
+                
+                // 저장할 내용이 있는지 확인
+                if (pendingAnnotations.length > 0 || changedAnnotations.length > 0) {{
                     // Base64로 인코딩
                     const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataToSave))));
                     
@@ -969,18 +987,29 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     params.set('data', encodedData);
                     
                     // 저장 중 메시지
-                    showMessage('💾 새 수정점 제출 중...', 'info');
+                    const newCount = pendingAnnotations.length;
+                    const changeCount = changedAnnotations.length;
+                    let message = '💾 제출 중...';
+                    if (newCount > 0 && changeCount > 0) {{
+                        message = `💾 새 수정점 ${{newCount}}개, 변경사항 ${{changeCount}}개 제출 중...`;
+                    }} else if (newCount > 0) {{
+                        message = `💾 새 수정점 ${{newCount}}개 제출 중...`;
+                    }} else if (changeCount > 0) {{
+                        message = `💾 변경사항 ${{changeCount}}개 제출 중...`;
+                    }}
+                    showMessage(message, 'info');
                     
                     // 변경사항 초기화
                     hasChanges = false;
                     pendingAnnotations = [];
+                    changedAnnotations = [];
                     
                     // 페이지 리로드하여 서버에 저장
                     setTimeout(() => {{
                         window.location.href = window.location.pathname + '?' + params.toString();
                     }}, 1000);
-                }} else if (hasChanges) {{
-                    // 기존 수정점만 변경된 경우 단순 새로고침
+                }} else {{
+                    // 단순 새로고침 (hasChanges만 있는 경우)
                     showMessage('💾 변경사항 저장 중...', 'info');
                     hasChanges = false;
                     
@@ -1094,37 +1123,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const pending = pendingAnnotations.find(p => p.tempId === id);
                     if (pending) {{
                         pending.completed = true;
-                        // 새 수정점인 경우 로컬에서만 처리
-                        showMessage('✅ 수정 완료로 표시되었습니다', 'success');
                     }} else {{
-                        // 기존 DB 수정점인 경우 서버에 즉시 반영
+                        // 기존 DB 수정점의 변경사항 추적
                         if (!String(id).startsWith('temp_')) {{
-                            showMessage('💾 서버에 반영 중...', 'info');
-                            
-                            // 서버에 완료 상태 업데이트 전송
-                            const currentUrl = new URL(window.location.href);
-                            const currentParams = new URLSearchParams(currentUrl.search);
-                            const token = currentParams.get('token') || modelToken;
-                            
-                            const params = new URLSearchParams();
-                            params.set('token', token);
-                            params.set('action', 'complete_annotation');
-                            params.set('annotation_id', id);
-                            
-                            // 즉시 서버에 반영
-                            setTimeout(() => {{
-                                window.location.href = window.location.pathname + '?' + params.toString();
-                            }}, 500);
-                            return;
-                        }} else {{
-                            // 임시 수정점인 경우
-                            hasChanges = true;
-                            showMessage('✅ 수정 완료로 표시되었습니다', 'success');
+                            const existingChange = changedAnnotations.find(c => c.id === id);
+                            if (existingChange) {{
+                                existingChange.action = 'complete';
+                            }} else {{
+                                changedAnnotations.push({{
+                                    id: id,
+                                    action: 'complete'
+                                }});
+                            }}
                         }}
+                        hasChanges = true;
                     }}
                     
                     // 제출완료 버튼 상태 업데이트
                     updateDbSaveButton();
+                    
+                    showMessage('✅ 수정 완료로 표시되었습니다', 'success');
                 }}
                 closeAnnotationPopup();
             }}
@@ -1141,37 +1159,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const pendingIndex = pendingAnnotations.findIndex(p => p.tempId === id);
                     if (pendingIndex !== -1) {{
                         pendingAnnotations.splice(pendingIndex, 1);
-                        // 새 수정점인 경우 로컬에서만 처리
-                        showMessage('✅ 수정점이 삭제되었습니다', 'success');
                     }} else {{
-                        // 기존 DB 수정점인 경우 서버에 즉시 반영
+                        // 기존 DB 수정점의 변경사항 추적
                         if (!String(id).startsWith('temp_')) {{
-                            showMessage('💾 서버에서 삭제 중...', 'info');
-                            
-                            // 서버에 삭제 요청 전송
-                            const currentUrl = new URL(window.location.href);
-                            const currentParams = new URLSearchParams(currentUrl.search);
-                            const token = currentParams.get('token') || modelToken;
-                            
-                            const params = new URLSearchParams();
-                            params.set('token', token);
-                            params.set('action', 'delete_annotation');
-                            params.set('annotation_id', id);
-                            
-                            // 즉시 서버에 반영
-                            setTimeout(() => {{
-                                window.location.href = window.location.pathname + '?' + params.toString();
-                            }}, 500);
-                            return;
-                        }} else {{
-                            // 임시 수정점인 경우
-                            hasChanges = true;
-                            showMessage('✅ 수정점이 삭제되었습니다', 'success');
+                            const existingChange = changedAnnotations.find(c => c.id === id);
+                            if (existingChange) {{
+                                existingChange.action = 'delete';
+                            }} else {{
+                                changedAnnotations.push({{
+                                    id: id,
+                                    action: 'delete'
+                                }});
+                            }}
                         }}
+                        hasChanges = true;
                     }}
                     
                     // 제출완료 버튼 상태 업데이트
                     updateDbSaveButton();
+                    
+                    showMessage('✅ 수정점이 삭제되었습니다', 'success');
                 }}
                 closeAnnotationPopup();
             }}
