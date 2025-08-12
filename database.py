@@ -35,6 +35,36 @@ def reset_database(db_path="data/models.db"):
         )
     ''')
     
+    # 피드백 테이블 추가 (Phase 1)
+    cursor.execute('''
+        CREATE TABLE feedbacks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            model_id TEXT NOT NULL,
+            x REAL NOT NULL,
+            y REAL NOT NULL, 
+            z REAL NOT NULL,
+            screen_x REAL NOT NULL,
+            screen_y REAL NOT NULL,
+            comment TEXT NOT NULL,
+            feedback_type TEXT DEFAULT 'point',
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (model_id) REFERENCES models (id)
+        )
+    ''')
+    
+    # 승인 테이블 추가 (향후 확장용)
+    cursor.execute('''
+        CREATE TABLE approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            model_id TEXT NOT NULL,
+            approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            approved_by TEXT,
+            version INTEGER DEFAULT 1,
+            FOREIGN KEY (model_id) REFERENCES models (id)
+        )
+    ''')
+    
     conn.commit()
     conn.close()
     st.success("✅ 새 데이터베이스 생성 완료")
@@ -73,6 +103,37 @@ class ModelDatabase:
                     access_count INTEGER DEFAULT 0
                 )
             ''')
+            
+            # 피드백 테이블 추가 (Phase 1)
+            cursor.execute('''
+                CREATE TABLE feedbacks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    model_id TEXT NOT NULL,
+                    x REAL NOT NULL,
+                    y REAL NOT NULL, 
+                    z REAL NOT NULL,
+                    screen_x REAL NOT NULL,
+                    screen_y REAL NOT NULL,
+                    comment TEXT NOT NULL,
+                    feedback_type TEXT DEFAULT 'point',
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (model_id) REFERENCES models (id)
+                )
+            ''')
+            
+            # 승인 테이블 추가 (향후 확장용)
+            cursor.execute('''
+                CREATE TABLE approvals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    model_id TEXT NOT NULL,
+                    approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    approved_by TEXT,
+                    version INTEGER DEFAULT 1,
+                    FOREIGN KEY (model_id) REFERENCES models (id)
+                )
+            ''')
+            
             st.write("🆕 새 데이터베이스 테이블 생성")
         else:
             # 스키마 문제가 있으면 강제로 새 테이블 생성
@@ -373,6 +434,106 @@ class ModelDatabase:
         
         conn.close()
         return count
+    
+    # === 피드백 시스템 (Phase 1) ===
+    
+    def add_feedback(self, model_id, x, y, z, screen_x, screen_y, comment, feedback_type='point'):
+        """피드백 추가"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # 피드백 테이블이 존재하는지 확인하고 없으면 생성
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='feedbacks'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE feedbacks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    model_id TEXT NOT NULL,
+                    x REAL NOT NULL,
+                    y REAL NOT NULL, 
+                    z REAL NOT NULL,
+                    screen_x REAL NOT NULL,
+                    screen_y REAL NOT NULL,
+                    comment TEXT NOT NULL,
+                    feedback_type TEXT DEFAULT 'point',
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (model_id) REFERENCES models (id)
+                )
+            ''')
+        
+        cursor.execute('''
+            INSERT INTO feedbacks (model_id, x, y, z, screen_x, screen_y, comment, feedback_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (model_id, x, y, z, screen_x, screen_y, comment, feedback_type))
+        
+        feedback_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return feedback_id
+    
+    def get_feedbacks(self, model_id):
+        """모델의 모든 피드백 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # 테이블 존재 확인
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='feedbacks'")
+        if not cursor.fetchone():
+            conn.close()
+            return []
+        
+        cursor.execute('''
+            SELECT id, x, y, z, screen_x, screen_y, comment, feedback_type, status, created_at
+            FROM feedbacks 
+            WHERE model_id = ?
+            ORDER BY created_at DESC
+        ''', (model_id,))
+        
+        feedbacks = []
+        for row in cursor.fetchall():
+            feedbacks.append({
+                'id': row[0],
+                'x': row[1],
+                'y': row[2], 
+                'z': row[3],
+                'screen_x': row[4],
+                'screen_y': row[5],
+                'comment': row[6],
+                'feedback_type': row[7],
+                'status': row[8],
+                'created_at': row[9]
+            })
+        
+        conn.close()
+        return feedbacks
+    
+    def update_feedback_status(self, feedback_id, status):
+        """피드백 상태 업데이트"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE feedbacks SET status = ? WHERE id = ?
+        ''', (status, feedback_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return cursor.rowcount > 0
+    
+    def delete_feedback(self, feedback_id):
+        """피드백 삭제"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM feedbacks WHERE id = ?', (feedback_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return cursor.rowcount > 0
 
 def load_model_files(model_data):
     """저장된 모델 파일들 로드"""

@@ -1,7 +1,7 @@
 import base64
 from pathlib import Path
 
-def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white"):
+def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_id=None, existing_feedbacks=None):
     """Three.js 기반 3D 뷰어 HTML 생성"""
     
     # 배경색 설정
@@ -190,6 +190,163 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 border-color: #333;
             }}
             
+            /* 피드백 모드 버튼 */
+            .feedback-mode-btn {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 10px 16px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                font-family: Arial, sans-serif;
+                z-index: 9999;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            }}
+            
+            .feedback-mode-btn:hover {{
+                background: #0056b3;
+                transform: translateY(-1px);
+                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            }}
+            
+            .feedback-mode-btn.active {{
+                background: #dc3545;
+            }}
+            
+            .feedback-mode-btn.active:hover {{
+                background: #a71e2a;
+            }}
+            
+            /* 피드백 핀 스타일 */
+            .feedback-pin {{
+                position: absolute;
+                width: 30px;
+                height: 30px;
+                z-index: 1000;
+                pointer-events: auto;
+                cursor: pointer;
+            }}
+            
+            .pin-icon {{
+                width: 100%;
+                height: 100%;
+                background: #dc3545;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                animation: pinPulse 2s infinite;
+            }}
+            
+            @keyframes pinPulse {{
+                0% {{ transform: scale(1); }}
+                50% {{ transform: scale(1.1); }}
+                100% {{ transform: scale(1); }}
+            }}
+            
+            .pin-tooltip {{
+                position: absolute;
+                bottom: 35px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                max-width: 200px;
+                word-wrap: break-word;
+                display: none;
+            }}
+            
+            .feedback-pin:hover .pin-tooltip {{
+                display: block;
+            }}
+            
+            /* 피드백 입력 모달 */
+            .feedback-modal {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            }}
+            
+            .feedback-modal-content {{
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 400px;
+                width: 90%;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }}
+            
+            .feedback-modal h3 {{
+                margin: 0 0 15px 0;
+                color: #333;
+            }}
+            
+            .feedback-modal textarea {{
+                width: 100%;
+                height: 100px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                resize: vertical;
+                margin-bottom: 15px;
+            }}
+            
+            .feedback-modal-buttons {{
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+            }}
+            
+            .feedback-modal button {{
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            
+            .btn-primary {{
+                background: #007bff;
+                color: white;
+            }}
+            
+            .btn-secondary {{
+                background: #6c757d;
+                color: white;
+            }}
+            
+            .btn-primary:hover {{
+                background: #0056b3;
+            }}
+            
+            .btn-secondary:hover {{
+                background: #545b62;
+            }}
+            
             /* 텍스트 표시 제어 */
             .btn-text-mobile {{
                 display: none;
@@ -348,6 +505,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     <span class="btn-text-mobile">⚫</span>
                 </button>
             </div>
+            
+            <!-- 피드백 모드 버튼 -->
+            <button class="feedback-mode-btn" id="feedbackModeBtn" onclick="toggleFeedbackMode()">
+                📝 피드백 모드
+            </button>
+            
+            <!-- 피드백 핀들 컨테이너 -->
+            <div id="feedbackPins"></div>
+            
+            <!-- 피드백 입력 모달 -->
+            <div class="feedback-modal" id="feedbackModal" style="display: none;">
+                <div class="feedback-modal-content">
+                    <h3>피드백 등록</h3>
+                    <textarea id="feedbackComment" placeholder="이 부분에 대한 피드백을 입력해주세요..."></textarea>
+                    <div class="feedback-modal-buttons">
+                        <button class="btn-secondary" onclick="closeFeedbackModal()">취소</button>
+                        <button class="btn-primary" onclick="saveFeedback()">등록</button>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -358,6 +535,200 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <script>
             let scene, camera, renderer, controls;
             let model;
+            let feedbackMode = false;
+            let pendingFeedback = null; // 저장 대기 중인 피드백 데이터
+            let raycaster = new THREE.Raycaster();
+            let mouse = new THREE.Vector2();
+            
+            // 피드백 모드 토글
+            function toggleFeedbackMode() {{
+                feedbackMode = !feedbackMode;
+                const btn = document.getElementById('feedbackModeBtn');
+                
+                if (feedbackMode) {{
+                    btn.textContent = '❌ 피드백 종료';
+                    btn.classList.add('active');
+                    document.body.style.cursor = 'crosshair';
+                }} else {{
+                    btn.textContent = '📝 피드백 모드';
+                    btn.classList.remove('active');
+                    document.body.style.cursor = 'default';
+                }}
+                
+                console.log('피드백 모드:', feedbackMode ? '활성화' : '비활성화');
+            }}
+            
+            // 3D 좌표를 화면 좌표로 변환
+            function toScreenPosition(point) {{
+                const vector = point.clone();
+                vector.project(camera);
+                
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
+                
+                return {{ x: x, y: y }};
+            }}
+            
+            // 피드백 모달 열기
+            function openFeedbackModal(point3d, point2d) {{
+                pendingFeedback = {{
+                    x: point3d.x,
+                    y: point3d.y,
+                    z: point3d.z,
+                    screen_x: point2d.x,
+                    screen_y: point2d.y
+                }};
+                
+                document.getElementById('feedbackModal').style.display = 'flex';
+                document.getElementById('feedbackComment').focus();
+            }}
+            
+            // 피드백 모달 닫기
+            function closeFeedbackModal() {{
+                document.getElementById('feedbackModal').style.display = 'none';
+                document.getElementById('feedbackComment').value = '';
+                pendingFeedback = null;
+            }}
+            
+            // 피드백 저장 (Streamlit로 전송)
+            function saveFeedback() {{
+                const comment = document.getElementById('feedbackComment').value.trim();
+                
+                if (!comment) {{
+                    alert('피드백 내용을 입력해주세요.');
+                    return;
+                }}
+                
+                if (!pendingFeedback) {{
+                    alert('피드백 위치 정보가 없습니다.');
+                    return;
+                }}
+                
+                // Streamlit으로 피드백 데이터 전송
+                const feedbackData = {{
+                    ...pendingFeedback,
+                    comment: comment,
+                    model_id: '{get_model_id()}', // 템플릿에서 실제 model_id로 대체
+                    feedback_type: 'point'
+                }};
+                
+                console.log('피드백 저장:', feedbackData);
+                
+                // TODO: Streamlit으로 데이터 전송하는 로직 추가
+                // 지금은 임시로 핀만 표시
+                addFeedbackPin(feedbackData);
+                
+                closeFeedbackModal();
+                toggleFeedbackMode(); // 피드백 모드 종료
+            }}
+            
+            // 피드백 핀 표시
+            function addFeedbackPin(feedback) {{
+                const pin = document.createElement('div');
+                pin.className = 'feedback-pin';
+                pin.style.left = feedback.screen_x - 15 + 'px';
+                pin.style.top = feedback.screen_y - 15 + 'px';
+                
+                // 상태에 따른 핀 색상 변경
+                let pinColor = '#dc3545'; // 기본 빨간색
+                let statusIcon = '📍';
+                
+                switch(feedback.status) {{
+                    case 'pending':
+                        pinColor = '#dc3545'; // 빨간색
+                        statusIcon = '📍';
+                        break;
+                    case 'reviewed':
+                        pinColor = '#ffc107'; // 노란색
+                        statusIcon = '👁️';
+                        break;
+                    case 'resolved':
+                        pinColor = '#28a745'; // 초록색
+                        statusIcon = '✅';
+                        break;
+                }}
+                
+                pin.innerHTML = `
+                    <div class="pin-icon" style="background: ${{pinColor}};">${{statusIcon}}</div>
+                    <div class="pin-tooltip">${{feedback.comment}}</div>
+                `;
+                
+                document.getElementById('feedbackPins').appendChild(pin);
+            }}
+            
+            // 마우스 클릭 이벤트 핸들러
+            function onMouseClick(event) {{
+                if (!feedbackMode) return;
+                
+                // 마우스 좌표 정규화
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Raycasting으로 3D 교점 찾기
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(scene.children, true);
+                
+                if (intersects.length > 0) {{
+                    const point3d = intersects[0].point;
+                    const point2d = toScreenPosition(point3d);
+                    
+                    console.log('3D 클릭 위치:', point3d);
+                    console.log('2D 화면 위치:', point2d);
+                    
+                    openFeedbackModal(point3d, point2d);
+                }}
+            }}
+            
+            // 기존 피드백들 로드 및 표시
+            function loadExistingFeedbacks() {{
+                const existingFeedbacks = {json.dumps(existing_feedbacks or [])};
+                
+                console.log('기존 피드백 로드:', existingFeedbacks);
+                
+                existingFeedbacks.forEach(feedback => {{
+                    // 3D 좌표를 현재 화면 좌표로 변환
+                    const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
+                    const point2d = toScreenPosition(point3d);
+                    
+                    const feedbackData = {{
+                        ...feedback,
+                        screen_x: point2d.x,
+                        screen_y: point2d.y
+                    }};
+                    
+                    addFeedbackPin(feedbackData);
+                }});
+            }}
+            
+            // 피드백 저장 (URL 파라미터로 전송)
+            function saveFeedback() {{
+                const comment = document.getElementById('feedbackComment').value.trim();
+                
+                if (!comment) {{
+                    alert('피드백 내용을 입력해주세요.');
+                    return;
+                }}
+                
+                if (!pendingFeedback) {{
+                    alert('피드백 위치 정보가 없습니다.');
+                    return;
+                }}
+                
+                // 피드백 데이터 생성
+                const feedbackData = {{
+                    ...pendingFeedback,
+                    comment: comment,
+                    model_id: '{model_id or ""}',
+                    feedback_type: 'point'
+                }};
+                
+                console.log('피드백 저장:', feedbackData);
+                
+                // URL 파라미터로 피드백 데이터 전송하여 페이지 새로고침
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
+                window.location.href = currentUrl.toString();
+            }}
             
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
@@ -470,6 +841,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     if (!isMobile) {{
                         animate();
                     }}
+                    
+                    // 마우스 클릭 이벤트 등록 (피드백용)
+                    renderer.domElement.addEventListener('click', onMouseClick, false);
                     
                     // 창 크기 변경 이벤트
                     window.addEventListener('resize', onWindowResize);
@@ -685,11 +1059,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             renderer.domElement.style.opacity = '1';
                             renderer.render(scene, camera);
                             animate();
+                            
+                            // 모바일에서도 마우스 클릭 이벤트 등록
+                            renderer.domElement.addEventListener('click', onMouseClick, false);
+                            
+                            // 기존 피드백들 로드
+                            loadExistingFeedbacks();
+                            
                             console.log('Mobile optimization complete');
                         }}, delay);
                     }} else {{
                         setTimeout(() => {{
                             hideLoadingSpinner();
+                            
+                            // 기존 피드백들 로드
+                            loadExistingFeedbacks();
                         }}, 500);
                     }}
                 }} catch (error) {{

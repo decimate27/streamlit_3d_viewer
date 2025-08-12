@@ -1,5 +1,6 @@
 import streamlit as st
 from database import ModelDatabase, load_model_files, generate_share_url
+import json
 
 def show_viewer_page(model_data):
     """공유 링크로 접근한 뷰어 페이지"""
@@ -9,6 +10,38 @@ def show_viewer_page(model_data):
         layout="wide",
         initial_sidebar_state="collapsed"
     )
+    
+    # 피드백 처리 (URL 파라미터로 전송된 피드백 데이터 처리)
+    query_params = st.query_params
+    if 'feedback_data' in query_params:
+        try:
+            feedback_json = query_params.get('feedback_data')
+            feedback_data = json.loads(feedback_json)
+            
+            # 데이터베이스에 피드백 저장
+            db = ModelDatabase()
+            feedback_id = db.add_feedback(
+                model_id=feedback_data['model_id'],
+                x=feedback_data['x'],
+                y=feedback_data['y'], 
+                z=feedback_data['z'],
+                screen_x=feedback_data['screen_x'],
+                screen_y=feedback_data['screen_y'],
+                comment=feedback_data['comment'],
+                feedback_type=feedback_data.get('feedback_type', 'point')
+            )
+            
+            if feedback_id:
+                st.success("✅ 피드백이 등록되었습니다!")
+                # 파라미터 제거하고 페이지 새로고침
+                st.query_params.clear()
+                st.rerun()
+        except Exception as e:
+            st.error(f"피드백 저장 중 오류: {str(e)}")
+    
+    # 기존 피드백 조회
+    db = ModelDatabase()
+    existing_feedbacks = db.get_feedbacks(model_data['id'])
     
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
@@ -107,9 +140,16 @@ def show_viewer_page(model_data):
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)
         
-        # 3D 뷰어 HTML 생성 (배경색 포함)
+        # 3D 뷰어 HTML 생성 (배경색 및 피드백 데이터 포함)
         from viewer_utils import create_3d_viewer_html
-        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
+        viewer_html = create_3d_viewer_html(
+            obj_content, 
+            mtl_content, 
+            texture_data, 
+            background_color, 
+            model_id=model_data['id'],
+            existing_feedbacks=existing_feedbacks
+        )
         
         # 전체 화면 뷰어 표시
         st.components.v1.html(viewer_html, width=None, height=None, scrolling=False)
