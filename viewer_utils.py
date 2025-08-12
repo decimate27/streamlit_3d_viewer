@@ -490,23 +490,54 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 display: block;
             }}
             
-            .popup-text {{
+            .popup-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
                 margin-bottom: 10px;
+            }}
+            
+            .popup-text {{
+                margin: 0;
                 font-size: 14px;
                 color: #333;
+                flex: 1;
+                margin-right: 10px;
+            }}
+            
+            .popup-close-btn {{
+                background: #ff4444;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }}
+            
+            .popup-close-btn:hover {{
+                background: #cc0000;
             }}
             
             .popup-buttons {{
                 display: flex;
                 gap: 10px;
+                margin-top: 10px;
             }}
             
             .popup-btn {{
-                padding: 6px 12px;
+                padding: 8px 12px;
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
                 font-size: 12px;
+                flex: 1;
             }}
             
             .popup-btn.complete {{
@@ -517,6 +548,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             .popup-btn.delete {{
                 background: #f44336;
                 color: white;
+            }}
+            
+            /* 모바일에서 팝업 최적화 */
+            @media (max-width: 768px) {{
+                .annotation-popup {{
+                    max-width: 280px;
+                    padding: 12px;
+                }}
+                
+                .popup-btn {{
+                    padding: 10px 8px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }}
+                
+                .popup-close-btn {{
+                    width: 28px;
+                    height: 28px;
+                    font-size: 16px;
+                }}
             }}
         </style>
     </head>
@@ -582,7 +633,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             <!-- 수정점 정보 팝업 -->
             <div class="annotation-popup" id="annotationPopup">
-                <div class="popup-text" id="popupText"></div>
+                <div class="popup-header">
+                    <div class="popup-text" id="popupText"></div>
+                    <button class="popup-close-btn" onclick="closeAnnotationPopup()" title="닫기">×</button>
+                </div>
                 <div class="popup-buttons" id="popupButtons"></div>
             </div>
         </div>
@@ -602,6 +656,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             let annotationIdCounter = 0;
             const modelToken = '{model_token if model_token else ""}';
             
+            // 터치 이벤트 처리용 변수들
+            let touchStartTime = 0;
+            let touchStartPos = null;
+            let isTouchDevice = false;
+            
             // 초기 annotations 데이터 로드
             const initialAnnotations = {json.dumps(annotations if annotations else [])};
             
@@ -613,6 +672,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // 마우스 클릭 이벤트
                 renderer.domElement.addEventListener('click', onMouseClick, false);
                 renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+                
+                // 모바일 터치 이벤트 추가
+                renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+                renderer.domElement.addEventListener('touchend', onTouchEnd, false);
                 
                 // 기존 annotations 로드
                 loadExistingAnnotations();
@@ -704,6 +767,59 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }} else {{
                     renderer.domElement.style.cursor = 'default';
                 }}
+            }}
+            
+            // 터치 시작 처리
+            function onTouchStart(event) {{
+                if (!model) return;
+                
+                event.preventDefault();
+                touchStartTime = Date.now();
+                isTouchDevice = true;
+                
+                const touch = event.touches[0];
+                const rect = renderer.domElement.getBoundingClientRect();
+                touchStartPos = {{
+                    x: touch.clientX - rect.left,
+                    y: touch.clientY - rect.top
+                }};
+            }}
+            
+            // 터치 종료 처리 (탭으로 간주되면 클릭 이벤트 발생)
+            function onTouchEnd(event) {{
+                if (!model || !touchStartPos) return;
+                
+                event.preventDefault();
+                const touchEndTime = Date.now();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                // 짧은 탭 (500ms 이하)이고 이동거리가 작으면 클릭으로 간주
+                if (touchDuration < 500) {{
+                    const touch = event.changedTouches[0];
+                    const rect = renderer.domElement.getBoundingClientRect();
+                    const touchEndPos = {{
+                        x: touch.clientX - rect.left,
+                        y: touch.clientY - rect.top
+                    }};
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(touchEndPos.x - touchStartPos.x, 2) + 
+                        Math.pow(touchEndPos.y - touchStartPos.y, 2)
+                    );
+                    
+                    // 이동거리가 10px 이하면 탭으로 간주
+                    if (distance < 10) {{
+                        // 클릭 이벤트를 시뮬레이션
+                        const fakeEvent = {{
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            target: event.target
+                        }};
+                        onMouseClick(fakeEvent);
+                    }}
+                }}
+                
+                touchStartPos = null;
             }}
             
             // 수정점 표시 모드 토글
@@ -924,6 +1040,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
+            // 수정점 팝업 닫기 함수
+            function closeAnnotationPopup() {{
+                const popup = document.getElementById('annotationPopup');
+                popup.classList.remove('show');
+                document.removeEventListener('click', hidePopupOnClickOutside);
+            }}
+            
             // 수정 완료 처리
             function completeAnnotation(id) {{
                 const annotation = annotations.find(a => a.id == id);
@@ -937,9 +1060,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         pending.completed = true;
                     }}
                     
+                    // 제출완료 버튼 상태 업데이트
+                    updateDbSaveButton();
+                    
                     showMessage('✅ 수정 완료로 표시되었습니다', 'success');
                 }}
-                document.getElementById('annotationPopup').classList.remove('show');
+                closeAnnotationPopup();
             }}
             
             // 수정점 삭제
@@ -954,8 +1080,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const pendingIndex = pendingAnnotations.findIndex(p => p.tempId === id);
                     if (pendingIndex !== -1) {{
                         pendingAnnotations.splice(pendingIndex, 1);
-                        updateDbSaveButton();
                     }}
+                    
+                    // 제출완료 버튼 상태 업데이트
+                    updateDbSaveButton();
                     
                     // DB에 저장된 항목이면 서버에서도 삭제 필요
                     if (annotation.saved && !String(id).startsWith('temp_')) {{
@@ -965,7 +1093,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         showMessage('✅ 수정점이 삭제되었습니다', 'success');
                     }}
                 }}
-                document.getElementById('annotationPopup').classList.remove('show');
+                closeAnnotationPopup();
             }}
             
             // 모든 수정점 제거 (모델 삭제 시 호출용)
