@@ -512,6 +512,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 📝 피드백 모드
             </button>
             
+            <!-- 피드백 동기화 버튼 -->
+            <button class="feedback-mode-btn" id="syncFeedbackBtn" onclick="syncFeedbacksToServer()" 
+                    style="top: 80px; background: #28a745;">
+                💾 서버 동기화
+            </button>
+            
             <!-- 피드백 핀들 컨테이너 -->
             <div id="feedbackPins"></div>
             
@@ -701,6 +707,40 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }});
             }}
             
+            // 수동으로 로컬 피드백을 서버로 동기화
+            function syncFeedbacksToServer() {{
+                try {{
+                    const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                    
+                    if (localFeedbacks.length === 0) {{
+                        alert('동기화할 피드백이 없습니다.');
+                        return;
+                    }}
+                    
+                    console.log('동기화할 피드백 수:', localFeedbacks.length);
+                    
+                    // 첫 번째 피드백을 URL로 전송하고 페이지 새로고침
+                    const firstFeedback = localFeedbacks[0];
+                    const currentUrl = new URL(window.location);
+                    currentUrl.searchParams.set('feedback_action', 'save');
+                    currentUrl.searchParams.set('feedback_data', JSON.stringify(firstFeedback));
+                    
+                    // 동기화된 피드백은 로컬에서 제거
+                    localFeedbacks.shift(); // 첫 번째 요소 제거
+                    localStorage.setItem('temp_feedbacks', JSON.stringify(localFeedbacks));
+                    
+                    console.log('서버로 전송:', firstFeedback);
+                    console.log('남은 피드백 수:', localFeedbacks.length);
+                    
+                    // 페이지 새로고침으로 서버에 전송
+                    window.location.href = currentUrl.toString();
+                    
+                }} catch (error) {{
+                    console.error('동기화 오류:', error);
+                    alert('동기화 중 오류가 발생했습니다.');
+                }}
+            }}
+            
             // 마우스 클릭 이벤트 핸들러
             function onMouseClick(event) {{
                 if (!feedbackMode) return;
@@ -744,6 +784,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 console.log('로컬 피드백:', localFeedbacks.length, '개');
                 console.log('전체 피드백:', allFeedbacks.length, '개');
                 
+                // 동기화 버튼에 로컬 피드백 수 표시
+                const syncBtn = document.getElementById('syncFeedbackBtn');
+                if (syncBtn && localFeedbacks.length > 0) {{
+                    syncBtn.textContent = `💾 서버 동기화 (${{localFeedbacks.length}})`;
+                    syncBtn.style.backgroundColor = '#dc3545'; // 빨간색으로 강조
+                }} else if (syncBtn) {{
+                    syncBtn.textContent = '💾 서버 동기화';
+                    syncBtn.style.backgroundColor = '#28a745'; // 초록색
+                }}
+                
                 allFeedbacks.forEach(feedback => {{
                     // 3D 좌표를 사용하여 핀 생성 (screen_x, screen_y 무시)
                     addFeedbackPin(feedback);
@@ -781,9 +831,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 toggleFeedbackMode(); // 피드백 모드 종료
             }}
             
-            // 서버로 피드백 전송 (숨겨진 iframe 사용)
+            // 서버로 피드백 전송 (단순 URL 새로고침 방식)
             function sendFeedbackToServer(feedbackData) {{
-                // 임시로 로컬에도 저장 (서버 전송 실패 대비)
+                // 1. 우선 로컬에 저장하고 핀 표시
                 try {{
                     let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
                     feedbackData.id = Date.now();
@@ -795,35 +845,30 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 즉시 핀 표시
                     addFeedbackPin(feedbackData);
                     
-                    console.log('✅ 피드백이 임시 저장되었습니다.');
+                    console.log('✅ 피드백이 임시 저장되고 핀이 표시되었습니다.');
                 }} catch (error) {{
                     console.error('피드백 저장 오류:', error);
                     alert('피드백 저장에 실패했습니다.');
                     return;
                 }}
                 
-                // 서버로 전송 시도 (숨겨진 iframe 사용)
+                // 2. 서버로 전송 (전체 페이지 새로고침 방식)
                 try {{
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.style.width = '1px';
-                    iframe.style.height = '1px';
-                    
                     const currentUrl = new URL(window.location);
                     currentUrl.searchParams.set('feedback_action', 'save');
                     currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
                     
-                    iframe.src = currentUrl.toString();
-                    document.body.appendChild(iframe);
+                    console.log('📡 서버로 전송할 URL:', currentUrl.toString());
                     
-                    // 5초 후 iframe 제거
-                    setTimeout(() => {{
-                        if (iframe.parentNode) {{
-                            iframe.parentNode.removeChild(iframe);
-                        }}
-                    }}, 5000);
-                    
-                    console.log('📡 서버로 피드백 전송 시도');
+                    // 즉시 새로고침하지 않고 백그라운드에서 전송
+                    const img = new Image();
+                    img.onload = function() {{
+                        console.log('✅ 서버 전송 성공');
+                    }};
+                    img.onerror = function() {{
+                        console.log('❌ 서버 전송 실패 (이미지 로드 오류)');
+                    }};
+                    img.src = currentUrl.toString();
                     
                 }} catch (error) {{
                     console.error('서버 전송 오류:', error);
