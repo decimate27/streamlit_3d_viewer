@@ -540,6 +540,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             let pendingFeedback = null; // 저장 대기 중인 피드백 데이터
             let raycaster = new THREE.Raycaster();
             let mouse = new THREE.Vector2();
+            let feedbackPins = []; // 3D 피드백 핀들을 추적하는 배열
             
             // 피드백 모드 토글
             function toggleFeedbackMode() {{
@@ -623,12 +624,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 toggleFeedbackMode(); // 피드백 모드 종료
             }}
             
-            // 피드백 핀 표시
+            // 피드백 핀 표시 (3D 좌표 추적)
             function addFeedbackPin(feedback) {{
-                const pin = document.createElement('div');
-                pin.className = 'feedback-pin';
-                pin.style.left = feedback.screen_x - 15 + 'px';
-                pin.style.top = feedback.screen_y - 15 + 'px';
+                const pinElement = document.createElement('div');
+                pinElement.className = 'feedback-pin';
                 
                 // 상태에 따른 핀 색상 변경
                 let pinColor = '#dc3545'; // 기본 빨간색
@@ -649,12 +648,57 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         break;
                 }}
                 
-                pin.innerHTML = `
+                pinElement.innerHTML = `
                     <div class="pin-icon" style="background: ${{pinColor}};">${{statusIcon}}</div>
                     <div class="pin-tooltip">${{feedback.comment}}</div>
                 `;
                 
-                document.getElementById('feedbackPins').appendChild(pin);
+                // 3D 좌표 저장
+                const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
+                
+                // 핀 객체 생성 (3D 좌표와 DOM 요소 연결)
+                const pinObject = {{
+                    id: feedback.id || Date.now(),
+                    element: pinElement,
+                    position3d: point3d,
+                    feedback: feedback
+                }};
+                
+                // 핀 배열에 추가
+                feedbackPins.push(pinObject);
+                
+                // DOM에 추가
+                document.getElementById('feedbackPins').appendChild(pinElement);
+                
+                // 초기 위치 설정
+                updatePinPosition(pinObject);
+                
+                console.log('3D 피드백 핀 추가:', pinObject.id, 'at', point3d);
+            }}
+            
+            // 개별 핀 위치 업데이트
+            function updatePinPosition(pinObject) {{
+                if (!camera || !pinObject.element) return;
+                
+                // 3D 좌표를 현재 카메라 기준 2D 화면 좌표로 변환
+                const screenPos = toScreenPosition(pinObject.position3d);
+                
+                // 화면 밖으로 나가면 숨기기
+                if (screenPos.x < 0 || screenPos.x > window.innerWidth || 
+                    screenPos.y < 0 || screenPos.y > window.innerHeight) {{
+                    pinObject.element.style.display = 'none';
+                }} else {{
+                    pinObject.element.style.display = 'block';
+                    pinObject.element.style.left = (screenPos.x - 15) + 'px';
+                    pinObject.element.style.top = (screenPos.y - 15) + 'px';
+                }}
+            }}
+            
+            // 모든 핀 위치 업데이트 (카메라 움직임에 따라)
+            function updateAllPinPositions() {{
+                feedbackPins.forEach(pinObject => {{
+                    updatePinPosition(pinObject);
+                }});
             }}
             
             // 마우스 클릭 이벤트 핸들러
@@ -701,14 +745,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 console.log('전체 피드백:', allFeedbacks.length, '개');
                 
                 allFeedbacks.forEach(feedback => {{
-                    // 3D 좌표를 현재 화면 좌표로 변환 (서버 피드백인 경우)
-                    if (!feedback.screen_x || !feedback.screen_y) {{
-                        const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
-                        const point2d = toScreenPosition(point3d);
-                        feedback.screen_x = point2d.x;
-                        feedback.screen_y = point2d.y;
-                    }}
-                    
+                    // 3D 좌표를 사용하여 핀 생성 (screen_x, screen_y 무시)
                     addFeedbackPin(feedback);
                 }});
             }}
@@ -1114,6 +1151,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function animate() {{
                 requestAnimationFrame(animate);
                 controls.update();
+                
+                // 모든 피드백 핀 위치 업데이트 (카메라 움직임 추적)
+                updateAllPinPositions();
+                
                 renderer.render(scene, camera);
             }}
             
@@ -1122,6 +1163,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
+                
+                // 창 크기 변경 시 모든 핀 위치 업데이트
+                updateAllPinPositions();
             }}
             
             // 배경색 변경 함수
