@@ -706,6 +706,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }});
                 }}
                 
+                // 초기 상태 설정
+                hasChanges = false;
+                
                 // 제출완료 버튼 초기 상태 설정
                 updateDbSaveButton();
             }}
@@ -873,6 +876,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // DB에 저장할 수정점들을 추적
             let pendingAnnotations = [];
             
+            // 수정사항이 있는지 추적하는 변수
+            let hasChanges = false;
+            
             // 서버에 수정점 저장 (로컬에만 저장)
             async function saveAnnotationToServer(point, text) {{
                 if (!modelToken) {{
@@ -895,6 +901,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         completed: false
                     }});
                     
+                    // 변경사항 표시
+                    hasChanges = true;
+                    
                     // 제출완료 버튼 활성화
                     updateDbSaveButton();
                     
@@ -911,8 +920,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function updateDbSaveButton() {{
                 const btn = document.getElementById('dbSaveBtn');
                 if (btn) {{
-                    if (pendingAnnotations.length > 0) {{
-                        btn.textContent = `제출완료 (${{pendingAnnotations.length}})`;
+                    if (pendingAnnotations.length > 0 || hasChanges) {{
+                        const changeCount = pendingAnnotations.length + (hasChanges ? 1 : 0);
+                        btn.textContent = `제출완료 (변경사항 있음)`;
                         btn.disabled = false;
                     }} else {{
                         btn.textContent = '제출완료';
@@ -923,7 +933,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // DB에 모든 수정점 저장
             function saveToDatabase() {{
-                if (!modelToken || pendingAnnotations.length === 0) {{
+                if (!modelToken || (pendingAnnotations.length === 0 && !hasChanges)) {{
                     showMessage('저장할 수정점이 없습니다', 'info');
                     return;
                 }}
@@ -952,6 +962,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 // 저장 중 메시지
                 showMessage('💾 제출 중...', 'info');
+                
+                // 변경사항 초기화
+                hasChanges = false;
+                pendingAnnotations = [];
                 
                 // 페이지 리로드하여 서버에 저장
                 setTimeout(() => {{
@@ -1058,6 +1072,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const pending = pendingAnnotations.find(p => p.tempId === id);
                     if (pending) {{
                         pending.completed = true;
+                    }} else {{
+                        // 기존 DB 수정점인 경우 변경사항 표시
+                        hasChanges = true;
                     }}
                     
                     // 제출완료 버튼 상태 업데이트
@@ -1080,6 +1097,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const pendingIndex = pendingAnnotations.findIndex(p => p.tempId === id);
                     if (pendingIndex !== -1) {{
                         pendingAnnotations.splice(pendingIndex, 1);
+                    }} else {{
+                        // 기존 DB 수정점인 경우 변경사항 표시
+                        hasChanges = true;
                     }}
                     
                     // 제출완료 버튼 상태 업데이트
