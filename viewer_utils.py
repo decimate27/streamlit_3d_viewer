@@ -254,10 +254,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // Renderer 생성
                     const container = document.getElementById('container');
-                    renderer = new THREE.WebGLRenderer({{ antialias: true }});
+                    renderer = new THREE.WebGLRenderer({{ 
+                        antialias: true,
+                        powerPreference: "high-performance" // 고성능 GPU 사용
+                    }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
                     renderer.setClearColor(0x{bg_color[1:]}, 1); // 초기 배경색 설정
+                    
+                    // 이방성 필터링 최대값 확인
+                    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+                    console.log('Maximum anisotropy supported: ' + maxAnisotropy);
+                    
                     container.appendChild(renderer.domElement);
                     
                     // Controls 생성 - 제품 전시용 설정
@@ -390,8 +398,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         
                         // 텍스처가 성공적으로 적용된 경우 필터 설정
                         if (material.map && material.map.image) {{
-                            material.map.minFilter = THREE.LinearFilter;
+                            // 이방성 필터링 적용 - UV 시음 부드럽게
+                            material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                            console.log('  Anisotropic filtering: ' + material.map.anisotropy + 'x');
+                            
+                            // 밉맵 필터링 사용 (거리에 따른 텍스처 품질 개선)
+                            material.map.minFilter = THREE.LinearMipmapLinearFilter;
                             material.map.magFilter = THREE.LinearFilter;
+                            material.map.generateMipmaps = true;
+                            
+                            // 텍스처 래핑 설정 (가장자리 처리)
+                            material.map.wrapS = THREE.ClampToEdgeWrapping;
+                            material.map.wrapT = THREE.ClampToEdgeWrapping;
                         }}
                     }}
                     
@@ -669,7 +687,15 @@ def create_texture_loading_code(texture_base64):
         code_lines.append(f"""
                 const img_{safe_name} = new Image();
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
-                textures['{name}'] = textureLoader.load(img_{safe_name}.src);
+                const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
+                
+                // 이방성 필터링 사전 설정
+                tex_{safe_name}.anisotropy = 16; // 최대값은 렌더러에서 조정됨
+                tex_{safe_name}.generateMipmaps = true;
+                tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
+                
+                textures['{name}'] = tex_{safe_name};
         """)
     
     return '\n'.join(code_lines)
