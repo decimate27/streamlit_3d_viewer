@@ -510,15 +510,39 @@ def show_upload_section():
                                 with open(texture_path, 'rb') as f:
                                     texture_data[texture_name] = f.read()
                             
-                            # 데이터베이스에 저장
-                            model_id, share_token = db.save_model(
-                                model_name, 
-                                author_name,
-                                model_description,
-                                obj_content, 
-                                mtl_content, 
-                                texture_data
-                            )
+                            # 데이터베이스에 저장 (웹서버 우선, 실패시 로컬)
+                            model_id = None
+                            share_token = None
+                            
+                            # 먼저 웹서버에 저장 시도
+                            try:
+                                model_id, share_token = web_db.save_model(
+                                    model_name, 
+                                    author_name,
+                                    model_description,
+                                    obj_content, 
+                                    mtl_content, 
+                                    texture_data
+                                )
+                                if model_id:
+                                    st.success("✅ 웹서버에 모델 저장 완료!")
+                            except Exception as web_error:
+                                st.warning(f"⚠️ 웹서버 저장 실패: {str(web_error)}")
+                                # 웹서버 실패시 로컬 DB에 저장
+                                try:
+                                    model_id, share_token = local_db.save_model(
+                                        model_name, 
+                                        author_name,
+                                        model_description,
+                                        obj_content, 
+                                        mtl_content, 
+                                        texture_data
+                                    )
+                                    if model_id:
+                                        st.info("📁 로컬 데이터베이스에 모델 저장 완료!")
+                                except Exception as local_error:
+                                    st.error(f"❌ 로컬 저장도 실패: {str(local_error)}")
+                                    raise local_error
                             
                             # 성공 메시지 및 공유 링크
                             st.success("✅ 모델이 성공적으로 저장되었습니다!")
