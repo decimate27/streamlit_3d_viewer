@@ -216,57 +216,121 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 transform: translate(-50%, -50%);
                 text-align: center;
                 z-index: 1000;
+                opacity: 1;
+                transition: opacity 0.5s ease-out;
             }}
             
-            .spinner {{
-                width: 50px;
-                height: 50px;
-                margin: 0 auto 20px;
-                border: 4px solid rgba(0, 0, 0, 0.1);
-                border-top-color: #3498db;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
+            .loading-container.fade-out {{
+                opacity: 0;
             }}
             
-            /* 다크 배경용 스피너 */
-            .spinner-dark {{
-                border-color: rgba(255, 255, 255, 0.2);
-                border-top-color: #3498db;
+            /* 에어바이블 로고 컨테이너 */
+            .logo-container {{
+                width: 120px;
+                height: 120px;
+                margin: 0 auto 30px;
+                position: relative;
             }}
             
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
+            .airbible-logo {{
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                animation: heartbeat 1.5s ease-in-out infinite;
+            }}
+            
+            /* 심장박동 애니메이션 */
+            @keyframes heartbeat {{
+                0% {{
+                    transform: scale(1);
+                }}
+                14% {{
+                    transform: scale(1.15);
+                }}
+                28% {{
+                    transform: scale(1);
+                }}
+                42% {{
+                    transform: scale(1.12);
+                }}
+                70% {{
+                    transform: scale(1);
+                }}
             }}
             
             .loading-text {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                font-size: 16px;
+                font-size: 18px;
+                font-weight: 500;
                 color: #333;
-                margin-top: 10px;
+                margin-top: 20px;
+                letter-spacing: 0.5px;
             }}
             
             .loading-text-dark {{
                 color: #fff;
             }}
             
-            .loading-progress {{
-                font-size: 12px;
-                color: #666;
-                margin-top: 5px;
+            /* 로딩 점 애니메이션 */
+            .loading-dots {{
+                display: inline-block;
+                width: 60px;
+                text-align: left;
             }}
             
-            .loading-progress-dark {{
-                color: #aaa;
+            .loading-dots::after {{
+                content: '';
+                animation: dots 2s steps(5, end) infinite;
+            }}
+            
+            @keyframes dots {{
+                0%, 20% {{
+                    content: '.';
+                }}
+                40% {{
+                    content: '..';
+                }}
+                60% {{
+                    content: '...';
+                }}
+                80% {{
+                    content: '....';
+                }}
+                100% {{
+                    content: '.....';
+                }}
+            }}
+            
+            /* 모바일 반응형 */
+            @media (max-width: 768px) {{
+                .logo-container {{
+                    width: 80px;
+                    height: 80px;
+                    margin: 0 auto 20px;
+                }}
+                
+                .loading-text {{
+                    font-size: 16px;
+                }}
             }}
         </style>
     </head>
     <body>
         <div id="container">
             <div class="loading-container" id="loading">
-                <div class="spinner" id="spinner"></div>
-                <div class="loading-text" id="loadingText">3D 모델 로딩 중...</div>
-                <div class="loading-progress" id="loadingProgress">초기화 중...</div>
+                <div class="logo-container">
+                    <!-- 에어바이블 로고 SVG (위치 아이콘 스타일) -->
+                    <svg class="airbible-logo" id="airbibleLogo" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 핀 모양 본체 -->
+                        <path d="M100 10 C50 10, 10 50, 10 100 C10 130, 30 160, 100 230 C170 160, 190 130, 190 100 C190 50, 150 10, 100 10 Z" 
+                              fill="#000000" id="logoBody"/>
+                        <!-- 내부 원 -->
+                        <circle cx="100" cy="85" r="35" fill="#ffffff" id="logoInner"/>
+                    </svg>
+                </div>
+                <div class="loading-text" id="loadingText">
+                    Loading<span class="loading-dots"></span>
+                </div>
             </div>
             
             <!-- 배경색 변경 컨트롤 -->
@@ -297,43 +361,42 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
-                const progressEl = document.getElementById('loadingProgress');
-                const textEl = document.getElementById('loadingText');
-                const spinnerEl = document.getElementById('spinner');
-                
-                // 배경색에 따라 스타일 조정
+                // 로고 색상 업데이트
                 const bgColor = '{bg_color}';
                 const isDark = bgColor === 'black' || bgColor === '#000000';
+                const logoBody = document.getElementById('logoBody');
+                const logoInner = document.getElementById('logoInner');
+                const textEl = document.getElementById('loadingText');
                 
-                if (progressEl) {{
-                    progressEl.textContent = message;
-                    progressEl.className = isDark ? 'loading-progress loading-progress-dark' : 'loading-progress';
+                if (logoBody) {{
+                    // 배경색에 따라 로고 색상 변경
+                    logoBody.setAttribute('fill', isDark ? '#ffffff' : '#000000');
                 }}
+                
+                if (logoInner) {{
+                    logoInner.setAttribute('fill', isDark ? '#000000' : '#ffffff');
+                }}
+                
                 if (textEl) {{
                     textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
                 }}
-                if (spinnerEl) {{
-                    spinnerEl.className = isDark ? 'spinner spinner-dark' : 'spinner';
-                }}
             }}
             
-            // 로딩 완료 시 스피너 숨기기
+            // 로딩 완료 시 페이드 아웃
             function hideLoadingSpinner() {{
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) {{
-                    // 페이드 아웃 효과
-                    loadingEl.style.transition = 'opacity 0.3s';
-                    loadingEl.style.opacity = '0';
+                    loadingEl.classList.add('fade-out');
                     setTimeout(() => {{
                         loadingEl.style.display = 'none';
-                    }}, 300);
+                    }}, 500);
                 }}
             }}
             
             function init() {{
                 try {{
                     console.log('Three.js version:', THREE.REVISION);
-                    updateLoadingProgress('3D 엔진 초기화 중...');
+                    updateLoadingProgress('초기화 중...');
                     
                     // 모바일 감지
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -342,7 +405,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     if (isMobile) {{
                         console.log('Mobile device detected:', isAndroid ? 'Android' : 'iOS');
-                        updateLoadingProgress('모바일 최적화 준비 중...');
                     }}
                     
                     // Scene 생성
@@ -426,7 +488,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function loadModel() {{
                 try {{
                     console.log('Starting model load...');
-                    updateLoadingProgress('텍스처 로딩 중...');
                     
                     // 모바일 감지 (loadModel 스코프용)
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -442,7 +503,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     console.log('Total textures:', Object.keys(textures).length);
-                    updateLoadingProgress('재질 처리 중...');
                     
                     // 텍스처 디버깅 정보
                     for (let texName in textures) {{
@@ -539,7 +599,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}
                     
                     console.log('Materials loaded');
-                    updateLoadingProgress('3D 모델 파싱 중...');
                     
                     // OBJ 로더
                     console.log('Loading OBJ...');
@@ -597,7 +656,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 모바일 GPU 워밍업 및 지연 표시
                     if (isMobile) {{
                         console.log('Mobile optimization: GPU warmup starting...');
-                        updateLoadingProgress('렌더링 최적화 중...');
                         
                         // GPU 워밍업: 보이지 않는 상태에서 여러 프레임 렌더링
                         const warmupFrames = isAndroid ? 5 : 3;
@@ -609,12 +667,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         // 지연 시간 설정 (Android는 더 길게)
                         const delay = isAndroid ? 500 : 300;
                         
-                        // 로딩 메시지 업데이트
-                        updateLoadingProgress('곧 표시됩니다...');
-                        
                         // 지연 후 표시
                         setTimeout(() => {{
-                            // 로딩 스피너 숨기기
+                            // 로딩 애니메이션 페이드 아웃
                             hideLoadingSpinner();
                             
                             // 캔버스 페이드인
@@ -629,11 +684,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             console.log('Mobile optimization complete, displaying model');
                         }}, delay);
                     }} else {{
-                        // 데스크톱: 즉시 표시
-                        updateLoadingProgress('렌더링 준비 완료!');
+                        // 데스크톱: 잠시 후 페이드 아웃
                         setTimeout(() => {{
                             hideLoadingSpinner();
-                        }}, 100);
+                        }}, 500);
                     }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
@@ -693,10 +747,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     container.style.backgroundColor = bodyColors[color];
                 }}
                 
-                // 로딩 텍스트 색상 변경
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) {{
-                    loadingEl.style.color = color === 'black' ? 'white' : 'black';
+                // 로딩 요소 색상 변경 (아직 보이는 경우)
+                const isDark = color === 'black';
+                const logoBody = document.getElementById('logoBody');
+                const logoInner = document.getElementById('logoInner');
+                const textEl = document.getElementById('loadingText');
+                
+                if (logoBody) {{
+                    logoBody.setAttribute('fill', isDark ? '#ffffff' : '#000000');
+                }}
+                
+                if (logoInner) {{
+                    logoInner.setAttribute('fill', isDark ? '#000000' : '#ffffff');
+                }}
+                
+                if (textEl) {{
+                    textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
                 }}
                 
                 // 강제 렌더링
