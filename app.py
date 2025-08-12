@@ -13,7 +13,14 @@ from viewer_utils import create_3d_viewer_html
 from texture_optimizer import auto_optimize_textures
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
-from auth import check_password, show_logout_button
+from auth import check_password, show_logout_button, update_activity_time, show_session_info
+
+# 페이지 설정 (항상 먼저 실행)
+st.set_page_config(
+    page_title="3D Model Manager",
+    page_icon="🎮",
+    layout="wide"
+)
 
 # URL 파라미터 체크
 query_params = st.query_params
@@ -26,12 +33,8 @@ if 'token' in query_params:
 if not check_password():
     st.stop()
 
-# 메인 관리 페이지
-st.set_page_config(
-    page_title="3D Model Manager",
-    page_icon="🎮",
-    layout="wide"
-)
+# 인증 성공 후 활동 시간 업데이트
+update_activity_time()
 
 # 스트림릿 하단 요소 숨기기
 hide_streamlit_style = """
@@ -55,6 +58,27 @@ img[alt*="Streamlit"], img[src*="streamlit"] {display: none;}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# 타이틀과 세션 정보
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.title("🎮 3D Model Manager")
+with col2:
+    # 세션 정보 표시 (우측 상단)
+    import time
+    from datetime import datetime
+    
+    if st.session_state.get("password_correct", False):
+        time_since_activity = time.time() - st.session_state.get("last_activity_time", 0)
+        remaining_time = 3600 - time_since_activity  # 60분
+        
+        if remaining_time > 0:
+            mins = int(remaining_time // 60)
+            st.success(f"세션: {mins}분 남음")
+        
+        if st.button("🚪 로그아웃", key="header_logout"):
+            from auth import logout
+            logout()
 
 class ModelProcessor:
     def __init__(self):
@@ -583,12 +607,11 @@ def show_model_management():
                     st.error(f"미리보기 로딩 중 오류: {str(e)}")
 
 def main():
-    st.title("🎮 (주)에어바이블 3D 모델 고객용 뷰어 관리")
+    # 타이틀은 이미 상단에 표시됨
+    st.write("(주)에어바이블 3D 모델 고객용 뷰어 관리 시스템")
     
-    # 상단에 로그아웃 버튼 표시
-    col1, col2 = st.columns([4, 1])
-    with col2:
-        show_logout_button()
+    # 페이지 활동시마다 세션 시간 갱신
+    update_activity_time()
     
     # 탭 생성
     tab1, tab2, tab3 = st.tabs(["📤 업로드", "📋 관리", "ℹ️ 사용법"])
