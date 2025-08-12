@@ -433,8 +433,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 색상 보정 완전 비활성화
                     renderer.outputEncoding = THREE.LinearEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
-                    renderer.shadowMap.enabled = true; // 그림자 활성화
-                    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 부드러운 그림자
+                    renderer.shadowMap.enabled = false; // 그림자 비활성화
                     renderer.gammaFactor = 1.0;
                     renderer.gammaInput = false;
                     renderer.gammaOutput = false;
@@ -460,31 +459,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
                     
-                    // 조명 설정 - 그림자를 위한 최소한의 조명
-                    // 주 조명 (그림자 생성용)
-                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                    directionalLight.position.set(5, 10, 5);
-                    directionalLight.castShadow = true;
-                    directionalLight.shadow.mapSize.width = 1024;
-                    directionalLight.shadow.mapSize.height = 1024;
-                    directionalLight.shadow.camera.near = 0.5;
-                    directionalLight.shadow.camera.far = 500;
-                    directionalLight.shadow.camera.left = -10;
-                    directionalLight.shadow.camera.right = 10;
-                    directionalLight.shadow.camera.top = 10;
-                    directionalLight.shadow.camera.bottom = -10;
-                    directionalLight.shadow.bias = -0.0001;
-                    directionalLight.shadow.normalBias = 0.02;
-                    scene.add(directionalLight);
-                    
-                    // 보조 조명 (형태 강조용 - 매우 약함)
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-                    scene.add(ambientLight);
-                    
-                    // 추가 보조 조명 (반대편에서 - 더 약함)
-                    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
-                    fillLight.position.set(-5, -5, -5);
-                    scene.add(fillLight);
+                    // 조명 없음 - MeshBasicMaterial 사용으로 텍스처 색상 100% 유지
                     
                     console.log('Scene setup complete');
                     
@@ -557,48 +532,41 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
                         
-                        // MeshLambertMaterial로 변환 (그림자 지원 + 색상 유지)
+                        // MeshBasicMaterial로 변환하여 조명 영향 제거 (색상 100% 정확)
                         if (textureFileName && textures[textureFileName]) {{
-                            // Lambert 재질로 변경 (조명 영향 최소화하면서 그림자 지원)
-                            const lambertMaterial = new THREE.MeshLambertMaterial({{
+                            // 기존 material 대신 새로운 BasicMaterial 생성
+                            const basicMaterial = new THREE.MeshBasicMaterial({{
                                 map: textures[textureFileName],
                                 side: THREE.FrontSide,
                                 transparent: false,
                                 alphaTest: 0,
                                 depthWrite: true,
-                                depthTest: true,
-                                emissive: new THREE.Color(0x000000), // 자체 발광 없음
-                                emissiveIntensity: 0
+                                depthTest: true
                             }});
                             
                             // 텍스처 설정
-                            lambertMaterial.map.encoding = THREE.LinearEncoding;
-                            lambertMaterial.map.minFilter = THREE.LinearFilter;
-                            lambertMaterial.map.magFilter = THREE.LinearFilter;
-                            lambertMaterial.map.generateMipmaps = false;
-                            lambertMaterial.map.anisotropy = 1;
-                            lambertMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
-                            lambertMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
-                            lambertMaterial.map.needsUpdate = true;
+                            basicMaterial.map.encoding = THREE.LinearEncoding;
+                            basicMaterial.map.minFilter = THREE.LinearFilter;
+                            basicMaterial.map.magFilter = THREE.LinearFilter;
+                            basicMaterial.map.generateMipmaps = false;
+                            basicMaterial.map.anisotropy = 1;
+                            basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.needsUpdate = true;
                             
-                            // 기존 material을 lambertMaterial로 교체
-                            materials.materials[materialName] = lambertMaterial;
+                            // 기존 material을 basicMaterial로 교체
+                            materials.materials[materialName] = basicMaterial;
                             
-                            console.log('✅ LambertMaterial applied with shadows: ' + textureFileName);
+                            console.log('✅ BasicMaterial applied: ' + textureFileName);
                         }} else {{
-                            // 텍스처가 없는 경우 Lambert 재질로 변경
-                            const lambertMaterial = new THREE.MeshLambertMaterial({{
-                                color: material.color || 0xffffff,
-                                side: THREE.FrontSide,
-                                transparent: false,
-                                alphaTest: 0,
-                                depthWrite: true,
-                                depthTest: true,
-                                emissive: new THREE.Color(0x000000),
-                                emissiveIntensity: 0
-                            }});
-                            
-                            materials.materials[materialName] = lambertMaterial;
+                            // 텍스처가 없는 경우 기존 설정 유지
+                            material.side = THREE.FrontSide;
+                            material.transparent = false;
+                            material.alphaTest = 0;
+                            material.depthWrite = true;
+                            material.depthTest = true;
+                            material.shininess = 0;
+                            material.specular.setRGB(0, 0, 0);
                         }}
                     }}
                     
@@ -630,25 +598,55 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 
                                 geometry.attributes.uv.needsUpdate = true;
                             }}
-                            
-                            // 그림자 설정
-                            child.castShadow = true;   // 그림자 생성
-                            child.receiveShadow = true; // 그림자 받기
                         }}
                     }});
                     
-                    // 그라운드 플레인 추가 (그림자를 받을 바닥)
-                    const groundGeometry = new THREE.PlaneGeometry(20, 20);
-                    const groundMaterial = new THREE.MeshLambertMaterial({{ 
-                        color: 0x{bg_color[1:]}, 
-                        transparent: true, 
-                        opacity: 0.1 
+                    // AO(Ambient Occlusion) 효과 추가 - 색상 변화 없이 형태만 강조
+                    object.traverse((child) => {{
+                        if (child.isMesh && child.geometry) {{
+                            const geometry = child.geometry;
+                            
+                            // Normal 벡터가 있는지 확인하고 없으면 생성
+                            if (!geometry.attributes.normal) {{
+                                geometry.computeVertexNormals();
+                            }}
+                            
+                            // 간단한 AO 효과를 위한 vertex color 생성
+                            const positions = geometry.attributes.position;
+                            const normals = geometry.attributes.normal;
+                            const vertexCount = positions.count;
+                            
+                            // Vertex color 배열 생성
+                            const colors = new Float32Array(vertexCount * 3);
+                            
+                            for (let i = 0; i < vertexCount; i++) {{
+                                // Normal 벡터를 이용한 간단한 AO 계산
+                                const nx = normals.getX(i);
+                                const ny = normals.getY(i);
+                                const nz = normals.getZ(i);
+                                
+                                // Y축 기준으로 위쪽(밝음) vs 아래쪽(어두움) 계산
+                                // 색상은 변화시키지 않고 brightness만 살짝 조정
+                                let ao = 0.7 + (ny * 0.3); // 0.7~1.0 범위
+                                ao = Math.max(0.8, Math.min(1.0, ao)); // 0.8~1.0으로 제한 (very subtle)
+                                
+                                colors[i * 3] = ao;     // R
+                                colors[i * 3 + 1] = ao; // G  
+                                colors[i * 3 + 2] = ao; // B
+                            }}
+                            
+                            // Vertex color 속성 추가
+                            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                            
+                            // Material에 vertex color 사용 설정
+                            if (child.material) {{
+                                child.material.vertexColors = true;
+                                child.material.needsUpdate = true;
+                            }}
+                            
+                            console.log('AO effect applied to mesh:', child.name || 'unnamed');
+                        }}
                     }});
-                    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-                    ground.rotation.x = -Math.PI / 2;
-                    ground.position.y = -2;
-                    ground.receiveShadow = true;
-                    scene.add(ground);
                     
                     // 모델 크기 조정 및 중앙 정렬
                     const box = new THREE.Box3().setFromObject(object);
@@ -762,16 +760,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 if (textEl) {{
                     textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
-                }}
-                
-                // 바닥 그림자 플레인 색상 업데이트
-                if (scene) {{
-                    scene.traverse((child) => {{
-                        if (child.isMesh && child.material && child.geometry && child.geometry.type === 'PlaneGeometry') {{
-                            // 바닥 플레인 감지 및 색상 변경
-                            child.material.color.setHex(colors[color]);
-                        }}
-                    }});
                 }}
                 
                 if (renderer && scene && camera) {{
