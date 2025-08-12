@@ -518,12 +518,47 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 background: #f44336;
                 color: white;
             }}
+            
+            /* 펄스 애니메이션 */
+            @keyframes pulse {{
+                0% {{
+                    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+                }}
+                70% {{
+                    box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);
+                }}
+                100% {{
+                    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
+                }}
+            }}
+            
+            /* 모바일 최적화 */
+            @media (max-width: 768px) {{
+                .annotation-btn, .db-save-btn {{
+                    font-size: 12px !important;
+                    padding: 8px 12px !important;
+                }}
+                
+                .top-notice {{
+                    font-size: 11px !important;
+                    padding: 4px 10px !important;
+                }}
+                
+                .annotation-modal {{
+                    width: 90% !important;
+                    max-width: 350px !important;
+                }}
+                
+                .annotation-popup {{
+                    max-width: 250px !important;
+                }}
+            }}
         </style>
     </head>
     <body>
         <!-- 상단 안내 텍스트 -->
         <div class="top-notice">
-            수정점 표시 다 하신후 반드시 제출완료 꼭 눌러주세요.
+            📝 수정점 추가/수정/삭제 후 반드시 <span style="color: red; font-weight: bold;">제출완료</span> 버튼을 눌러 DB에 저장하세요!
         </div>
         
         <!-- 수정점 표시 버튼을 최상단에 배치 -->
@@ -610,9 +645,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 raycaster = new THREE.Raycaster();
                 mouse = new THREE.Vector2();
                 
-                // 마우스 클릭 이벤트
+                // 마우스 이벤트
                 renderer.domElement.addEventListener('click', onMouseClick, false);
                 renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+                
+                // 터치 이벤트 (모바일)
+                renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+                renderer.domElement.addEventListener('touchend', function(e) {{ e.preventDefault(); }}, false);
                 
                 // 기존 annotations 로드
                 loadExistingAnnotations();
@@ -623,7 +662,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // 서버에서 전달된 annotations 로드
                 if (initialAnnotations && initialAnnotations.length > 0) {{
                     initialAnnotations.forEach(ann => {{
-                        const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+                        // 크기를 70%로 줄임 (0.05 -> 0.035)
+                        const geometry = new THREE.SphereGeometry(0.035, 16, 16);
                         const material = new THREE.MeshBasicMaterial({{ 
                             color: ann.completed ? 0x0000ff : 0xff0000 
                         }});
@@ -647,14 +687,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 updateDbSaveButton();
             }}
             
-            // 마우스 클릭 처리
-            function onMouseClick(event) {{
+            // 마우스/터치 클릭 처리 통합
+            function handleInteraction(clientX, clientY, event) {{
                 if (!model) return;
                 
-                // 마우스 좌표 계산
+                // 좌표 계산
                 const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
                 
                 raycaster.setFromCamera(mouse, camera);
                 
@@ -679,6 +719,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         const point = intersects[0].point;
                         openAnnotationModal(point);
                     }}
+                }}
+            }}
+            
+            // 마우스 클릭 처리
+            function onMouseClick(event) {{
+                event.preventDefault();
+                handleInteraction(event.clientX, event.clientY, event);
+            }}
+            
+            // 터치 이벤트 처리 (모바일)
+            function onTouchStart(event) {{
+                event.preventDefault();
+                if (event.touches.length === 1) {{
+                    // 단일 터치만 처리
+                    const touch = event.touches[0];
+                    handleInteraction(touch.clientX, touch.clientY, touch);
                 }}
             }}
             
@@ -795,12 +851,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function updateDbSaveButton() {{
                 const btn = document.getElementById('dbSaveBtn');
                 if (btn) {{
-                    if (pendingAnnotations.length > 0) {{
-                        btn.textContent = `제출완료 (${{pendingAnnotations.length}})`;
+                    const hasChanges = pendingAnnotations.length > 0 || 
+                                      annotations.some(a => a.modified || a.deleted);
+                    if (hasChanges) {{
+                        btn.textContent = `⚠️ 제출완료 (변경사항 ${{pendingAnnotations.length}}개)`;
                         btn.disabled = false;
+                        btn.style.backgroundColor = '#ff4444';
+                        btn.style.animation = 'pulse 1s infinite';
                     }} else {{
                         btn.textContent = '제출완료';
                         btn.disabled = true;
+                        btn.style.backgroundColor = '#ccc';
+                        btn.style.animation = 'none';
                     }}
                 }}
             }}
@@ -869,7 +931,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 수정점 생성
             function createAnnotation(point, text, id) {{
-                const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+                // 크기를 70%로 줄임 (0.05 -> 0.035)
+                const geometry = new THREE.SphereGeometry(0.035, 16, 16);
                 const material = new THREE.MeshBasicMaterial({{ color: 0xff0000 }});
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.copy(point);
@@ -937,7 +1000,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         pending.completed = true;
                     }}
                     
-                    showMessage('✅ 수정 완료로 표시되었습니다', 'success');
+                    showMessage('✅ 수정 완료로 표시됨 (제출완료 버튼을 눌러 저장하세요)', 'info');
+                    updateDbSaveButton();
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
@@ -957,13 +1021,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         updateDbSaveButton();
                     }}
                     
-                    // DB에 저장된 항목이면 서버에서도 삭제 필요
+                    // DB에 저장된 항목이면 서버에서도 삭제 필요 표시
                     if (annotation.saved && !String(id).startsWith('temp_')) {{
                         // 삭제 마크 표시
-                        showMessage('⚠️ DB에서 삭제하려면 페이지를 새로고침하세요', 'warning');
+                        showMessage('⚠️ 삭제 완료 (제출완료 버튼을 눌러 DB에 반영하세요)', 'warning');
                     }} else {{
-                        showMessage('✅ 수정점이 삭제되었습니다', 'success');
+                        showMessage('✅ 수정점이 삭제됨 (제출완료 버튼을 눌러 저장하세요)', 'info');
                     }}
+                    updateDbSaveButton();
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
