@@ -595,42 +595,6 @@ def show_feedback_management():
         st.info("📋 업로드된 모델이 없습니다.")
         return
     
-    # 로컬 피드백 동기화 섹션
-    st.subheader("🔄 로컬 피드백 동기화")
-    st.info("🔹 고객이 등록한 피드백을 서버로 동기화합니다. 모델별로 브라우저 로컬 저장소의 피드백을 확인하여 서버 데이터베이스에 저장합니다.")
-    
-    # 수동 피드백 입력 폼
-    with st.expander("📝 수동 피드백 추가 (테스트용)", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            manual_model_idx = st.selectbox("모델 선택", range(len(models)), 
-                                          format_func=lambda x: f"{models[x]['name']}")
-            manual_comment = st.text_area("피드백 내용", "이 부분을 수정해주세요")
-        with col2:
-            manual_x = st.number_input("X 좌표", value=0.0, step=0.1)
-            manual_y = st.number_input("Y 좌표", value=0.0, step=0.1)
-            manual_z = st.number_input("Z 좌표", value=0.0, step=0.1)
-        
-        if st.button("수동 피드백 추가"):
-            if manual_comment.strip():
-                selected_model = models[manual_model_idx]
-                feedback_id = db.add_feedback(
-                    model_id=selected_model['id'],
-                    x=manual_x, y=manual_y, z=manual_z,
-                    screen_x=400, screen_y=300,  # 임시 화면 좌표
-                    comment=manual_comment.strip(),
-                    feedback_type='point'
-                )
-                if feedback_id:
-                    st.success(f"✅ 피드백이 추가되었습니다! (ID: {feedback_id})")
-                    st.rerun()
-                else:
-                    st.error("❌ 피드백 추가에 실패했습니다.")
-            else:
-                st.warning("피드백 내용을 입력해주세요.")
-    
-    st.divider()
-    
     # 모델 선택
     model_options = [f"{model['name']} (ID: {model['id'][:8]}...)" for model in models]
     selected_idx = st.selectbox("모델 선택", range(len(models)), format_func=lambda x: model_options[x])

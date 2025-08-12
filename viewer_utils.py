@@ -707,7 +707,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }});
             }}
             
-            // 수동으로 로컬 피드백을 서버로 동기화
+            // 수동으로 로컬 피드백을 서버로 동기화 (fetch API 사용)
             function syncFeedbacksToServer() {{
                 try {{
                     const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
@@ -719,21 +719,51 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('동기화할 피드백 수:', localFeedbacks.length);
                     
-                    // 첫 번째 피드백을 URL로 전송하고 페이지 새로고침
+                    // 첫 번째 피드백을 서버로 전송
                     const firstFeedback = localFeedbacks[0];
-                    const currentUrl = new URL(window.location);
-                    currentUrl.searchParams.set('feedback_action', 'save');
-                    currentUrl.searchParams.set('feedback_data', JSON.stringify(firstFeedback));
                     
-                    // 동기화된 피드백은 로컬에서 제거
-                    localFeedbacks.shift(); // 첫 번째 요소 제거
-                    localStorage.setItem('temp_feedbacks', JSON.stringify(localFeedbacks));
+                    console.log('서버로 전송할 데이터:', firstFeedback);
                     
-                    console.log('서버로 전송:', firstFeedback);
-                    console.log('남은 피드백 수:', localFeedbacks.length);
-                    
-                    // 페이지 새로고침으로 서버에 전송
-                    window.location.href = currentUrl.toString();
+                    // Fetch API로 서버에 POST 요청
+                    fetch('http://localhost:5001/save_feedback', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify(firstFeedback)
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        console.log('서버 응답:', data);
+                        
+                        if (data.success) {{
+                            // 성공 시 로컬에서 해당 피드백 제거
+                            localFeedbacks.shift(); // 첫 번째 요소 제거
+                            localStorage.setItem('temp_feedbacks', JSON.stringify(localFeedbacks));
+                            
+                            alert(`✅ 피드백이 서버에 저장되었습니다! (ID: ${{data.feedback_id}})`);
+                            
+                            // 동기화 버튼 업데이트
+                            const syncBtn = document.getElementById('syncFeedbackBtn');
+                            if (syncBtn) {{
+                                if (localFeedbacks.length > 0) {{
+                                    syncBtn.textContent = `💾 서버 동기화 (${{localFeedbacks.length}})`;
+                                    syncBtn.style.backgroundColor = '#dc3545';
+                                }} else {{
+                                    syncBtn.textContent = '💾 서버 동기화';
+                                    syncBtn.style.backgroundColor = '#28a745';
+                                    alert('🎉 모든 피드백이 동기화되었습니다!');
+                                }}
+                            }}
+                        }} else {{
+                            console.error('서버 저장 실패:', data.error);
+                            alert(`❌ 서버 저장 실패: ${{data.error}}`);
+                        }}
+                    }})
+                    .catch(error => {{
+                        console.error('네트워크 오류:', error);
+                        alert(`❌ 네트워크 오류: ${{error.message}}`);
+                    }});
                     
                 }} catch (error) {{
                     console.error('동기화 오류:', error);
