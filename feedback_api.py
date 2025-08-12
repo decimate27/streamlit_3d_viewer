@@ -80,6 +80,6 @@ def health_check():
 
 if __name__ == '__main__':
     print("🚀 피드백 API 서버 시작 중...")
-    print("📡 엔드포인트: http://localhost:5001/save_feedback")
-    print("🔍 상태 확인: http://localhost:5001/health")
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    print("📡 엔드포인트: http://localhost:5002/save_feedback")
+    print("🔍 상태 확인: http://localhost:5002/health")
+    app.run(host='0.0.0.0', port=5002, debug=True)

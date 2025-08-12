@@ -707,67 +707,92 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }});
             }}
             
-            // 수동으로 로컬 피드백을 서버로 동기화 (fetch API 사용)
+            // 수동으로 로컬 피드백을 서버로 동기화 (개선된 버전)
             function syncFeedbacksToServer() {{
                 try {{
                     const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                    const unsyncedFeedbacks = localFeedbacks.filter(f => !f.server_saved);
                     
-                    if (localFeedbacks.length === 0) {{
+                    if (unsyncedFeedbacks.length === 0) {{
                         alert('동기화할 피드백이 없습니다.');
                         return;
                     }}
                     
-                    console.log('동기화할 피드백 수:', localFeedbacks.length);
+                    console.log('동기화할 피드백 수:', unsyncedFeedbacks.length);
                     
-                    // 첫 번째 피드백을 서버로 전송
-                    const firstFeedback = localFeedbacks[0];
+                    // 모든 미동기화 피드백을 순차적으로 전송
+                    let syncCount = 0;
                     
-                    console.log('서버로 전송할 데이터:', firstFeedback);
-                    
-                    // Fetch API로 서버에 POST 요청
-                    fetch('http://localhost:5001/save_feedback', {{
-                        method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
-                        body: JSON.stringify(firstFeedback)
-                    }})
-                    .then(response => response.json())
-                    .then(data => {{
-                        console.log('서버 응답:', data);
-                        
-                        if (data.success) {{
-                            // 성공 시 로컬에서 해당 피드백 제거
-                            localFeedbacks.shift(); // 첫 번째 요소 제거
-                            localStorage.setItem('temp_feedbacks', JSON.stringify(localFeedbacks));
-                            
-                            alert(`✅ 피드백이 서버에 저장되었습니다! (ID: ${{data.feedback_id}})`);
-                            
-                            // 동기화 버튼 업데이트
-                            const syncBtn = document.getElementById('syncFeedbackBtn');
-                            if (syncBtn) {{
-                                if (localFeedbacks.length > 0) {{
-                                    syncBtn.textContent = `💾 서버 동기화 (${{localFeedbacks.length}})`;
-                                    syncBtn.style.backgroundColor = '#dc3545';
-                                }} else {{
-                                    syncBtn.textContent = '💾 서버 동기화';
-                                    syncBtn.style.backgroundColor = '#28a745';
-                                    alert('🎉 모든 피드백이 동기화되었습니다!');
-                                }}
-                            }}
-                        }} else {{
-                            console.error('서버 저장 실패:', data.error);
-                            alert(`❌ 서버 저장 실패: ${{data.error}}`);
+                    function syncNext() {{
+                        if (syncCount >= unsyncedFeedbacks.length) {{
+                            alert(`✅ 모든 피드백이 동기화되었습니다! (${syncCount}개)`);
+                            updateSyncButton();
+                            return;
                         }}
-                    }})
-                    .catch(error => {{
-                        console.error('네트워크 오류:', error);
-                        alert(`❌ 네트워크 오류: ${{error.message}}`);
-                    }});
+                        
+                        const feedback = unsyncedFeedbacks[syncCount];
+                        console.log(`동기화 중 (${syncCount + 1}/${unsyncedFeedbacks.length}):`, feedback);
+                        
+                        fetch('http://localhost:5002/save_feedback', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                            }},
+                            body: JSON.stringify(feedback)
+                        }})
+                        .then(response => response.json())
+                        .then(data => {{
+                            if (data.success) {{
+                                console.log(`서버 저장 성공 ${syncCount + 1}/${unsyncedFeedbacks.length} - ID:`, data.feedback_id);
+                                
+                                // 로컬 스토리지에서 동기화 완료 표시
+                                let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                                const idx = allFeedbacks.findIndex(f => f.id === feedback.id);
+                                if (idx >= 0) {{
+                                    allFeedbacks[idx].server_saved = true;
+                                    allFeedbacks[idx].server_id = data.feedback_id;
+                                    localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
+                                }}
+                                
+                                syncCount++;
+                                setTimeout(syncNext, 100); // 잠시 대기 후 다음 피드백 동기화
+                            }} else {{
+                                console.error(`서버 저장 실패 ${syncCount + 1}/${unsyncedFeedbacks.length}:`, data.error);
+                                alert(`❌ 피드백 동기화 실패: ${{data.error}}`);
+                            }}
+                        }})
+                        .catch(error => {{
+                            console.error(`네트워크 오류 ${syncCount + 1}/${unsyncedFeedbacks.length}:`, error);
+                            alert(`❌ 네트워크 오류: ${{error.message}}`);
+                        }});
+                    }}
+                    
+                    syncNext(); // 동기화 시작
                     
                 }} catch (error) {{
                     console.error('동기화 오류:', error);
                     alert('동기화 중 오류가 발생했습니다.');
+                }}
+            }}
+            
+            // 동기화 버튼 상태 업데이트
+            function updateSyncButton() {{
+                try {{
+                    const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                    const unsyncedCount = localFeedbacks.filter(f => !f.server_saved).length;
+                    
+                    const syncBtn = document.getElementById('syncFeedbackBtn');
+                    if (syncBtn) {{
+                        if (unsyncedCount > 0) {{
+                            syncBtn.textContent = `💾 서버 동기화 (${{unsyncedCount}})`;
+                            syncBtn.style.backgroundColor = '#dc3545'; // 빨간색 (동기화 필요)
+                        }} else {{
+                            syncBtn.textContent = '💾 서버 동기화';
+                            syncBtn.style.backgroundColor = '#28a745'; // 초록색 (동기화 완료)
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('동기화 버튼 업데이트 오류:', error);
                 }}
             }}
             
@@ -814,15 +839,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 console.log('로컬 피드백:', localFeedbacks.length, '개');
                 console.log('전체 피드백:', allFeedbacks.length, '개');
                 
-                // 동기화 버튼에 로컬 피드백 수 표시
-                const syncBtn = document.getElementById('syncFeedbackBtn');
-                if (syncBtn && localFeedbacks.length > 0) {{
-                    syncBtn.textContent = `💾 서버 동기화 (${{localFeedbacks.length}})`;
-                    syncBtn.style.backgroundColor = '#dc3545'; // 빨간색으로 강조
-                }} else if (syncBtn) {{
-                    syncBtn.textContent = '💾 서버 동기화';
-                    syncBtn.style.backgroundColor = '#28a745'; // 초록색
-                }}
+                // 동기화 버튼 상태 업데이트
+                updateSyncButton();
                 
                 allFeedbacks.forEach(feedback => {{
                     // 3D 좌표를 사용하여 핀 생성 (screen_x, screen_y 무시)
@@ -861,7 +879,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 toggleFeedbackMode(); // 피드백 모드 종료
             }}
             
-            // 서버로 피드백 전송 (단순 URL 새로고침 방식)
+            // 서버로 피드백 전송 (fetch API 사용)
             function sendFeedbackToServer(feedbackData) {{
                 // 1. 우선 로컬에 저장하고 핀 표시
                 try {{
@@ -875,34 +893,44 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 즉시 핀 표시
                     addFeedbackPin(feedbackData);
                     
-                    console.log('✅ 피드백이 임시 저장되고 핀이 표시되었습니다.');
+                    console.log('✅ 피드백이 임시 저장되었습니다.');
                 }} catch (error) {{
                     console.error('피드백 저장 오류:', error);
                     alert('피드백 저장에 실패했습니다.');
                     return;
                 }}
                 
-                // 2. 서버로 전송 (전체 페이지 새로고침 방식)
-                try {{
-                    const currentUrl = new URL(window.location);
-                    currentUrl.searchParams.set('feedback_action', 'save');
-                    currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
-                    
-                    console.log('📡 서버로 전송할 URL:', currentUrl.toString());
-                    
-                    // 즉시 새로고침하지 않고 백그라운드에서 전송
-                    const img = new Image();
-                    img.onload = function() {{
-                        console.log('✅ 서버 전송 성공');
-                    }};
-                    img.onerror = function() {{
-                        console.log('❌ 서버 전송 실패 (이미지 로드 오류)');
-                    }};
-                    img.src = currentUrl.toString();
-                    
-                }} catch (error) {{
-                    console.error('서버 전송 오류:', error);
-                }}
+                // 2. 서버로 전송 (fetch API 사용)
+                console.log('📡 서버로 피드백 전송 시도');
+                
+                fetch('http://localhost:5002/save_feedback', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                    }},
+                    body: JSON.stringify(feedbackData)
+                }})
+                .then(response => response.json())
+                .then(data => {{
+                    console.log('✅ 서버 응답:', data);
+                    if (data.success) {{
+                        console.log('서버 저장 성공 - ID:', data.feedback_id);
+                        // 로컬 스토리지에서 해당 피드백을 서버 저장 완료로 표시
+                        let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                        const idx = savedFeedbacks.findIndex(f => f.id === feedbackData.id);
+                        if (idx >= 0) {{
+                            savedFeedbacks[idx].server_saved = true;
+                            savedFeedbacks[idx].server_id = data.feedback_id;
+                            localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
+                        }}
+                    }} else {{
+                        console.error('서버 저장 실패:', data.error);
+                    }}
+                }})
+                .catch(error => {{
+                    console.error('네트워크 오류:', error);
+                    console.log('서버가 실행 중인지 확인하세요: http://localhost:5002');
+                }});
             }}
             
             // 로딩 상태 업데이트 함수
@@ -1042,6 +1070,28 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // 텍스처 로딩
                     {create_texture_loading_code(texture_base64)}
+                    
+                    // 모든 텍스처 로딩 완료까지 대기
+                    const textureNames = Object.keys(textures);
+                    let loadedCount = 0;
+                    const totalCount = {len(texture_base64)};
+                    
+                    function checkTexturesLoaded() {{
+                        if (Object.keys(textures).length >= totalCount) {{
+                            console.log('All textures loaded:', Object.keys(textures));
+                            loadMTLAndOBJ();
+                        }} else {{
+                            setTimeout(checkTexturesLoaded, 100);
+                        }}
+                    }}
+                    
+                    if (totalCount > 0) {{
+                        checkTexturesLoaded();
+                    }} else {{
+                        loadMTLAndOBJ();
+                    }}
+                    
+                    function loadMTLAndOBJ() {{'
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     
@@ -1251,6 +1301,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             loadExistingFeedbacks();
                         }}, 500);
                     }}
+                    
+                    }} // loadMTLAndOBJ 함수 종료
                 }} catch (error) {{
                     console.error('Model loading error:', error);
                     document.getElementById('loading').innerHTML = 'Model loading failed: ' + error.message;
@@ -1468,7 +1520,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     return html_content
 
 def create_texture_loading_code(texture_base64):
-    """텍스처 로딩 JavaScript 코드 생성"""
+    """텍스처 로딩 JavaScript 코드 생성 - 이미지 로딩 완료 후 텍스처 생성"""
     if not texture_base64:
         return "// No textures available"
     
@@ -1478,28 +1530,45 @@ def create_texture_loading_code(texture_base64):
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
-                // {name} 텍스처 로딩
-                const img_{safe_name} = new Image();
-                img_{safe_name}.src = 'data:{mime_type};base64,{data}';
-                const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
-                
-                // 원본 색상 100% 유지
-                tex_{safe_name}.encoding = THREE.LinearEncoding;
-                tex_{safe_name}.flipY = true;
-                
-                // UV Seam 방지 + 색상 정확도
-                tex_{safe_name}.generateMipmaps = false;
-                tex_{safe_name}.minFilter = THREE.LinearFilter;
-                tex_{safe_name}.magFilter = THREE.LinearFilter;
-                tex_{safe_name}.anisotropy = 1;
-                tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
-                tex_{safe_name}.type = THREE.UnsignedByteType;
-                tex_{safe_name}.needsUpdate = true;
-                
-                textures['{name}'] = tex_{safe_name};
-                console.log('Texture loaded with original colors: {name}');
+                // {name} 텍스처 로딩 (동기식 - 이미지 로드 완료 후 텍스처 생성)
+                (function() {{
+                    const img = new Image();
+                    const dataUrl = 'data:{mime_type};base64,{data}';
+                    
+                    // 이미지가 완전히 로드된 후에 텍스처 생성
+                    img.onload = function() {{
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Canvas에서 텍스처 생성
+                        const texture = new THREE.CanvasTexture(canvas);
+                        
+                        // 텍스처 설정
+                        texture.encoding = THREE.LinearEncoding;
+                        texture.flipY = true;
+                        texture.generateMipmaps = false;
+                        texture.minFilter = THREE.LinearFilter;
+                        texture.magFilter = THREE.LinearFilter;
+                        texture.anisotropy = 1;
+                        texture.wrapS = THREE.ClampToEdgeWrapping;
+                        texture.wrapT = THREE.ClampToEdgeWrapping;
+                        texture.format = THREE.RGBFormat;
+                        texture.type = THREE.UnsignedByteType;
+                        texture.needsUpdate = true;
+                        
+                        textures['{name}'] = texture;
+                        console.log('✅ Texture loaded successfully: {name}');
+                    }};
+                    
+                    img.onerror = function() {{
+                        console.error('❌ Failed to load texture: {name}');
+                    }};
+                    
+                    img.src = dataUrl;
+                }})();
         """)
     
     return '\n'.join(code_lines)
