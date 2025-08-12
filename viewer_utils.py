@@ -606,6 +606,40 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         }}
                     }});
                     
+                    // 아웃라인 효과 생성 (텍스처 색상 100% 유지하면서 형태 강조)
+                    object.traverse((child) => {{
+                        if (child.isMesh && child.geometry && child.material) {{
+                            // 아웃라인용 geometry 복사
+                            const outlineGeometry = child.geometry.clone();
+                            
+                            // 아웃라인용 머티리얼 (검정색, 뒷면만 렌더링)
+                            const outlineMaterial = new THREE.MeshBasicMaterial({{
+                                color: 0x000000,  // 검정색
+                                side: THREE.BackSide,  // 뒷면만 렌더링
+                                transparent: true,
+                                opacity: 0.7,
+                                depthWrite: false,
+                                depthTest: true
+                            }});
+                            
+                            // 아웃라인 메쉬 생성
+                            const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+                            
+                            // 아웃라인을 살짝 크게 스케일 (1.003 = 0.3% 확대 - 매우 얇은 아웃라인)
+                            outlineMesh.scale.multiplyScalar(1.003);
+                            
+                            // 원본 메쉬와 같은 위치/회전
+                            outlineMesh.position.copy(child.position);
+                            outlineMesh.rotation.copy(child.rotation);
+                            outlineMesh.quaternion.copy(child.quaternion);
+                            
+                            // 아웃라인을 부모 객체에 추가 (원본 메쉬 뒤에)
+                            child.parent.add(outlineMesh);
+                            
+                            console.log('Outline added for mesh:', child.name || 'unnamed');
+                        }}
+                    }});
+                    
                     // 모델 크기 조정 및 중앙 정렬
                     const box = new THREE.Box3().setFromObject(object);
                     const center = box.getCenter(new THREE.Vector3());
@@ -718,6 +752,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 if (textEl) {{
                     textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
+                }}
+                
+                // 아웃라인 색상 적응 (배경에 따라 대비되는 색상 선택)
+                if (scene) {{
+                    scene.traverse((child) => {{
+                        if (child.material && child.material.color && child.material.side === THREE.BackSide) {{
+                            // 아웃라인 메쉬 감지 (BackSide 렌더링)
+                            const outlineColor = isDark ? 0xffffff : 0x000000; // 어두운 배경엔 흰색, 밝은 배경엔 검정색
+                            child.material.color.setHex(outlineColor);
+                            console.log('Outline color updated:', isDark ? 'white' : 'black');
+                        }}
+                    }});
                 }}
                 
                 if (renderer && scene && camera) {{
