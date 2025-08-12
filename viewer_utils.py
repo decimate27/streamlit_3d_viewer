@@ -620,25 +620,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             const colors = new Float32Array(vertexCount * 3);
                             
                             for (let i = 0; i < vertexCount; i++) {{
-                                // Normal 벡터를 이용한 강화된 AO 계산
+                                // Normal 벡터를 이용한 간단한 AO 계산
                                 const nx = normals.getX(i);
                                 const ny = normals.getY(i);
                                 const nz = normals.getZ(i);
                                 
-                                // 다방향 AO 계산으로 입체감 강화
-                                let ao = 1.0;
-                                
-                                // Y축 기준 (위/아래) - 가장 강한 효과
-                                ao *= 0.5 + (ny * 0.5); // 0.0~1.0 범위
-                                
-                                // X축 기준 (좌/우) - 중간 효과  
-                                ao *= 0.7 + (Math.abs(nx) * 0.3); // 0.7~1.0 범위
-                                
-                                // Z축 기준 (앞/뒤) - 약한 효과
-                                ao *= 0.8 + (Math.abs(nz) * 0.2); // 0.8~1.0 범위
-                                
-                                // 전체적으로 너무 어두워지지 않도록 하한선 설정
-                                ao = Math.max(0.4, Math.min(1.0, ao)); // 0.4~1.0 범위로 확장
+                                // Y축 기준으로 위쪽(밝음) vs 아래쪽(어두움) 계산
+                                // 색상은 변화시키지 않고 brightness만 살짝 조정
+                                let ao = 0.7 + (ny * 0.3); // 0.7~1.0 범위
+                                ao = Math.max(0.8, Math.min(1.0, ao)); // 0.8~1.0으로 제한 (very subtle)
                                 
                                 colors[i * 3] = ao;     // R
                                 colors[i * 3 + 1] = ao; // G  
