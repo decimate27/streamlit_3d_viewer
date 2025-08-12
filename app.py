@@ -595,6 +595,42 @@ def show_feedback_management():
         st.info("📋 업로드된 모델이 없습니다.")
         return
     
+    # 로컬 피드백 동기화 섹션
+    st.subheader("🔄 로컬 피드백 동기화")
+    st.info("🔹 고객이 등록한 피드백을 서버로 동기화합니다. 모델별로 브라우저 로컬 저장소의 피드백을 확인하여 서버 데이터베이스에 저장합니다.")
+    
+    # 수동 피드백 입력 폼
+    with st.expander("📝 수동 피드백 추가 (테스트용)", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            manual_model_idx = st.selectbox("모델 선택", range(len(models)), 
+                                          format_func=lambda x: f"{models[x]['name']}")
+            manual_comment = st.text_area("피드백 내용", "이 부분을 수정해주세요")
+        with col2:
+            manual_x = st.number_input("X 좌표", value=0.0, step=0.1)
+            manual_y = st.number_input("Y 좌표", value=0.0, step=0.1)
+            manual_z = st.number_input("Z 좌표", value=0.0, step=0.1)
+        
+        if st.button("수동 피드백 추가"):
+            if manual_comment.strip():
+                selected_model = models[manual_model_idx]
+                feedback_id = db.add_feedback(
+                    model_id=selected_model['id'],
+                    x=manual_x, y=manual_y, z=manual_z,
+                    screen_x=400, screen_y=300,  # 임시 화면 좌표
+                    comment=manual_comment.strip(),
+                    feedback_type='point'
+                )
+                if feedback_id:
+                    st.success(f"✅ 피드백이 추가되었습니다! (ID: {feedback_id})")
+                    st.rerun()
+                else:
+                    st.error("❌ 피드백 추가에 실패했습니다.")
+            else:
+                st.warning("피드백 내용을 입력해주세요.")
+    
+    st.divider()
+    
     # 모델 선택
     model_options = [f"{model['name']} (ID: {model['id'][:8]}...)" for model in models]
     selected_idx = st.selectbox("모델 선택", range(len(models)), format_func=lambda x: model_options[x])
@@ -609,68 +645,67 @@ def show_feedback_management():
         
         if not feedbacks:
             st.info("💬 등록된 피드백이 없습니다.")
-            return
-        
-        st.write(f"**총 {len(feedbacks)}개의 피드백**")
-        
-        # 피드백 목록 표시
-        for i, feedback in enumerate(feedbacks):
-            with st.expander(f"📍 피드백 #{feedback['id']} - {feedback['comment'][:30]}...", expanded=False):
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.write(f"**내용:** {feedback['comment']}")
-                    st.write(f"**위치:** X={feedback['x']:.3f}, Y={feedback['y']:.3f}, Z={feedback['z']:.3f}")
-                    st.write(f"**등록일:** {feedback['created_at']}")
-                
-                with col2:
-                    # 상태 변경
-                    current_status = feedback['status']
-                    status_options = ['pending', 'reviewed', 'resolved']
-                    status_labels = {'pending': '🔴 대기중', 'reviewed': '🟡 검토중', 'resolved': '🟢 완료'}
+        else:
+            st.write(f"**총 {len(feedbacks)}개의 피드백**")
+            
+            # 피드백 목록 표시
+            for i, feedback in enumerate(feedbacks):
+                with st.expander(f"📍 피드백 #{feedback['id']} - {feedback['comment'][:30]}...", expanded=False):
+                    col1, col2 = st.columns([2, 1])
                     
-                    current_idx = status_options.index(current_status) if current_status in status_options else 0
-                    new_status_idx = st.selectbox(
-                        "상태", 
-                        range(len(status_options)),
-                        index=current_idx,
-                        format_func=lambda x: status_labels[status_options[x]],
-                        key=f"status_{feedback['id']}"
-                    )
+                    with col1:
+                        st.write(f"**내용:** {feedback['comment']}")
+                        st.write(f"**위치:** X={feedback['x']:.3f}, Y={feedback['y']:.3f}, Z={feedback['z']:.3f}")
+                        st.write(f"**등록일:** {feedback['created_at']}")
                     
-                    new_status = status_options[new_status_idx]
-                    
-                    # 상태 변경 버튼
-                    if new_status != current_status:
-                        if st.button(f"상태 변경", key=f"update_{feedback['id']}"):
-                            if db.update_feedback_status(feedback['id'], new_status):
-                                st.success(f"상태가 '{status_labels[new_status]}'로 변경되었습니다!")
+                    with col2:
+                        # 상태 변경
+                        current_status = feedback['status']
+                        status_options = ['pending', 'reviewed', 'resolved']
+                        status_labels = {'pending': '🔴 대기중', 'reviewed': '🟡 검토중', 'resolved': '🟢 완료'}
+                        
+                        current_idx = status_options.index(current_status) if current_status in status_options else 0
+                        new_status_idx = st.selectbox(
+                            "상태", 
+                            range(len(status_options)),
+                            index=current_idx,
+                            format_func=lambda x: status_labels[status_options[x]],
+                            key=f"status_{feedback['id']}"
+                        )
+                        
+                        new_status = status_options[new_status_idx]
+                        
+                        # 상태 변경 버튼
+                        if new_status != current_status:
+                            if st.button(f"상태 변경", key=f"update_{feedback['id']}"):
+                                if db.update_feedback_status(feedback['id'], new_status):
+                                    st.success(f"상태가 '{status_labels[new_status]}'로 변경되었습니다!")
+                                    st.rerun()
+                                else:
+                                    st.error("상태 변경에 실패했습니다.")
+                        
+                        # 삭제 버튼
+                        if st.button(f"🗑️ 삭제", key=f"delete_{feedback['id']}", type="secondary"):
+                            if db.delete_feedback(feedback['id']):
+                                st.success("피드백이 삭제되었습니다!")
                                 st.rerun()
                             else:
-                                st.error("상태 변경에 실패했습니다.")
-                    
-                    # 삭제 버튼
-                    if st.button(f"🗑️ 삭제", key=f"delete_{feedback['id']}", type="secondary"):
-                        if db.delete_feedback(feedback['id']):
-                            st.success("피드백이 삭제되었습니다!")
-                            st.rerun()
-                        else:
-                            st.error("삭제에 실패했습니다.")
-        
-        # 통계 정보
-        st.subheader("📊 피드백 통계")
-        col1, col2, col3 = st.columns(3)
-        
-        pending_count = len([f for f in feedbacks if f['status'] == 'pending'])
-        reviewed_count = len([f for f in feedbacks if f['status'] == 'reviewed'])
-        resolved_count = len([f for f in feedbacks if f['status'] == 'resolved'])
-        
-        with col1:
-            st.metric("🔴 대기중", pending_count)
-        with col2:
-            st.metric("🟡 검토중", reviewed_count)
-        with col3:
-            st.metric("🟢 완료", resolved_count)
+                                st.error("삭제에 실패했습니다.")
+            
+            # 통계 정보
+            st.subheader("📊 피드백 통계")
+            col1, col2, col3 = st.columns(3)
+            
+            pending_count = len([f for f in feedbacks if f['status'] == 'pending'])
+            reviewed_count = len([f for f in feedbacks if f['status'] == 'reviewed'])
+            resolved_count = len([f for f in feedbacks if f['status'] == 'resolved'])
+            
+            with col1:
+                st.metric("🔴 대기중", pending_count)
+            with col2:
+                st.metric("🟡 검토중", reviewed_count)
+            with col3:
+                st.metric("🟢 완료", resolved_count)
 
 def main():
     # 타이틀은 이미 상단에 표시됨
