@@ -1032,6 +1032,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Scene setup complete');
                     
+                    // 전체 로딩 타임아웃 (10초)
+                    setTimeout(() => {{
+                        if (!model) {{
+                            console.warn('🕐 전체 로딩 타임아웃, 강제 시작');
+                            hideLoadingSpinner();
+                            loadMTLAndOBJ();
+                        }}
+                    }}, 10000);
+                    
                     // 모델 로드
                     loadModel();
                     
@@ -1071,9 +1080,19 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     let loadedCount = 0;
                     const totalCount = {len(texture_base64)};
                     
+                    // 텍스처 로딩 대기 시간 제한 추가
+                    let textureCheckCount = 0;
+                    const maxChecks = 50; // 5초 제한
+                    
                     function checkTexturesLoaded() {{
+                        textureCheckCount++;
+                        
                         if (Object.keys(textures).length >= totalCount) {{
-                            console.log('All textures loaded:', Object.keys(textures));
+                            console.log('✅ All textures loaded:', Object.keys(textures));
+                            loadMTLAndOBJ();
+                        }} else if (textureCheckCount >= maxChecks) {{
+                            console.warn('⚠️ Texture loading timeout, proceeding with available textures');
+                            console.log('Loaded textures:', Object.keys(textures));
                             loadMTLAndOBJ();
                         }} else {{
                             setTimeout(checkTexturesLoaded, 100);
@@ -1081,12 +1100,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}
                     
                     if (totalCount > 0) {{
+                        console.log(`🎨 텍스처 ${{totalCount}}개 로딩 대기 중...`);
                         checkTexturesLoaded();
                     }} else {{
+                        console.log('📦 텍스처가 없음, 직접 모델 로딩 시작');
                         loadMTLAndOBJ();
                     }}
                     
-                    function loadMTLAndOBJ() {{'
+                    function loadMTLAndOBJ() {{
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     
@@ -1515,54 +1536,58 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     return html_content
 
 def create_texture_loading_code(texture_base64):
-    """텍스처 로딩 JavaScript 코드 생성 - 이미지 로딩 완료 후 텍스처 생성"""
+    """텍스처 로딩 JavaScript 코드 생성 - 안전한 오류 처리 포함"""
     if not texture_base64:
-        return "// No textures available"
+        return "console.log('📦 No textures to load');"
     
     code_lines = []
     for name, data in texture_base64.items():
-        safe_name = name.replace('.', '_').replace('-', '_')
+        safe_name = name.replace('.', '_').replace('-', '_').replace(' ', '_')
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
-                // {name} 텍스처 로딩 (동기식 - 이미지 로드 완료 후 텍스처 생성)
+                // {name} 텍스처 로딩 (안전한 오류 처리 포함)
                 (function() {{
-                    const img = new Image();
-                    const dataUrl = 'data:{mime_type};base64,{data}';
-                    
-                    // 이미지가 완전히 로드된 후에 텍스처 생성
-                    img.onload = function() {{
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        ctx.drawImage(img, 0, 0);
+                    try {{
+                        const img = new Image();
+                        const dataUrl = 'data:{mime_type};base64,{data[:100]}...'; // 로그용 축약
                         
-                        // Canvas에서 텍스처 생성
-                        const texture = new THREE.CanvasTexture(canvas);
+                        img.onload = function() {{
+                            try {{
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                ctx.drawImage(img, 0, 0);
+                                
+                                const texture = new THREE.CanvasTexture(canvas);
+                                texture.encoding = THREE.LinearEncoding;
+                                texture.flipY = true;
+                                texture.generateMipmaps = false;
+                                texture.minFilter = THREE.LinearFilter;
+                                texture.magFilter = THREE.LinearFilter;
+                                texture.anisotropy = 1;
+                                texture.wrapS = THREE.ClampToEdgeWrapping;
+                                texture.wrapT = THREE.ClampToEdgeWrapping;
+                                texture.format = THREE.RGBFormat;
+                                texture.type = THREE.UnsignedByteType;
+                                texture.needsUpdate = true;
+                                
+                                textures['{name}'] = texture;
+                                console.log('✅ Texture loaded:', '{name}');
+                            }} catch (e) {{
+                                console.error('❌ Texture processing error for {name}:', e);
+                            }}
+                        }};
                         
-                        // 텍스처 설정
-                        texture.encoding = THREE.LinearEncoding;
-                        texture.flipY = true;
-                        texture.generateMipmaps = false;
-                        texture.minFilter = THREE.LinearFilter;
-                        texture.magFilter = THREE.LinearFilter;
-                        texture.anisotropy = 1;
-                        texture.wrapS = THREE.ClampToEdgeWrapping;
-                        texture.wrapT = THREE.ClampToEdgeWrapping;
-                        texture.format = THREE.RGBFormat;
-                        texture.type = THREE.UnsignedByteType;
-                        texture.needsUpdate = true;
+                        img.onerror = function() {{
+                            console.error('❌ Failed to load texture image: {name}');
+                        }};
                         
-                        textures['{name}'] = texture;
-                        console.log('✅ Texture loaded successfully: {name}');
-                    }};
-                    
-                    img.onerror = function() {{
-                        console.error('❌ Failed to load texture: {name}');
-                    }};
-                    
-                    img.src = dataUrl;
+                        img.src = 'data:{mime_type};base64,{data}';
+                    }} catch (e) {{
+                        console.error('❌ Texture loading setup error for {name}:', e);
+                    }}
                 }})();
         """)
     
