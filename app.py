@@ -8,6 +8,7 @@ from PIL import Image
 import zipfile
 import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
+from web_database import WebServerDatabase
 from mtl_generator import auto_generate_mtl
 from viewer_utils import create_3d_viewer_html
 from texture_optimizer import auto_optimize_textures
@@ -375,9 +376,17 @@ def show_upload_section():
     """파일 업로드 섹션"""
     st.header("📤 새 모델 업로드")
     
-    # 데이터베이스 연결
-    db = ModelDatabase()
-    current_count = db.get_model_count()
+    # 데이터베이스 연결 (웹서버 DB 우선 시도, 실패 시 로컬 DB)
+    try:
+        db = WebServerDatabase()
+        # 연결 테스트
+        db.initialize_database()
+        st.success("🌐 웹서버 데이터베이스 연결 성공!")
+        current_count = 0  # 웹서버에서는 간단히 0으로 설정
+    except Exception as e:
+        st.warning(f"⚠️ 웹서버 DB 연결 실패, 로컬 DB 사용: {str(e)}")
+        db = ModelDatabase()
+        current_count = db.get_model_count()
     
     if current_count >= 20:
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")

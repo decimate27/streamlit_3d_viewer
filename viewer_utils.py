@@ -707,7 +707,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }});
             }}
             
-            // 수동으로 로컬 피드백을 서버로 동기화 (개선된 버전)
+            // 수동으로 로컬 피드백을 서버로 동기화 (간단한 버전)
             function syncFeedbacksToServer() {{
                 try {{
                     const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
@@ -720,54 +720,49 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('동기화할 피드백 수:', unsyncedFeedbacks.length);
                     
-                    // 모든 미동기화 피드백을 순차적으로 전송
-                    let syncCount = 0;
+                    // 첫 번째 피드백만 동기화 (버튼을 여러 번 클릭하여 순차 처리)
+                    const feedback = unsyncedFeedbacks[0];
+                    console.log('동기화 중:', feedback);
                     
-                    function syncNext() {{
-                        if (syncCount >= unsyncedFeedbacks.length) {{
-                            alert(`✅ 모든 피드백이 동기화되었습니다! (${syncCount}개)`);
-                            updateSyncButton();
-                            return;
-                        }}
-                        
-                        const feedback = unsyncedFeedbacks[syncCount];
-                        console.log(`동기화 중 (${syncCount + 1}/${unsyncedFeedbacks.length}):`, feedback);
-                        
-                        fetch('http://localhost:5002/save_feedback', {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json',
-                            }},
-                            body: JSON.stringify(feedback)
-                        }})
-                        .then(response => response.json())
-                        .then(data => {{
-                            if (data.success) {{
-                                console.log(`서버 저장 성공 ${syncCount + 1}/${unsyncedFeedbacks.length} - ID:`, data.feedback_id);
-                                
-                                // 로컬 스토리지에서 동기화 완료 표시
-                                let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                                const idx = allFeedbacks.findIndex(f => f.id === feedback.id);
-                                if (idx >= 0) {{
-                                    allFeedbacks[idx].server_saved = true;
-                                    allFeedbacks[idx].server_id = data.feedback_id;
-                                    localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
-                                }}
-                                
-                                syncCount++;
-                                setTimeout(syncNext, 100); // 잠시 대기 후 다음 피드백 동기화
-                            }} else {{
-                                console.error(`서버 저장 실패 ${syncCount + 1}/${unsyncedFeedbacks.length}:`, data.error);
-                                alert(`❌ 피드백 동기화 실패: ${{data.error}}`);
+                    fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify(feedback)
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        if (data.success) {{
+                            console.log('서버 저장 성공 - ID:', data.feedback_id);
+                            
+                            // 로컬 스토리지에서 동기화 완료 표시
+                            let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                            const idx = allFeedbacks.findIndex(f => f.id === feedback.id);
+                            if (idx >= 0) {{
+                                allFeedbacks[idx].server_saved = true;
+                                allFeedbacks[idx].server_id = data.feedback_id;
+                                localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
                             }}
-                        }})
-                        .catch(error => {{
-                            console.error(`네트워크 오류 ${syncCount + 1}/${unsyncedFeedbacks.length}:`, error);
-                            alert(`❌ 네트워크 오류: ${{error.message}}`);
-                        }});
-                    }}
-                    
-                    syncNext(); // 동기화 시작
+                            
+                            // 동기화 버튼 상태 업데이트
+                            updateSyncButton();
+                            
+                            const remaining = unsyncedFeedbacks.length - 1;
+                            if (remaining > 0) {{
+                                alert(`✅ 1개 피드백 동기화 완료! 남은 개수: ${{remaining}}개`);
+                            }} else {{
+                                alert('🎉 모든 피드백이 동기화되었습니다!');
+                            }}
+                        }} else {{
+                            console.error('서버 저장 실패:', data.error);
+                            alert(`❌ 피드백 동기화 실패: ${{data.error || '알 수 없는 오류'}}`);
+                        }}
+                    }})
+                    .catch(error => {{
+                        console.error('네트워크 오류:', error);
+                        alert(`❌ 네트워크 오류: ${{error.message}}`);
+                    }});
                     
                 }} catch (error) {{
                     console.error('동기화 오류:', error);
@@ -903,7 +898,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // 2. 서버로 전송 (fetch API 사용)
                 console.log('📡 서버로 피드백 전송 시도');
                 
-                fetch('http://localhost:5002/save_feedback', {{
+                fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
                     method: 'POST',
                     headers: {{
                         'Content-Type': 'application/json',
@@ -929,7 +924,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }})
                 .catch(error => {{
                     console.error('네트워크 오류:', error);
-                    console.log('서버가 실행 중인지 확인하세요: http://localhost:5002');
+                    console.log('서버가 실행 중인지 확인하세요: http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php');
                 }});
             }}
             
