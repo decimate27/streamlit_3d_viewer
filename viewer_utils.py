@@ -33,7 +33,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
                 crossorigin="anonymous"></script>
         <style>
-            * {{ box-sizing: border-box; }}
+            * { box-sizing: border-box; }
             html, body {{ 
                 margin: 0 !important; 
                 padding: 0 !important; 
@@ -676,7 +676,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             </div>
         </div>
         
-        <!-- Three.js 라이브러리 (CDN with cache) - integrity 제거 -->
+        <!-- Three.js 라이브러리 (CDN) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
                 crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>

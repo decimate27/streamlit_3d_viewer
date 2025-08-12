@@ -253,7 +253,7 @@ def show_viewer_page(model_data):
             annotations = db.get_annotations(share_token)
         
         # 3D 뷰어 HTML 생성 (배경색 및 annotations 포함)
-        from viewer_utils import create_3d_viewer_html
+        from viewer_utils_fixed import create_3d_viewer_html
         viewer_html = create_3d_viewer_html(
             obj_content, 
             mtl_content, 
