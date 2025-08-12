@@ -144,9 +144,12 @@ def show_viewer_page(model_data):
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)
         
-        # 데이터베이스에서 annotations 로드
-        db = ModelDatabase()
-        annotations = db.get_annotations(model_data['share_token'])
+        # 데이터베이스에서 annotations 로드 (share_token이 있는 경우에만)
+        annotations = []
+        share_token = model_data.get('share_token', None)
+        if share_token:
+            db = ModelDatabase()
+            annotations = db.get_annotations(share_token)
         
         # 3D 뷰어 HTML 생성 (배경색 및 annotations 포함)
         from viewer_utils import create_3d_viewer_html
@@ -155,7 +158,7 @@ def show_viewer_page(model_data):
             mtl_content, 
             texture_data, 
             background_color,
-            model_token=model_data['share_token'],
+            model_token=share_token,
             annotations=annotations
         )
         

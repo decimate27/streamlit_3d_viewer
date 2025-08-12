@@ -294,13 +294,13 @@ class ModelDatabase:
         if 'file_paths' in columns:
             # 새 스키마
             cursor.execute('''
-                SELECT id, name, author, description, file_paths, backup_paths, storage_type
+                SELECT id, name, author, description, file_paths, backup_paths, storage_type, share_token
                 FROM models WHERE share_token = ?
             ''', (share_token,))
         else:
             # 구 스키마 (호환성)
             cursor.execute('''
-                SELECT id, name, description, obj_path, mtl_path, texture_paths
+                SELECT id, name, description, obj_path, mtl_path, texture_paths, share_token
                 FROM models WHERE share_token = ?
             ''', (share_token,))
         
@@ -324,7 +324,8 @@ class ModelDatabase:
                     'description': row[3] if len(row) > 3 else '',
                     'file_paths': json.loads(row[4]) if len(row) > 4 and row[4] else {},
                     'backup_paths': json.loads(row[5]) if len(row) > 5 and row[5] else None,
-                    'storage_type': row[6] if len(row) > 6 else 'local'
+                    'storage_type': row[6] if len(row) > 6 else 'local',
+                    'share_token': row[7] if len(row) > 7 else share_token
                 }
             else:
                 # 구 스키마 (호환성)
@@ -336,7 +337,8 @@ class ModelDatabase:
                     'obj_path': row[3],
                     'mtl_path': row[4],
                     'texture_paths': json.loads(row[5]),
-                    'storage_type': 'local'
+                    'storage_type': 'local',
+                    'share_token': row[6] if len(row) > 6 else share_token
                 }
         else:
             model = None
