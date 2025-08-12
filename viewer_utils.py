@@ -23,15 +23,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     <html>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>3D Model Viewer</title>
-        
-        <!-- 캐시 정책 설정 -->
-        <meta http-equiv="Cache-Control" content="max-age=3600, must-revalidate">
-        
-        <!-- Three.js는 하단에서 로드 -->
         <style>
-            * { box-sizing: border-box; }
+            * {{ box-sizing: border-box; }}
             html, body {{ 
                 margin: 0 !important; 
                 padding: 0 !important; 
@@ -496,35 +490,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 display: block;
             }}
             
-            /* 팝업 헤더에 닫기 버튼 추가 */
-            .popup-header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-            }}
-            
-            .popup-close {{
-                background: none;
-                border: none;
-                font-size: 20px;
-                cursor: pointer;
-                color: #666;
-                padding: 0;
-                width: 24px;
-                height: 24px;
-                line-height: 1;
-            }}
-            
-            .popup-close:hover {{
-                color: #000;
-            }}
-            
             .popup-text {{
                 margin-bottom: 10px;
                 font-size: 14px;
                 color: #333;
-                word-wrap: break-word;
             }}
             
             .popup-buttons {{
@@ -538,7 +507,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 border-radius: 4px;
                 cursor: pointer;
                 font-size: 12px;
-                flex: 1;
             }}
             
             .popup-btn.complete {{
@@ -550,52 +518,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 background: #f44336;
                 color: white;
             }}
-            
-            .popup-btn.close {{
-                background: #9E9E9E;
-                color: white;
-            }}
-            
-            /* 펄스 애니메이션 */
-            @keyframes pulse {{
-                0% {{
-                    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
-                }}
-                70% {{
-                    box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);
-                }}
-                100% {{
-                    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
-                }}
-            }}
-            
-            /* 모바일 최적화 */
-            @media (max-width: 768px) {{
-                .annotation-btn, .db-save-btn {{
-                    font-size: 12px !important;
-                    padding: 8px 12px !important;
-                }}
-                
-                .top-notice {{
-                    font-size: 11px !important;
-                    padding: 4px 10px !important;
-                }}
-                
-                .annotation-modal {{
-                    width: 90% !important;
-                    max-width: 350px !important;
-                }}
-                
-                .annotation-popup {{
-                    max-width: 250px !important;
-                }}
-            }}
         </style>
     </head>
     <body>
         <!-- 상단 안내 텍스트 -->
         <div class="top-notice">
-            📝 수정점 추가/수정/삭제 후 반드시 <span style="color: red; font-weight: bold;">제출완료</span> 버튼을 눌러 DB에 저장하세요!
+            수정점 표시 다 하신후 반드시 제출완료 꼭 눌러주세요.
         </div>
         
         <!-- 수정점 표시 버튼을 최상단에 배치 -->
@@ -607,18 +535,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <button class="db-save-btn" id="dbSaveBtn" onclick="saveToDatabase()">
             제출완료
         </button>
-        
-        <!-- 캐시 상태 표시 -->
-        <div id="cacheStatus" style="position: fixed; bottom: 10px; right: 10px; 
-                                     background: rgba(0,0,0,0.7); color: white; 
-                                     padding: 5px 10px; border-radius: 5px; 
-                                     font-size: 11px; z-index: 1000; display: none;">
-            <span id="cacheText">💾 캐시 준비중...</span>
-            <button onclick="clearCache()" style="margin-left: 10px; padding: 2px 5px; 
-                                                  font-size: 10px; cursor: pointer;">
-                Clear
-            </button>
-        </div>
         
         <div id="container">
             <div class="loading-container" id="loading">
@@ -666,15 +582,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             <!-- 수정점 정보 팝업 -->
             <div class="annotation-popup" id="annotationPopup">
-                <div class="popup-header">
-                    <div class="popup-text" id="popupText"></div>
-                    <button class="popup-close" onclick="closeAnnotationPopup()">×</button>
-                </div>
+                <div class="popup-text" id="popupText"></div>
                 <div class="popup-buttons" id="popupButtons"></div>
             </div>
         </div>
         
-        <!-- Three.js 라이브러리 (안정적인 CDN) -->
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
         <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
         <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
@@ -698,13 +610,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 raycaster = new THREE.Raycaster();
                 mouse = new THREE.Vector2();
                 
-                // 마우스 이벤트
+                // 마우스 클릭 이벤트
                 renderer.domElement.addEventListener('click', onMouseClick, false);
                 renderer.domElement.addEventListener('mousemove', onMouseMove, false);
-                
-                // 터치 이벤트 (모바일)
-                renderer.domElement.addEventListener('touchstart', onTouchStart, false);
-                renderer.domElement.addEventListener('touchend', function(e) {{ e.preventDefault(); }}, false);
                 
                 // 기존 annotations 로드
                 loadExistingAnnotations();
@@ -715,8 +623,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // 서버에서 전달된 annotations 로드
                 if (initialAnnotations && initialAnnotations.length > 0) {{
                     initialAnnotations.forEach(ann => {{
-                        // 크기를 70%로 줄임 (0.05 -> 0.035)
-                        const geometry = new THREE.SphereGeometry(0.035, 16, 16);
+                        const geometry = new THREE.SphereGeometry(0.05, 16, 16);
                         const material = new THREE.MeshBasicMaterial({{ 
                             color: ann.completed ? 0x0000ff : 0xff0000 
                         }});
@@ -740,14 +647,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 updateDbSaveButton();
             }}
             
-            // 마우스/터치 클릭 처리 통합
-            function handleInteraction(clientX, clientY, event) {{
+            // 마우스 클릭 처리
+            function onMouseClick(event) {{
                 if (!model) return;
                 
-                // 좌표 계산
+                // 마우스 좌표 계산
                 const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
                 
                 raycaster.setFromCamera(mouse, camera);
                 
@@ -772,22 +679,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         const point = intersects[0].point;
                         openAnnotationModal(point);
                     }}
-                }}
-            }}
-            
-            // 마우스 클릭 처리
-            function onMouseClick(event) {{
-                event.preventDefault();
-                handleInteraction(event.clientX, event.clientY, event);
-            }}
-            
-            // 터치 이벤트 처리 (모바일)
-            function onTouchStart(event) {{
-                event.preventDefault();
-                if (event.touches.length === 1) {{
-                    // 단일 터치만 처리
-                    const touch = event.touches[0];
-                    handleInteraction(touch.clientX, touch.clientY, touch);
                 }}
             }}
             
@@ -904,39 +795,27 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function updateDbSaveButton() {{
                 const btn = document.getElementById('dbSaveBtn');
                 if (btn) {{
-                    const hasChanges = pendingAnnotations.length > 0 || 
-                                      annotations.some(a => a.modified || a.deleted);
-                    if (hasChanges) {{
-                        btn.textContent = `⚠️ 제출완료 (변경사항 ${{pendingAnnotations.length}}개)`;
+                    if (pendingAnnotations.length > 0) {{
+                        btn.textContent = `제출완료 (${{pendingAnnotations.length}})`;
                         btn.disabled = false;
-                        btn.style.backgroundColor = '#ff4444';
-                        btn.style.animation = 'pulse 1s infinite';
                     }} else {{
                         btn.textContent = '제출완료';
-                        btn.disabled = false; // 항상 활성화 상태로 유지
-                        btn.style.backgroundColor = '#2196F3';
-                        btn.style.animation = 'none';
+                        btn.disabled = true;
                     }}
                 }}
             }}
             
             // DB에 모든 수정점 저장
             function saveToDatabase() {{
-                if (!modelToken) {{
-                    showMessage('모델 토큰이 없습니다', 'error');
-                    return;
-                }}
-                
-                // 변경사항 확인
-                if (pendingAnnotations.length === 0 && !annotations.some(a => a.modified || a.deleted)) {{
-                    showMessage('변경사항이 없습니다', 'info');
+                if (!modelToken || pendingAnnotations.length === 0) {{
+                    showMessage('저장할 수정점이 없습니다', 'info');
                     return;
                 }}
                 
                 // 저장할 데이터를 JSON으로 인코딩
                 const dataToSave = {{
                     model_token: modelToken,
-                    annotations: pendingAnnotations.length > 0 ? pendingAnnotations : []
+                    annotations: pendingAnnotations
                 }};
                 
                 // Base64로 인코딩
@@ -967,37 +846,30 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // 메시지 표시 함수
             function showMessage(text, type) {{
                 const message = document.createElement('div');
-                const bgColor = type === 'success' ? '#4CAF50' : 
-                              type === 'error' ? '#f44336' : 
-                              type === 'warning' ? '#ff9800' : '#2196F3';
-                
                 message.style.cssText = `
                     position: fixed;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background: ${{bgColor}};
+                    background: ${{type === 'success' ? '#4CAF50' : '#f44336'}};
                     color: white;
                     padding: 20px;
                     border-radius: 10px;
                     font-size: 16px;
                     z-index: 100000;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                    max-width: 80%;
-                    text-align: center;
                 `;
                 message.textContent = text;
                 document.body.appendChild(message);
                 
                 setTimeout(() => {{
                     message.remove();
-                }}, 2500);
+                }}, 2000);
             }}
             
             // 수정점 생성
             function createAnnotation(point, text, id) {{
-                // 크기를 70%로 줄임 (0.05 -> 0.035)
-                const geometry = new THREE.SphereGeometry(0.035, 16, 16);
+                const geometry = new THREE.SphereGeometry(0.05, 16, 16);
                 const material = new THREE.MeshBasicMaterial({{ color: 0xff0000 }});
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.copy(point);
@@ -1026,43 +898,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 if (annotation.completed) {{
                     popupButtons.innerHTML = `
                         <button class="popup-btn delete" onclick="deleteAnnotation('${{annotation.id}}')">삭제</button>
-                        <button class="popup-btn close" onclick="closeAnnotationPopup()">닫기</button>
                     `;
                 }} else {{
                     popupButtons.innerHTML = `
                         <button class="popup-btn complete" onclick="completeAnnotation('${{annotation.id}}')">수정완료</button>
-                        <button class="popup-btn close" onclick="closeAnnotationPopup()">닫기</button>
                     `;
                 }}
                 
-                // 화면 중앙에 팝업 표시 (모바일 대응)
-                const isMobile = window.innerWidth <= 768;
-                if (isMobile) {{
-                    popup.style.left = '50%';
-                    popup.style.top = '50%';
-                    popup.style.transform = 'translate(-50%, -50%)';
-                }} else {{
-                    popup.style.left = event.clientX + 10 + 'px';
-                    popup.style.top = event.clientY + 10 + 'px';
-                    popup.style.transform = 'none';
-                }}
-                
+                popup.style.left = event.clientX + 10 + 'px';
+                popup.style.top = event.clientY + 10 + 'px';
                 popup.classList.add('show');
                 
-                // 모바일에서는 외부 클릭 감지 비활성화 (닫기 버튼으로만 닫기)
-                if (!isMobile) {{
-                    setTimeout(() => {{
-                        document.addEventListener('click', hidePopupOnClickOutside);
-                    }}, 100);
-                }}
-            }}
-            
-            // 팝업 닫기 함수
-            function closeAnnotationPopup() {{
-                const popup = document.getElementById('annotationPopup');
-                popup.classList.remove('show');
-                document.removeEventListener('click', hidePopupOnClickOutside);
-            }}
+                // 클릭 외부 영역 클릭 시 팝업 닫기
+                setTimeout(() => {{
+                    document.addEventListener('click', hidePopupOnClickOutside);
+                }}, 100);
             }}
             
             // 팝업 외부 클릭 시 숨기기
@@ -1087,8 +937,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         pending.completed = true;
                     }}
                     
-                    showMessage('✅ 수정 완료로 표시됨 (제출완료 버튼을 눌러 저장하세요)', 'info');
-                    updateDbSaveButton();
+                    showMessage('✅ 수정 완료로 표시되었습니다', 'success');
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
@@ -1108,14 +957,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         updateDbSaveButton();
                     }}
                     
-                    // DB에 저장된 항목이면 서버에서도 삭제 필요 표시
+                    // DB에 저장된 항목이면 서버에서도 삭제 필요
                     if (annotation.saved && !String(id).startsWith('temp_')) {{
                         // 삭제 마크 표시
-                        showMessage('⚠️ 삭제 완료 (제출완료 버튼을 눌러 DB에 반영하세요)', 'warning');
+                        showMessage('⚠️ DB에서 삭제하려면 페이지를 새로고침하세요', 'warning');
                     }} else {{
-                        showMessage('✅ 수정점이 삭제됨 (제출완료 버튼을 눌러 저장하세요)', 'info');
+                        showMessage('✅ 수정점이 삭제되었습니다', 'success');
                     }}
-                    updateDbSaveButton();
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
@@ -1126,47 +974,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     scene.remove(annotation.mesh);
                 }});
                 annotations = [];
-            }}
-            
-            // 캐시 관리 함수들
-            function updateCacheStatus() {{
-                const cacheStatus = document.getElementById('cacheStatus');
-                const cacheText = document.getElementById('cacheText');
-                
-                if (window.modelCache && cacheStatus) {{
-                    cacheStatus.style.display = 'block';
-                    
-                    // 캐시 크기 계산
-                    if (navigator.storage && navigator.storage.estimate) {{
-                        navigator.storage.estimate().then(estimate => {{
-                            const used = (estimate.usage / 1024 / 1024).toFixed(1);
-                            const quota = (estimate.quota / 1024 / 1024).toFixed(0);
-                            cacheText.textContent = `💾 캐시: ${{used}}MB / ${{quota}}MB`;
-                        }});
-                    }} else {{
-                        cacheText.textContent = '💾 캐시 활성화됨';
-                    }}
-                }}
-            }}
-            
-            function clearCache() {{
-                if (confirm('모든 캐시된 3D 모델을 삭제하시겠습니까?')) {{
-                    if (window.modelCache) {{
-                        window.modelCache.clearAll().then(() => {{
-                            showMessage('✅ 캐시가 삭제되었습니다', 'success');
-                            updateCacheStatus();
-                        }});
-                    }}
-                    
-                    // Service Worker 캐시도 삭제
-                    if ('caches' in window) {{
-                        caches.keys().then(names => {{
-                            names.forEach(name => {{
-                                caches.delete(name);
-                            }});
-                        }});
-                    }}
-                }}
             }}
             
             // 로딩 상태 업데이트 함수
@@ -1240,10 +1047,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 색상 인코딩 설정 - Three.js r128+ 방식 (텍스처와 일치)
-                    renderer.outputEncoding = THREE.sRGBEncoding;
+                    // 색상 보정 완전 비활성화
+                    renderer.outputEncoding = THREE.LinearEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
-                    renderer.shadowMap.enabled = false;
+                    renderer.shadowMap.enabled = false; // 그림자 비활성화
+                    renderer.gammaFactor = 1.0;
+                    renderer.gammaInput = false;
+                    renderer.gammaOutput = false;
                     renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
                     
                     // 모바일에서는 초기에 캔버스 숨기기
@@ -1273,9 +1083,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Scene setup complete');
                     
-                    // 캐시 상태 업데이트
-                    updateCacheStatus();
-                    
                     // 모델 로드
                     loadModel();
                     
@@ -1292,31 +1099,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            // 캐시 모듈 로드
-            const script = document.createElement('script');
-            script.src = '/static/model-cache.js';
-            document.head.appendChild(script);
-            
             function loadModel() {{
                 try {{
                     console.log('Starting model load...');
-                    
-                    // 캐시 기능은 나중에 활성화 (현재 비활성화)
-                    /*
-                    const modelToken = '{model_token if model_token else ""}';
-                    let cachedModel = null;
-                    if (modelToken && window.modelCache) {{
-                        try {{
-                            await window.modelCache.init();
-                            cachedModel = await window.modelCache.getModel(modelToken);
-                            if (cachedModel) {{
-                                console.log('🚀 Model loaded from cache!');
-                            }}
-                        }} catch (e) {{
-                            console.log('Cache not available:', e);
-                        }}
-                    }}
-                    */
                     
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                     const isAndroid = /Android/i.test(navigator.userAgent);
@@ -1326,15 +1111,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const textureLoader = new THREE.TextureLoader();
                     const textures = {{}};
                     
-                    // 텍스처 로딩 (Base64 방식) 
-                    console.log('=== TEXTURE LOADING DEBUG ===');
-                    console.log('Available texture names: {", ".join(texture_base64.keys())}');
-                    
+                    // 텍스처 로딩
                     {create_texture_loading_code(texture_base64)}
                     
-                    console.log('Textures object:', textures);
                     console.log('Textures loaded:', Object.keys(textures));
-                    console.log('=== TEXTURE LOADING END ===');
                     
                     // MTL 로더
                     console.log('Loading MTL...');
@@ -1366,16 +1146,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     materials.preload();
                     
                     // 모든 재질 처리
-                    console.log('=== MATERIAL PROCESSING DEBUG ===');
-                    console.log('Available materials:', Object.keys(materials.materials));
-                    console.log('Texture references:', textureRefs);
-                    
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
                         
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
-                        console.log(`Processing material: ${{materialName}}, texture: ${{textureFileName}}`);
                         
                         // MeshBasicMaterial로 변환하여 조명 영향 제거 (색상 100% 정확)
                         if (textureFileName && textures[textureFileName]) {{
@@ -1389,23 +1164,31 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 depthTest: true
                             }});
                             
-                            // 텍스처는 이미 로딩 시 설정됨 - 중복 설정 제거
+                            // 텍스처 설정
+                            basicMaterial.map.encoding = THREE.LinearEncoding;
+                            basicMaterial.map.minFilter = THREE.LinearFilter;
+                            basicMaterial.map.magFilter = THREE.LinearFilter;
+                            basicMaterial.map.generateMipmaps = false;
+                            basicMaterial.map.anisotropy = 1;
+                            basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.needsUpdate = true;
                             
                             // 기존 material을 basicMaterial로 교체
                             materials.materials[materialName] = basicMaterial;
                             
                             console.log('✅ BasicMaterial applied: ' + textureFileName);
                         }} else {{
-                            // 텍스처가 없는 경우 기본 색상 설정
-                            const fallbackMaterial = new THREE.MeshBasicMaterial({{
-                                color: 0x808080,  // 회색
-                                side: THREE.FrontSide
-                            }});
-                            materials.materials[materialName] = fallbackMaterial;
-                            console.log('⚠️ No texture found for material: ' + materialName + ', using fallback color');
+                            // 텍스처가 없는 경우 기존 설정 유지
+                            material.side = THREE.FrontSide;
+                            material.transparent = false;
+                            material.alphaTest = 0;
+                            material.depthWrite = true;
+                            material.depthTest = true;
+                            material.shininess = 0;
+                            material.specular.setRGB(0, 0, 0);
                         }}
                     }}
-                    console.log('=== MATERIAL PROCESSING END ===');
                     
                     console.log('Materials loaded');
                     
@@ -1506,26 +1289,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Model loaded successfully');
                     
-                    // 캐시 저장 기능은 나중에 활성화
-                    /*
-                    if (modelToken && window.modelCache && !cachedModel) {{
-                        try {{
-                            const textureData = {{}};
-                            const textureBase64 = {str(texture_base64) if texture_base64 else '{}'};
-                            
-                            await window.modelCache.saveModel(
-                                modelToken,
-                                `{obj_content}`,
-                                `{mtl_content}`,
-                                textureBase64
-                            );
-                            console.log('📦 Model saved to cache');
-                        }} catch (e) {{
-                            console.log('Failed to cache model:', e);
-                        }}
-                    }}
-                    */
-                    
                     // 모바일 GPU 워밍업 및 지연 표시
                     if (isMobile) {{
                         console.log('Mobile optimization: GPU warmup starting...');
@@ -1535,7 +1298,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             renderer.render(scene, camera);
                         }}
                         
-                        const delay = isAndroid ? 300 : 200;
+                        const delay = isAndroid ? 500 : 300;
                         
                         setTimeout(() => {{
                             hideLoadingSpinner();
@@ -1545,9 +1308,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             console.log('Mobile optimization complete');
                         }}, delay);
                     }} else {{
-                        // 데스크톱은 즉시 렌더링 시작
-                        hideLoadingSpinner();
-                        animate();
+                        setTimeout(() => {{
+                            hideLoadingSpinner();
+                        }}, 500);
                     }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
@@ -1766,28 +1529,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 초기화 완료 후 버튼 상태 확인
             window.addEventListener('DOMContentLoaded', function() {{
-                console.log('DOMContentLoaded event fired');
-                
-                // Service Worker 등록 (HTTPS 환경에서만)
-                if ('serviceWorker' in navigator && location.protocol === 'https:') {{
-                    navigator.serviceWorker.register('/static/service-worker.js')
-                        .then(registration => {{
-                            console.log('Service Worker registered:', registration);
-                        }})
-                        .catch(error => {{
-                            console.log('Service Worker registration failed:', error);
-                        }});
-                }}
-                
-                // IndexedDB 캐시 초기화
-                if (window.modelCache) {{
-                    window.modelCache.init().then(() => {{
-                        console.log('Model cache initialized');
-                    }}).catch(e => {{
-                        console.log('Model cache init failed:', e);
-                    }});
-                }}
-                
                 const annotationBtn = document.getElementById('annotationBtn');
                 if (annotationBtn) {{
                     console.log('수정점 표시 버튼 발견:', annotationBtn);
@@ -1797,18 +1538,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }} else {{
                     console.error('수정점 표시 버튼을 찾을 수 없습니다!');
                 }}
-                
-                // Three.js 초기화
-                init();
-                window.addEventListener('resize', onWindowResize, false);
             }});
             
-            // 대체 초기화 (DOMContentLoaded가 이미 발생한 경우)
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {{
-                console.log('Document already loaded, initializing immediately');
-                setTimeout(() => init(), 100);
-                window.addEventListener('resize', onWindowResize, false);
-            }}
+            init();
         </script>
     </body>
     </html>
@@ -1827,38 +1559,28 @@ def create_texture_loading_code(texture_base64):
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
-                // {name} 텍스처 로딩 (동기 방식)
-                console.log('Processing texture: {name}, data length: {len(data)} chars');
+                // {name} 텍스처 로딩
                 const img_{safe_name} = new Image();
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
+                const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 이미지가 로드된 후 텍스처 생성
-                const tex_{safe_name} = new THREE.Texture(img_{safe_name});
-                
-                // Three.js r128+ 호환 인코딩 설정
-                tex_{safe_name}.encoding = THREE.sRGBEncoding;
+                // 원본 색상 100% 유지
+                tex_{safe_name}.encoding = THREE.LinearEncoding;
                 tex_{safe_name}.flipY = true;
                 
-                // 필터링 설정
-                tex_{safe_name}.generateMipmaps = true;
-                tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
+                // UV Seam 방지 + 색상 정확도
+                tex_{safe_name}.generateMipmaps = false;
+                tex_{safe_name}.minFilter = THREE.LinearFilter;
                 tex_{safe_name}.magFilter = THREE.LinearFilter;
-                tex_{safe_name}.wrapS = THREE.RepeatWrapping;
-                tex_{safe_name}.wrapT = THREE.RepeatWrapping;
-                
-                // 이미지 로드 완료 시 텍스처 업데이트
-                img_{safe_name}.onload = function() {{
-                    tex_{safe_name}.needsUpdate = true;
-                    console.log('✅ Texture loaded and updated: {name}');
-                }};
-                
-                // 이미지 로드 실패 시 처리
-                img_{safe_name}.onerror = function() {{
-                    console.error('❌ Failed to load texture: {name}');
-                }};
+                tex_{safe_name}.anisotropy = 1;
+                tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
+                tex_{safe_name}.type = THREE.UnsignedByteType;
+                tex_{safe_name}.needsUpdate = true;
                 
                 textures['{name}'] = tex_{safe_name};
-                console.log('Texture initialized: {name}');
+                console.log('Texture loaded with original colors: {name}');
         """)
     
     return '\n'.join(code_lines)

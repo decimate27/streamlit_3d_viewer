@@ -205,43 +205,6 @@ def show_viewer_page(model_data):
         query_params = st.query_params
         background_color = query_params.get("bg", "white")
         
-        # annotations 저장 처리
-        action = query_params.get("action", None)
-        if action == "save_annotations":
-            import base64
-            import json
-            from urllib.parse import unquote
-            
-            data_param = query_params.get("data", None)
-            if data_param:
-                try:
-                    # Base64 디코딩
-                    decoded_data = base64.b64decode(data_param)
-                    json_str = unquote(decoded_data.decode('utf-8'))
-                    data = json.loads(json_str)
-                    
-                    model_token = data.get('model_token')
-                    new_annotations = data.get('annotations', [])
-                    
-                    if model_token and new_annotations:
-                        db = ModelDatabase()
-                        # 기존 annotations 삭제 후 새로 저장
-                        for ann in new_annotations:
-                            db.add_annotation(
-                                model_token,
-                                ann['position'],
-                                ann['text'],
-                                ann.get('completed', False)
-                            )
-                        st.success(f"✅ {len(new_annotations)}개의 수정점이 저장되었습니다!")
-                        
-                        # 저장 후 action 파라미터 제거하고 리다이렉트
-                        import time
-                        time.sleep(1)
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"수정점 저장 중 오류 발생: {str(e)}")
-        
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)
         
@@ -253,7 +216,7 @@ def show_viewer_page(model_data):
             annotations = db.get_annotations(share_token)
         
         # 3D 뷰어 HTML 생성 (배경색 및 annotations 포함)
-        from viewer_utils_fixed import create_3d_viewer_html
+        from viewer_utils import create_3d_viewer_html
         viewer_html = create_3d_viewer_html(
             obj_content, 
             mtl_content, 

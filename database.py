@@ -397,15 +397,15 @@ class ModelDatabase:
         return count
     
     # ============ Annotations 관련 메서드 ============
-    def add_annotation(self, model_token, position, text, completed=False):
+    def add_annotation(self, model_token, position, text):
         """수정점 추가"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
             INSERT INTO annotations (model_token, position_x, position_y, position_z, text, completed)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (model_token, position['x'], position['y'], position['z'], text, int(completed)))
+            VALUES (?, ?, ?, ?, ?, 0)
+        ''', (model_token, position['x'], position['y'], position['z'], text))
         
         annotation_id = cursor.lastrowid
         conn.commit()

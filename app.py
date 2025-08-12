@@ -15,11 +15,6 @@ from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 from auth import check_password, show_logout_button, update_activity_time, show_session_info
 
-# 정적 파일 경로 설정
-STATIC_DIR = Path(__file__).parent / "static"
-if not STATIC_DIR.exists():
-    STATIC_DIR.mkdir(exist_ok=True)
-
 # 페이지 설정 (항상 먼저 실행)
 st.set_page_config(
     page_title="3D Model Manager",
