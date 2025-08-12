@@ -215,12 +215,16 @@ class WebServerDatabase:
         """모든 모델 목록 조회"""
         try:
             params = {'action': 'list'}
+            print(f"웹서버 API 호출: {self.model_api_url}?action=list")  # 디버깅
             response = requests.get(self.model_api_url, params=params, timeout=30, verify=False)
             
             if response.status_code == 200:
                 result = response.json()
+                print(f"웹서버 응답: {result}")  # 디버깅
                 if result.get('status') == 'success':
-                    return result.get('models', [])
+                    models = result.get('models', [])
+                    print(f"웹서버에서 {len(models)}개 모델 반환")  # 디버깅
+                    return models
             
             return []
         except Exception as e:

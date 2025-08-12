@@ -74,6 +74,8 @@ def show_viewer_page(model_data):
                 st.stop()
     
     # 기존 피드백 조회
+    print(f"📋 피드백 조회 - Model ID: {model_data['id']}, Storage: {model_data.get('storage_type', 'unknown')}")  # 디버깅
+    
     if model_data.get('storage_type') == 'web':
         # 웹서버 모델인 경우 웹서버에서 피드백 조회
         web_db = WebServerDatabase()
@@ -82,7 +84,12 @@ def show_viewer_page(model_data):
         # 로컬 모델인 경우 로컬 DB에서 조회
         db = ModelDatabase()
         existing_feedbacks = db.get_feedbacks(model_data['id'])
-    print(f"📊 기존 피드백 수: {len(existing_feedbacks)}")  # 디버깅 로그
+    
+    print(f"📊 Model {model_data['id']}의 피드백 수: {len(existing_feedbacks)}")  # 디버깅
+    
+    # 피드백 내용 확인 (디버깅)
+    if existing_feedbacks:
+        print(f"첫 번째 피드백: {existing_feedbacks[0]}")  # 디버깅
     
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
@@ -228,8 +235,11 @@ def show_shared_model():
         
         if obj_content and model_info:
             # 웹서버에서 찾은 모델 데이터를 형식에 맞게 변환
+            # model_id가 없으면 share_token을 id로 사용
+            model_id = model_info.get('id') or model_info.get('model_id') or token
+            
             model_data = {
-                'id': model_info.get('id', token),
+                'id': model_id,
                 'name': model_info.get('name', 'Unknown Model'),
                 'author': model_info.get('author', 'Unknown'),
                 'description': model_info.get('description', ''),
@@ -240,6 +250,8 @@ def show_shared_model():
                 'mtl_content': mtl_content,
                 'texture_data': texture_data
             }
+            
+            print(f"웹서버 모델 로드: ID={model_id}, Name={model_data['name']}")  # 디버깅
     
     if not model_data:
         st.error("모델을 찾을 수 없습니다.")
