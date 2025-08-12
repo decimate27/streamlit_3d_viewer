@@ -430,10 +430,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 렌더러 추가 설정
-                    renderer.outputEncoding = THREE.sRGBEncoding;
-                    renderer.toneMapping = THREE.NoToneMapping;
+                    // 렌더러 설정 - 색상 정확도 유지
+                    renderer.outputEncoding = THREE.LinearEncoding; // sRGB가 아닌 Linear 사용
+                    renderer.toneMapping = THREE.NoToneMapping; // 톤매핑 없음
                     renderer.shadowMap.enabled = false;
+                    renderer.gammaFactor = 1.0; // 감마 보정 없음
                     
                     // 모바일에서는 초기에 캔버스 숨기기
                     if (isMobile) {{
@@ -455,11 +456,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
                     
-                    // 조명 설정
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+                    // 조명 설정 - 색상 정확도를 위해 중립적인 조명
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 주변광 약간 감소
                     scene.add(ambientLight);
                     
-                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.3);
+                    // 방향광 - 매우 약하게 (형태감만 살짝)
+                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.2);
                     directionalLight1.position.set(1, 1, 1);
                     scene.add(directionalLight1);
                     
@@ -541,14 +543,23 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         material.alphaTest = 0;
                         material.depthWrite = true;
                         material.depthTest = true;
+                        
+                        // 색상 정확도 유지 - 반사/광택 제거만
                         material.shininess = 0;
                         material.specular.setRGB(0, 0, 0);
+                        
+                        // 색상 관련 설정 - 원본 유지
+                        material.color = material.color || new THREE.Color(1, 1, 1); // 흰색 기본값
+                        material.emissive = material.emissive || new THREE.Color(0, 0, 0); // 발광 없음
                         
                         // 텍스처 적용
                         const textureFileName = textureRefs[materialName];
                         if (textureFileName && textures[textureFileName]) {{
                             material.map = textures[textureFileName];
                             material.map.sourceFile = textureFileName;
+                            
+                            // 색상 정확도 유지
+                            material.map.encoding = THREE.LinearEncoding;
                             
                             // UV Seam 방지를 위한 텍스처 설정
                             material.map.minFilter = THREE.LinearFilter;
@@ -864,6 +875,10 @@ def create_texture_loading_code(texture_base64):
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
+                // 색상 정확도 유지 설정
+                tex_{safe_name}.encoding = THREE.LinearEncoding; // 원본 색상 유지
+                tex_{safe_name}.flipY = true; // Y축 플립 (Three.js 기본값)
+                
                 // UV Seam 방지 설정
                 tex_{safe_name}.generateMipmaps = false;
                 tex_{safe_name}.minFilter = THREE.LinearFilter;
@@ -872,6 +887,7 @@ def create_texture_loading_code(texture_base64):
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.format = THREE.RGBAFormat;
+                tex_{safe_name}.type = THREE.UnsignedByteType;
                 tex_{safe_name}.needsUpdate = true;
                 
                 textures['{name}'] = tex_{safe_name};
