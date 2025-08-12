@@ -317,19 +317,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             /* 수정점 표시 버튼 스타일 */
             .annotation-btn {{
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 10px 15px;
-                background: #ff4444;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: bold;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                z-index: 10000;
+                position: fixed !important;
+                top: 20px !important;
+                right: 20px !important;
+                padding: 10px 15px !important;
+                background: #ff4444 !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 5px !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                font-weight: bold !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+                z-index: 99999 !important;
+                display: block !important;
+                visibility: visible !important;
             }}
             
             .annotation-btn.active {{
@@ -337,7 +339,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             }}
             
             .annotation-btn:hover {{
-                background: #ff6666;
+                background: #ff6666 !important;
+            }}
+            
+            /* 모바일 반응형 수정점 버튼 */
+            @media (max-width: 768px) {{
+                .annotation-btn {{
+                    top: 10px !important;
+                    right: 10px !important;
+                    padding: 8px 10px !important;
+                    font-size: 12px !important;
+                }}
+            }}
+            
+            @media (max-width: 480px) {{
+                .annotation-btn {{
+                    top: 5px !important;
+                    right: 5px !important;
+                    padding: 6px 8px !important;
+                    font-size: 11px !important;
+                }}
             }}
             
             /* 수정점 입력 모달 */
@@ -455,6 +476,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         </style>
     </head>
     <body>
+        <!-- 수정점 표시 버튼을 최상단에 배치 -->
+        <button class="annotation-btn" id="annotationBtn" onclick="toggleAnnotationMode()">
+            수정점표시
+        </button>
+        
         <div id="container">
             <div class="loading-container" id="loading">
                 <div class="logo-container">
@@ -487,11 +513,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     <span class="btn-text-mobile">⚫</span>
                 </button>
             </div>
-            
-            <!-- 수정점 표시 버튼 -->
-            <button class="annotation-btn" id="annotationBtn" onclick="toggleAnnotationMode()">
-                수정점표시
-            </button>
             
             <!-- 수정점 입력 모달 -->
             <div class="modal-overlay" id="modalOverlay"></div>
@@ -1318,6 +1339,20 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     console.log('컨트롤 요소:', controls);
                     console.log('버튼 개수:', buttons.length);
                     
+                    // 수정점 표시 버튼 확인 및 생성
+                    const annotationBtn = document.getElementById('annotationBtn');
+                    if (!annotationBtn) {{
+                        console.log('수정점 표시 버튼이 없음 - 강제 생성');
+                        const newBtn = document.createElement('button');
+                        newBtn.className = 'annotation-btn';
+                        newBtn.id = 'annotationBtn';
+                        newBtn.textContent = '수정점표시';
+                        newBtn.onclick = toggleAnnotationMode;
+                        document.body.appendChild(newBtn);
+                    }} else {{
+                        console.log('수정점 표시 버튼이 정상적으로 존재함');
+                    }}
+                    
                     if (!controls || buttons.length === 0) {{
                         console.log('버튼이 없음 - 강제 생성');
                         createBackgroundButtons();
@@ -1325,6 +1360,19 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         console.log('버튼이 정상적으로 존재함');
                     }}
                 }}, 1000);
+            }});
+            
+            // 초기화 완료 후 버튼 상태 확인
+            window.addEventListener('DOMContentLoaded', function() {{
+                const annotationBtn = document.getElementById('annotationBtn');
+                if (annotationBtn) {{
+                    console.log('수정점 표시 버튼 발견:', annotationBtn);
+                    console.log('버튼 스타일:', window.getComputedStyle(annotationBtn).display);
+                    console.log('버튼 위치:', window.getComputedStyle(annotationBtn).position);
+                    console.log('버튼 z-index:', window.getComputedStyle(annotationBtn).zIndex);
+                }} else {{
+                    console.error('수정점 표시 버튼을 찾을 수 없습니다!');
+                }}
             }});
             
             init();
