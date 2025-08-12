@@ -761,7 +761,23 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }})
                     .catch(error => {{
                         console.error('네트워크 오류:', error);
-                        alert(`❌ 네트워크 오류: ${{error.message}}`);
+                        
+                        // Mixed Content 오류인지 확인
+                        if (error.message.includes('Failed to fetch') && window.location.protocol === 'https:') {{
+                            alert(`❌ 보안 오류: HTTPS 페이지에서 HTTP API 호출이 차단되었습니다.
+
+해결 방법:
+1. 주소창 오른쪽의 방패 아이콘 클릭
+2. "안전하지 않은 콘텐츠 허용" 선택  
+3. 페이지 새로고침
+
+또는 Chrome에서:
+1. 주소창 왼쪽의 자물쇠 아이콘 클릭
+2. "Site settings" 클릭
+3. "Insecure content" 를 "Allow" 로 변경`);
+                        }} else {{
+                            alert(`❌ 네트워크 오류: ${{error.message}}`);
+                        }}
                     }});
                     
                 }} catch (error) {{
@@ -924,6 +940,17 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }})
                 .catch(error => {{
                     console.error('네트워크 오류:', error);
+                    
+                    // Mixed Content 오류인지 확인
+                    if (error.message.includes('Failed to fetch') && window.location.protocol === 'https:') {{
+                        alert(`❌ 보안 오류: HTTPS에서 HTTP API 차단됨
+
+해결 방법:
+1. 브라우저 주소창의 방패🛡️ 아이콘 클릭
+2. "안전하지 않은 콘텐츠 허용" 선택
+3. 페이지 새로고침 후 다시 시도`);
+                    }}
+                    
                     console.log('서버가 실행 중인지 확인하세요: http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php');
                 }});
             }}
