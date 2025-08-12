@@ -1240,8 +1240,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 색상 보정 완전 비활성화 - Three.js r128+ 방식
-                    renderer.outputEncoding = THREE.LinearEncoding;
+                    // 색상 인코딩 설정 - Three.js r128+ 방식 (텍스처와 일치)
+                    renderer.outputEncoding = THREE.sRGBEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
                     renderer.shadowMap.enabled = false;
                     renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
@@ -1379,15 +1379,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 depthTest: true
                             }});
                             
-                            // 텍스처 설정
-                            basicMaterial.map.encoding = THREE.LinearEncoding;
-                            basicMaterial.map.minFilter = THREE.LinearFilter;
-                            basicMaterial.map.magFilter = THREE.LinearFilter;
-                            basicMaterial.map.generateMipmaps = false;
-                            basicMaterial.map.anisotropy = 1;
-                            basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
-                            basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
-                            basicMaterial.map.needsUpdate = true;
+                            // 텍스처는 이미 로딩 시 설정됨 - 중복 설정 제거
                             
                             // 기존 material을 basicMaterial로 교체
                             materials.materials[materialName] = basicMaterial;
@@ -1825,28 +1817,32 @@ def create_texture_loading_code(texture_base64):
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
-                // {name} 텍스처 로딩
+                // {name} 텍스처 로딩 (동기 방식)
                 const img_{safe_name} = new Image();
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
-                const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 원본 색상 100% 유지
-                tex_{safe_name}.encoding = THREE.LinearEncoding;
+                // 이미지가 로드된 후 텍스처 생성
+                const tex_{safe_name} = new THREE.Texture(img_{safe_name});
+                
+                // Three.js r128+ 호환 인코딩 설정
+                tex_{safe_name}.encoding = THREE.sRGBEncoding;
                 tex_{safe_name}.flipY = true;
                 
-                // UV Seam 방지 + 색상 정확도
-                tex_{safe_name}.generateMipmaps = false;
-                tex_{safe_name}.minFilter = THREE.LinearFilter;
+                // 필터링 설정
+                tex_{safe_name}.generateMipmaps = true;
+                tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
                 tex_{safe_name}.magFilter = THREE.LinearFilter;
-                tex_{safe_name}.anisotropy = 1;
-                tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
-                tex_{safe_name}.type = THREE.UnsignedByteType;
-                tex_{safe_name}.needsUpdate = true;
+                tex_{safe_name}.wrapS = THREE.RepeatWrapping;
+                tex_{safe_name}.wrapT = THREE.RepeatWrapping;
+                
+                // 이미지 로드 완료 시 텍스처 업데이트
+                img_{safe_name}.onload = function() {{
+                    tex_{safe_name}.needsUpdate = true;
+                    console.log('Texture loaded and updated: {name}');
+                }};
                 
                 textures['{name}'] = tex_{safe_name};
-                console.log('Texture loaded with original colors: {name}');
+                console.log('Texture initialized: {name}');
         """)
     
     return '\n'.join(code_lines)
