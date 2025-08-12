@@ -685,34 +685,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            // 페이지 로드 시 localStorage 확인 및 서버 동기화
-            window.addEventListener('load', function() {{
-                if (modelToken) {{
-                    const pendingAnnotations = JSON.parse(localStorage.getItem('pendingAnnotations_' + modelToken) || '[]');
-                    if (pendingAnnotations.length > 0) {{
-                        console.log('Pending annotations found:', pendingAnnotations.length);
-                        // 첫 번째 pending annotation을 URL 파라미터로 전송
-                        const first = pendingAnnotations[0];
-                        const params = new URLSearchParams(window.location.search);
-                        params.set('action', 'add_annotation');
-                        params.set('x', first.position.x);
-                        params.set('y', first.position.y);
-                        params.set('z', first.position.z);
-                        params.set('text', first.text);
-                        
-                        // 나머지는 localStorage에 유지
-                        pendingAnnotations.shift();
-                        if (pendingAnnotations.length > 0) {{
-                            localStorage.setItem('pendingAnnotations_' + modelToken, JSON.stringify(pendingAnnotations));
-                        }} else {{
-                            localStorage.removeItem('pendingAnnotations_' + modelToken);
-                        }}
-                        
-                        // 서버로 전송
-                        window.location.href = window.location.pathname + '?' + params.toString();
-                    }}
-                }}
-            }});
+            // Base64 인코딩/디코딩 함수
+            function encodeBase64(str) {{
+                return btoa(unescape(encodeURIComponent(str)));
+            }}
+            
+            function decodeBase64(str) {{
+                return decodeURIComponent(escape(atob(str)));
+            }}
             
             // 서버에 수정점 저장
             function saveAnnotationToServer(point, text) {{
@@ -721,16 +701,24 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     return;
                 }}
                 
-                // URL 파라미터로 직접 전송
-                const params = new URLSearchParams(window.location.search);
-                params.set('action', 'add_annotation');
-                params.set('x', point.x);
-                params.set('y', point.y);
-                params.set('z', point.z);
-                params.set('text', text);
-                
-                // 페이지 리로드하여 서버에 저장
-                window.location.href = window.location.pathname + '?' + params.toString();
+                try {{
+                    // 텍스트를 Base64로 인코딩
+                    const encodedText = encodeBase64(text);
+                    
+                    // URL 파라미터로 전송
+                    const params = new URLSearchParams();
+                    params.set('action', 'add_annotation');
+                    params.set('x', point.x.toFixed(6));
+                    params.set('y', point.y.toFixed(6));
+                    params.set('z', point.z.toFixed(6));
+                    params.set('text_b64', encodedText);
+                    
+                    // 페이지 리로드하여 서버에 저장
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                }} catch (error) {{
+                    console.error('Error saving annotation:', error);
+                    alert('수정점 저장 중 오류가 발생했습니다.');
+                }}
             }}
             
             // 수정점 생성

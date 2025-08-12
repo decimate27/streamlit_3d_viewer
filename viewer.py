@@ -20,34 +20,49 @@ def show_viewer_page(model_data):
     if action and share_token:
         db = ModelDatabase()
         
-        if action == "add_annotation":
-            # 새 수정점 추가
-            x = float(query_params.get("x", "0"))
-            y = float(query_params.get("y", "0"))
-            z = float(query_params.get("z", "0"))
-            text = query_params.get("text", "")
+        try:
+            if action == "add_annotation":
+                # 새 수정점 추가
+                x = float(query_params.get("x", "0"))
+                y = float(query_params.get("y", "0"))
+                z = float(query_params.get("z", "0"))
+                
+                # Base64로 인코딩된 텍스트 또는 일반 텍스트 처리
+                text_b64 = query_params.get("text_b64", "")
+                text = query_params.get("text", "")
+                
+                if text_b64:
+                    # Base64 디코딩
+                    import base64
+                    try:
+                        text = base64.b64decode(text_b64).decode('utf-8')
+                    except:
+                        text = text_b64  # 디코딩 실패 시 원본 사용
+                
+                if text:
+                    db.add_annotation(share_token, {"x": x, "y": y, "z": z}, text)
+                    # 파라미터 제거하고 리다이렉트
+                    st.query_params.clear()
+                    st.rerun()
             
-            if text:
-                db.add_annotation(share_token, {"x": x, "y": y, "z": z}, text)
-                # 파라미터 제거하고 리다이렉트
-                st.query_params.clear()
-                st.rerun()
-        
-        elif action == "complete_annotation":
-            # 수정점 완료 처리
-            annotation_id = query_params.get("annotation_id", "")
-            if annotation_id:
-                db.update_annotation_status(int(annotation_id), True)
-                st.query_params.clear()
-                st.rerun()
-        
-        elif action == "delete_annotation":
-            # 수정점 삭제
-            annotation_id = query_params.get("annotation_id", "")
-            if annotation_id:
-                db.delete_annotation(int(annotation_id))
-                st.query_params.clear()
-                st.rerun()
+            elif action == "complete_annotation":
+                # 수정점 완료 처리
+                annotation_id = query_params.get("annotation_id", "")
+                if annotation_id:
+                    db.update_annotation_status(int(annotation_id), True)
+                    st.query_params.clear()
+                    st.rerun()
+            
+            elif action == "delete_annotation":
+                # 수정점 삭제
+                annotation_id = query_params.get("annotation_id", "")
+                if annotation_id:
+                    db.delete_annotation(int(annotation_id))
+                    st.query_params.clear()
+                    st.rerun()
+        except Exception as e:
+            st.error(f"수정점 처리 중 오류: {str(e)}")
+            st.query_params.clear()
     
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
