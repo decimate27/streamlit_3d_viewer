@@ -29,9 +29,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <!-- 캐시 정책 설정 -->
         <meta http-equiv="Cache-Control" content="max-age=3600, must-revalidate">
         
-        <!-- Three.js CDN with cache - integrity 제거 -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
-                crossorigin="anonymous"></script>
+        <!-- Three.js는 하단에서 로드 -->
         <style>
             * { box-sizing: border-box; }
             html, body {{ 
@@ -676,12 +674,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             </div>
         </div>
         
-        <!-- Three.js 라이브러리 (CDN) -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
-                crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+        <!-- Three.js 라이브러리 (안정적인 CDN) -->
+        <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+        <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+        <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+        <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
         
         <script>
             let scene, camera, renderer, controls;
@@ -1243,13 +1240,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 색상 보정 완전 비활성화
+                    // 색상 보정 완전 비활성화 - Three.js r128+ 방식
                     renderer.outputEncoding = THREE.LinearEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
-                    renderer.shadowMap.enabled = false; // 그림자 비활성화
-                    renderer.gammaFactor = 1.0;
-                    renderer.gammaInput = false;
-                    renderer.gammaOutput = false;
+                    renderer.shadowMap.enabled = false;
                     renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
                     
                     // 모바일에서는 초기에 캔버스 숨기기
