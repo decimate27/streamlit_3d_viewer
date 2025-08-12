@@ -247,8 +247,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     scene = new THREE.Scene();
                     scene.background = new THREE.Color(0x{bg_color[1:]});
                     
-                    // Camera 생성
-                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    // Camera 생성 - 제품 전시용 FOV (45도)
+                    // FOV 45도: 왜곡 최소화, 전문적인 제품 사진 느낌
+                    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
                     camera.position.set(0, 0, 5);
                     
                     // Renderer 생성
@@ -259,13 +260,19 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setClearColor(0x{bg_color[1:]}, 1); // 초기 배경색 설정
                     container.appendChild(renderer.domElement);
                     
-                    // Controls 생성
+                    // Controls 생성 - 제품 전시용 설정
                     controls = new THREE.OrbitControls(camera, renderer.domElement);
                     controls.enableDamping = true;
-                    controls.dampingFactor = 0.05;
+                    controls.dampingFactor = 0.08; // 더 부드러운 움직임
                     controls.enableZoom = true;
                     controls.enablePan = true;
                     controls.enableRotate = true;
+                    controls.rotateSpeed = 0.5; // 천천히 회전
+                    controls.zoomSpeed = 0.8; // 부드러운 줌
+                    
+                    // 줌 제한 설정 (너무 가깝거나 멀어지지 않도록)
+                    controls.minDistance = 2;
+                    controls.maxDistance = 10;
                     
                     // 조명 설정 - 매트한 렌더링용
                     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // 밝은 주변광
@@ -431,10 +438,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }});
                     console.log('=========================');
                     
-                    // 카메라 위치 조정
-                    const distance = maxDim * scale * 2;
-                    camera.position.set(distance, distance, distance);
+                    // 카메라 위치 조정 - FOV 45도에 맞춰 거리 증가
+                    // FOV가 작아지면 같은 크기로 보이려면 더 멀리서 봐야 함
+                    const distance = maxDim * scale * 3; // 2 -> 3으로 증가
+                    camera.position.set(distance, distance * 0.7, distance);
                     camera.lookAt(0, 0, 0);
+                    
+                    // 카메라 설정 로그
+                    console.log('Camera FOV: 45° (Product display mode)');
+                    console.log('Camera distance: ' + distance.toFixed(2));
                     
                     console.log('Model loaded successfully');
                     document.getElementById('loading').style.display = 'none';
