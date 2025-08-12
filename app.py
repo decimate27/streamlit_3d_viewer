@@ -13,12 +13,17 @@ from viewer_utils import create_3d_viewer_html
 from texture_optimizer import auto_optimize_textures
 from viewer import show_shared_model
 from viewer_utils import create_3d_viewer_html, create_texture_loading_code
+from auth import check_password, show_logout_button
 
 # URL 파라미터 체크
 query_params = st.query_params
 if 'token' in query_params:
-    # 공유 링크로 접근한 경우
+    # 공유 링크로 접근한 경우 (인증 불필요)
     show_shared_model()
+    st.stop()
+
+# 관리자 페이지는 인증 필요
+if not check_password():
     st.stop()
 
 # 메인 관리 페이지
@@ -340,6 +345,11 @@ def show_model_management():
 
 def main():
     st.title("🎮 (주)에어바이블 3D 모델 고객용 뷰어 관리")
+    
+    # 상단에 로그아웃 버튼 표시
+    col1, col2 = st.columns([4, 1])
+    with col2:
+        show_logout_button()
     
     # 탭 생성
     tab1, tab2, tab3 = st.tabs(["📤 업로드", "📋 관리", "ℹ️ 사용법"])
