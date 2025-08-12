@@ -560,7 +560,7 @@ def show_model_management():
             title_format = f"{model['name']} 🍀(조회수 : {model['access_count']}) - {author_text} - {created_date}"
         
         with st.expander(f"{title_format} {storage_icon}"):
-            col1, col2, col3 = st.columns([2, 1, 1])
+            col1, col2 = st.columns([3, 1])
             
             with col1:
                 st.write(f"**모델명:** {model['name']}")
@@ -574,43 +574,15 @@ def show_model_management():
                 st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
             
             with col2:
-                # 미리보기 버튼
-                if st.button("미리보기", key=f"preview_{model['id']}"):
-                    st.session_state[f"show_preview_{model['id']}"] = True
-            
-            with col3:
-                # 삭제 버튼
-                if st.button("🗑️ 삭제", key=f"delete_{model['id']}", type="secondary"):
+                # 삭제 버튼 (상단에 배치)
+                st.write("")  # 여백
+                st.write("")  # 여백
+                if st.button("🗑️ 삭제", key=f"delete_{model['id']}", type="secondary", use_container_width=True):
                     if db.delete_model(model['id']):
                         st.success("모델이 삭제되었습니다.")
                         st.rerun()
                     else:
                         st.error("삭제 중 오류가 발생했습니다.")
-            
-            # 미리보기 표시
-            if st.session_state.get(f"show_preview_{model['id']}", False):
-                try:
-                    # 배경색 선택
-                    bg_colors = {
-                        "⚪ 흰색": "white",
-                        "🔘 회색": "gray",
-                        "⚫ 검은색": "black"
-                    }
-                    
-                    selected_bg = st.selectbox(
-                        "배경색 선택",
-                        options=list(bg_colors.keys()),
-                        key=f"bg_select_{model['id']}"
-                    )
-                    background_color = bg_colors[selected_bg]
-                    
-                    model_data = db.get_model_by_token(model['share_token'])
-                    if model_data:
-                        obj_content, mtl_content, texture_data = load_model_files(model_data)
-                        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
-                        st.components.v1.html(viewer_html, height=600, scrolling=False)
-                except Exception as e:
-                    st.error(f"미리보기 로딩 중 오류: {str(e)}")
 
 def main():
     # 타이틀은 이미 상단에 표시됨
