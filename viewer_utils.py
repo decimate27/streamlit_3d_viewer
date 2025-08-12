@@ -914,7 +914,7 @@ def create_texture_loading_code(texture_base64):
                 tex_{safe_name}.anisotropy = 1;
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.format = THREE.RGBFormat; // RGBA 대신 RGB 사용
+                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
                 tex_{safe_name}.type = THREE.UnsignedByteType;
                 tex_{safe_name}.needsUpdate = true;
                 
