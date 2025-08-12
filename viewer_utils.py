@@ -1,4 +1,5 @@
 import base64
+import json
 from pathlib import Path
 
 def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_id=None, existing_feedbacks=None):
