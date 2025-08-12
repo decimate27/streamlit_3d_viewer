@@ -60,11 +60,11 @@ img[alt*="Streamlit"], img[src*="streamlit"] {display: none;}
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 타이틀과 세션 정보
-col1, col2 = st.columns([3, 1])
+col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
 with col1:
     st.title("🎮 3D Model Manager")
 with col2:
-    # 세션 정보 표시 (우측 상단)
+    # 세션 정보 표시
     import time
     from datetime import datetime
     
@@ -74,11 +74,17 @@ with col2:
         
         if remaining_time > 0:
             mins = int(remaining_time // 60)
-            st.success(f"세션: {mins}분 남음")
-        
-        if st.button("🚪 로그아웃", key="header_logout"):
-            from auth import logout
-            logout()
+            st.success(f"세션: {mins}분")
+with col3:
+    # 새로고침 버튼
+    if st.button("🔄 새로고침", key="header_refresh"):
+        st.rerun()
+with col4:
+    # 로그아웃 버튼
+    if st.button("🚪 로그아웃", key="header_logout"):
+        from auth import logout
+        logout()
+        st.rerun()
 
 class ModelProcessor:
     def __init__(self):

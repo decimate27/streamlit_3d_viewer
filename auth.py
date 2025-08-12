@@ -87,6 +87,13 @@ def check_password():
     """비밀번호 확인 함수"""
     init_session_state()
     
+    # 로그아웃 처리 (callback 밖에서)
+    if st.session_state.get("logout_clicked", False):
+        del st.session_state["logout_clicked"]
+        st.success("👋 로그아웃되었습니다.")
+        time.sleep(0.5)
+        st.rerun()
+    
     # 이미 로그인되어 있고 세션이 유효한 경우
     if is_session_valid():
         # 세션 정보 사이드바에 표시
@@ -106,6 +113,7 @@ def check_password():
             # 로그아웃 버튼
             if st.button("🚪 로그아웃", key="sidebar_logout"):
                 logout()
+                st.rerun()  # 버튼 클릭 후 리런
         
         return True
     
@@ -126,12 +134,18 @@ def check_password():
         if hash_password(st.session_state["password"]) == hash_password(ADMIN_PASSWORD):
             record_successful_login()
             del st.session_state["password"]  # 입력된 비밀번호는 즉시 삭제
-            st.success("✅ 로그인 성공! 60분 동안 세션이 유지됩니다.")
-            time.sleep(1)
-            st.rerun()
+            st.session_state["just_logged_in"] = True  # 로그인 성공 플래그
+            # st.rerun() 제거 - callback 내에서는 사용하지 않음
         else:
             st.session_state["password_correct"] = False
             record_failed_attempt()
+    
+    # 로그인 성공 처리 (callback 밖에서)
+    if st.session_state.get("just_logged_in", False):
+        del st.session_state["just_logged_in"]
+        st.success("✅ 로그인 성공! 60분 동안 세션이 유지됩니다.")
+        time.sleep(0.5)
+        st.rerun()
     
     # 로그인 폼 표시
     st.markdown("### 🔐 관리자 인증")
@@ -187,14 +201,13 @@ def logout():
     st.session_state["login_time"] = 0
     st.session_state["last_activity_time"] = 0
     st.session_state["login_attempts"] = 0
-    st.success("👋 로그아웃되었습니다.")
-    time.sleep(1)
-    st.rerun()
+    st.session_state["logout_clicked"] = True  # 로그아웃 플래그
 
 def show_logout_button():
     """로그아웃 버튼 표시 (메인 영역용)"""
     if st.button("🚪 로그아웃", key="main_logout"):
         logout()
+        st.rerun()  # 버튼 클릭 후 리런
 
 # 세션 상태 디버깅용 함수
 def show_session_info():
