@@ -207,11 +207,67 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     display: none;
                 }}
             }}
+            
+            /* 로딩 스피너 스타일 */
+            .loading-container {{
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                z-index: 1000;
+            }}
+            
+            .spinner {{
+                width: 50px;
+                height: 50px;
+                margin: 0 auto 20px;
+                border: 4px solid rgba(0, 0, 0, 0.1);
+                border-top-color: #3498db;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }}
+            
+            /* 다크 배경용 스피너 */
+            .spinner-dark {{
+                border-color: rgba(255, 255, 255, 0.2);
+                border-top-color: #3498db;
+            }}
+            
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            
+            .loading-text {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                font-size: 16px;
+                color: #333;
+                margin-top: 10px;
+            }}
+            
+            .loading-text-dark {{
+                color: #fff;
+            }}
+            
+            .loading-progress {{
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
+            }}
+            
+            .loading-progress-dark {{
+                color: #aaa;
+            }}
         </style>
     </head>
     <body>
         <div id="container">
-            <div class="loading" id="loading">모델 로딩 중...</div>
+            <div class="loading-container" id="loading">
+                <div class="spinner" id="spinner"></div>
+                <div class="loading-text" id="loadingText">3D 모델 로딩 중...</div>
+                <div class="loading-progress" id="loadingProgress">초기화 중...</div>
+            </div>
             
             <!-- 배경색 변경 컨트롤 -->
             <div class="controls">
@@ -239,9 +295,45 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             let scene, camera, renderer, controls;
             let model;
             
+            // 로딩 상태 업데이트 함수
+            function updateLoadingProgress(message) {{
+                const progressEl = document.getElementById('loadingProgress');
+                const textEl = document.getElementById('loadingText');
+                const spinnerEl = document.getElementById('spinner');
+                
+                // 배경색에 따라 스타일 조정
+                const bgColor = '{bg_color}';
+                const isDark = bgColor === 'black' || bgColor === '#000000';
+                
+                if (progressEl) {{
+                    progressEl.textContent = message;
+                    progressEl.className = isDark ? 'loading-progress loading-progress-dark' : 'loading-progress';
+                }}
+                if (textEl) {{
+                    textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
+                }}
+                if (spinnerEl) {{
+                    spinnerEl.className = isDark ? 'spinner spinner-dark' : 'spinner';
+                }}
+            }}
+            
+            // 로딩 완료 시 스피너 숨기기
+            function hideLoadingSpinner() {{
+                const loadingEl = document.getElementById('loading');
+                if (loadingEl) {{
+                    // 페이드 아웃 효과
+                    loadingEl.style.transition = 'opacity 0.3s';
+                    loadingEl.style.opacity = '0';
+                    setTimeout(() => {{
+                        loadingEl.style.display = 'none';
+                    }}, 300);
+                }}
+            }}
+            
             function init() {{
                 try {{
                     console.log('Three.js version:', THREE.REVISION);
+                    updateLoadingProgress('3D 엔진 초기화 중...');
                     
                     // 모바일 감지
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -250,6 +342,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     if (isMobile) {{
                         console.log('Mobile device detected:', isAndroid ? 'Android' : 'iOS');
+                        updateLoadingProgress('모바일 최적화 준비 중...');
                     }}
                     
                     // Scene 생성
@@ -333,6 +426,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function loadModel() {{
                 try {{
                     console.log('Starting model load...');
+                    updateLoadingProgress('텍스처 로딩 중...');
                     
                     // 모바일 감지 (loadModel 스코프용)
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -348,6 +442,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     console.log('Total textures:', Object.keys(textures).length);
+                    updateLoadingProgress('재질 처리 중...');
                     
                     // 텍스처 디버깅 정보
                     for (let texName in textures) {{
@@ -444,6 +539,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}
                     
                     console.log('Materials loaded');
+                    updateLoadingProgress('3D 모델 파싱 중...');
                     
                     // OBJ 로더
                     console.log('Loading OBJ...');
@@ -501,6 +597,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 모바일 GPU 워밍업 및 지연 표시
                     if (isMobile) {{
                         console.log('Mobile optimization: GPU warmup starting...');
+                        updateLoadingProgress('렌더링 최적화 중...');
                         
                         // GPU 워밍업: 보이지 않는 상태에서 여러 프레임 렌더링
                         const warmupFrames = isAndroid ? 5 : 3;
@@ -513,17 +610,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         const delay = isAndroid ? 500 : 300;
                         
                         // 로딩 메시지 업데이트
-                        const loadingEl = document.getElementById('loading');
-                        if (loadingEl) {{
-                            loadingEl.innerHTML = '렌더링 최적화 중...';
-                        }}
+                        updateLoadingProgress('곧 표시됩니다...');
                         
                         // 지연 후 표시
                         setTimeout(() => {{
-                            // 로딩 숨기기
-                            if (loadingEl) {{
-                                loadingEl.style.display = 'none';
-                            }}
+                            // 로딩 스피너 숨기기
+                            hideLoadingSpinner();
                             
                             // 캔버스 페이드인
                             renderer.domElement.style.opacity = '1';
@@ -538,7 +630,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         }}, delay);
                     }} else {{
                         // 데스크톱: 즉시 표시
-                        document.getElementById('loading').style.display = 'none';
+                        updateLoadingProgress('렌더링 준비 완료!');
+                        setTimeout(() => {{
+                            hideLoadingSpinner();
+                        }}, 100);
                     }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
