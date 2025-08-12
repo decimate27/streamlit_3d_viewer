@@ -83,13 +83,12 @@ class ModelProcessor:
         if not file_types['model']:
             return False, "OBJ 모델 파일이 필요합니다."
         
-        # MTL 파일은 선택사항, 텍스처는 필수
+        # 멀티 텍스처 지원을 위해 MTL 파일과 텍스처 파일 모두 필요
+        if not file_types['material']:
+            return False, "MTL 재질 파일이 필요합니다. (멀티 텍스처 지원)"
+        
         if not file_types['texture']:
             return False, "텍스처 이미지 파일이 필요합니다."
-        
-        # MTL 파일은 무시됨 (항상 재생성)
-        if file_types['material']:
-            st.info("💡 업로드된 MTL 파일은 무시되고 텍스처를 기반으로 새로 생성됩니다.")
         
         return True, file_types
     
@@ -103,6 +102,13 @@ class ModelProcessor:
             with open(file_path, 'wb') as f:
                 f.write(file.getbuffer())
             saved_files['model'] = file_path
+        
+        # MTL 파일 저장 (업로드된 파일 그대로 사용)
+        for file in file_types['material']:
+            file_path = os.path.join(temp_dir, file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file.getbuffer())
+            saved_files['material'] = file_path
         
         # 텍스처 파일들 저장 및 최적화
         saved_files['textures'] = []
@@ -126,32 +132,214 @@ class ModelProcessor:
                 f.write(data)
             saved_files['textures'].append(file_path)
         
-        # MTL 파일 처리 - 항상 재생성
-        st.info("🔧 MTL 파일을 자동 생성하는 중...")
+        # MTL 파일 처리 - 업로드된 MTL 파일 사용 (멀티 텍스처 지원)
+        st.info("✅ 업로드된 MTL 파일을 사용합니다. (멀티 텍스처 지원)")
         
-        # OBJ 파일 내용 읽기
-        with open(saved_files['model'], 'r', encoding='utf-8', errors='ignore') as f:
-            obj_content = f.read()
+        # MTL 파일 내용 확인 및 분석
+        with open(saved_files['material'], 'r', encoding='utf-8', errors='ignore') as f:
+            mtl_content = f.read()
         
-        # MTL 자동 생성 (기존 MTL 파일 무시)
-        updated_obj_content, generated_mtl_content = auto_generate_mtl(obj_content, optimized_texture_data)
+        # MTL 파일에서 재질 정보 추출
+        materials_in_mtl = self.extract_materials_from_mtl(mtl_content)
+        texture_files_in_mtl, path_issues = self.extract_texture_files_from_mtl(mtl_content)
         
-        # 수정된 OBJ 파일 저장
-        with open(saved_files['model'], 'w', encoding='utf-8') as f:
-            f.write(updated_obj_content)
+        # 경로 문제가 있으면 자동 수정 시도
+        if path_issues:
+            st.warning("🔧 MTL 파일의 경로 문제를 자동으로 수정하는 중...")
+            
+            corrected_mtl_content = self.fix_mtl_paths(mtl_content)
+            
+            # 수정된 MTL 파일 저장
+            with open(saved_files['material'], 'w', encoding='utf-8') as f:
+                f.write(corrected_mtl_content)
+            
+            # 다시 텍스처 파일 추출 (수정된 버전에서)
+            materials_in_mtl = self.extract_materials_from_mtl(corrected_mtl_content)
+            texture_files_in_mtl, remaining_issues = self.extract_texture_files_from_mtl(corrected_mtl_content)
+            
+            if not remaining_issues:
+                st.success("✅ MTL 파일의 경로 문제가 자동으로 수정되었습니다!")
+            else:
+                st.warning("⚠️ 일부 경로 문제가 남아있습니다.")
         
-        # 생성된 MTL 파일 저장
-        mtl_path = os.path.join(temp_dir, 'model.mtl')
-        with open(mtl_path, 'w', encoding='utf-8') as f:
-            f.write(generated_mtl_content)
-        saved_files['material'] = mtl_path
-        
-        if file_types['material']:
-            st.success("✅ 기존 MTL 파일을 무시하고 새로 생성했습니다!")
+        # 경로 문제점 검사 및 표시 (수정 후에도 남은 문제들)
+        if path_issues:
+            with st.expander("🔍 MTL 파일 경로 검증 결과"):
+                serious_issues = [issue for issue in path_issues if issue['type'] in ['absolute_path', 'directory_path']]
+                minor_issues = [issue for issue in path_issues if issue['type'] in ['space_in_path', 'non_ascii']]
+                
+                if serious_issues:
+                    st.error(f"심각한 문제 {len(serious_issues)}개 발견 (자동 수정됨):")
+                    for issue in serious_issues:
+                        st.write(f"- 라인 {issue['line']}: {issue['message']}")
+                
+                if minor_issues:
+                    st.info(f"참고사항 {len(minor_issues)}개:")
+                    for issue in minor_issues:
+                        st.write(f"- 라인 {issue['line']}: {issue['message']}")
         else:
-            st.success("✅ MTL 파일이 자동 생성되었습니다!")
+            st.success("✅ MTL 파일의 모든 텍스처 경로가 올바릅니다!")
+        
+        # 업로드된 텍스처와 MTL에서 참조하는 텍스처 비교
+        uploaded_texture_names = set(optimized_texture_data.keys())
+        referenced_texture_names = set(texture_files_in_mtl)
+        
+        # 매핑 정보 표시
+        with st.expander("🎨 멀티 텍스처 매핑 정보"):
+            st.write(f"**MTL 파일에서 발견된 재질**: {len(materials_in_mtl)}개")
+            for material in materials_in_mtl:
+                st.write(f"- {material}")
+            
+            st.write(f"**MTL에서 참조하는 텍스처**: {len(referenced_texture_names)}개")
+            for texture in referenced_texture_names:
+                if texture in uploaded_texture_names:
+                    st.write(f"- ✅ {texture} (업로드됨)")
+                else:
+                    st.write(f"- ⚠️ {texture} (업로드되지 않음)")
+            
+            missing_textures = referenced_texture_names - uploaded_texture_names
+            if missing_textures:
+                st.warning(f"누락된 텍스처: {', '.join(missing_textures)}")
+            else:
+                st.success("✅ 모든 참조 텍스처가 업로드되었습니다!")
         
         return saved_files
+    
+    def extract_materials_from_mtl(self, mtl_content):
+        """MTL 파일에서 재질명 추출"""
+        materials = []
+        for line in mtl_content.split('\n'):
+            line = line.strip()
+            if line.startswith('newmtl '):
+                material_name = line[7:].strip()
+                if material_name:
+                    materials.append(material_name)
+        return materials
+    
+    def extract_texture_files_from_mtl(self, mtl_content):
+        """MTL 파일에서 텍스처 파일명 추출 및 경로 검증"""
+        textures = []
+        problematic_paths = []
+        
+        for line_num, line in enumerate(mtl_content.split('\n'), 1):
+            line = line.strip()
+            # 다양한 텍스처 맵 지원
+            if any(line.startswith(prefix) for prefix in ['map_Kd ', 'map_Ka ', 'map_Ks ', 'map_Bump ', 'map_d ', 'bump ']):
+                parts = line.split()
+                if len(parts) >= 2:
+                    texture_path = parts[-1]  # 마지막 부분이 파일 경로
+                    
+                    # 경로 검증
+                    path_issues = self.validate_texture_path(texture_path, line_num, line)
+                    if path_issues:
+                        problematic_paths.extend(path_issues)
+                    
+                    # 파일명만 추출 (경로 제거)
+                    texture_file = os.path.basename(texture_path)
+                    if texture_file not in textures:
+                        textures.append(texture_file)
+        
+        return textures, problematic_paths
+    
+    def validate_texture_path(self, texture_path, line_num, full_line):
+        """텍스처 경로 검증 및 문제점 탐지"""
+        issues = []
+        
+        # 절대 경로 검사 (Windows, Linux, Mac)
+        if (texture_path.startswith('/') or  # Unix 절대경로
+            (len(texture_path) >= 3 and texture_path[1:3] == ':') or  # Windows C:\ 형태
+            texture_path.startswith('\\') or  # Windows UNC 경로
+            ':\\' in texture_path or  # Windows 경로
+            texture_path.startswith('~/')):  # Unix 홈 디렉토리
+            
+            issues.append({
+                'type': 'absolute_path',
+                'line': line_num,
+                'content': full_line,
+                'path': texture_path,
+                'message': f"절대 경로 발견: {texture_path}"
+            })
+        
+        # 상위 디렉토리 참조 검사
+        if '../' in texture_path or '..\\' in texture_path:
+            issues.append({
+                'type': 'relative_parent',
+                'line': line_num,
+                'content': full_line,
+                'path': texture_path,
+                'message': f"상위 디렉토리 참조 발견: {texture_path}"
+            })
+        
+        # 하위 디렉토리 경로 검사
+        if ('/' in texture_path or '\\' in texture_path) and not texture_path.startswith('./'):
+            # 단순 파일명이 아닌 경우
+            if os.path.dirname(texture_path):  # 디렉토리 부분이 있는 경우
+                issues.append({
+                    'type': 'directory_path',
+                    'line': line_num,
+                    'content': full_line,
+                    'path': texture_path,
+                    'message': f"디렉토리 경로 포함: {texture_path} → 파일명만 사용하세요: {os.path.basename(texture_path)}"
+                })
+        
+        # 특수 문자나 공백이 포함된 경로 검사
+        if ' ' in texture_path:
+            issues.append({
+                'type': 'space_in_path',
+                'line': line_num,
+                'content': full_line,
+                'path': texture_path,
+                'message': f"경로에 공백 포함: {texture_path}"
+            })
+        
+        # 한글이나 특수 문자 검사
+        try:
+            texture_path.encode('ascii')
+        except UnicodeEncodeError:
+            issues.append({
+                'type': 'non_ascii',
+                'line': line_num,
+                'content': full_line,
+                'path': texture_path,
+                'message': f"비ASCII 문자 포함: {texture_path}"
+            })
+        
+        return issues
+    
+    def fix_mtl_paths(self, mtl_content):
+        """MTL 파일의 경로 문제 자동 수정"""
+        lines = mtl_content.split('\n')
+        fixed_lines = []
+        
+        for line in lines:
+            original_line = line
+            stripped_line = line.strip()
+            
+            # 텍스처 맵 라인인지 확인
+            if any(stripped_line.startswith(prefix) for prefix in ['map_Kd ', 'map_Ka ', 'map_Ks ', 'map_Bump ', 'map_d ', 'bump ']):
+                parts = stripped_line.split()
+                if len(parts) >= 2:
+                    # 텍스처 경로 부분
+                    texture_path = parts[-1]
+                    
+                    # 경로에서 파일명만 추출
+                    filename_only = os.path.basename(texture_path)
+                    
+                    # 라인 재구성 (파일명만 사용)
+                    parts[-1] = filename_only
+                    fixed_line = ' '.join(parts)
+                    
+                    # 들여쓰기 유지
+                    indent = len(original_line) - len(original_line.lstrip())
+                    fixed_line = ' ' * indent + fixed_line
+                    
+                    fixed_lines.append(fixed_line)
+                else:
+                    fixed_lines.append(original_line)
+            else:
+                fixed_lines.append(original_line)
+        
+        return '\n'.join(fixed_lines)
 
 def show_upload_section():
     """파일 업로드 섹션"""
@@ -191,11 +379,56 @@ def show_upload_section():
         model_description = st.text_area("설명 (선택사항)", placeholder="모델에 대한 간단한 설명")
     
     # 파일 업로드
+    st.markdown("### 📁 파일 업로드")
+    
+    # 멀티 텍스처 가이드
+    with st.expander("🎨 멀티 텍스처 업로드 가이드"):
+        st.markdown("""
+        **담당자가 준비한 완성된 파일들을 업로드**하세요:
+        
+        **1. 필수 파일들:**
+        - `model.obj` - 3D 모델 파일
+        - `model.mtl` - 재질 정보 파일 (담당자가 미리 매핑 완료)
+        - 텍스처 이미지들 - MTL에서 참조하는 모든 텍스처 파일
+        
+        **2. MTL 파일에는 이미 다음이 설정되어 있어야 합니다:**
+        ```mtl
+        newmtl Material1
+        map_Kd texture1.jpg
+        
+        newmtl Material2  
+        map_Kd texture2.png
+        
+        newmtl Material3
+        map_Kd texture3.jpg
+        ```
+        
+        **3. 업로드 파일 예시:**
+        ```
+        character.obj           (3D 모델)
+        character.mtl          (재질 매핑 파일)
+        head_texture.jpg       (얼굴 텍스처)
+        body_texture.png       (몸통 텍스처)  
+        arm_texture.jpg        (팔 텍스처)
+        leg_texture.png        (다리 텍스처)
+        ```
+        
+        **4. 시스템 기능:**
+        - MTL 파일을 분석하여 재질 정보 확인
+        - 참조된 텍스처와 업로드된 텍스처 매칭 확인
+        - 누락된 텍스처 파일 알림
+        - 자동 텍스처 최적화 (2MB 이상 시)
+        
+        **⚠️ 주의사항:**
+        - MTL 파일에서 참조하는 모든 텍스처를 함께 업로드해야 합니다
+        - 파일명은 MTL에서 지정한 이름과 정확히 일치해야 합니다
+        """)
+    
     uploaded_files = st.file_uploader(
-        "모델 파일들을 선택하세요",
+        "완성된 모델 파일들을 선택하세요 (OBJ + MTL + 텍스처들)",
         type=['obj', 'mtl', 'png', 'jpg', 'jpeg'],
         accept_multiple_files=True,
-        help="OBJ 모델 파일과 텍스처 이미지 파일이 필요합니다. MTL 파일은 선택사항입니다. 큰 텍스처는 자동으로 최적화됩니다."
+        help="담당자가 준비한 OBJ, MTL, 텍스처 파일들을 모두 선택해서 업로드하세요."
     )
     
     if uploaded_files and model_name and author_name:
@@ -206,7 +439,13 @@ def show_upload_section():
         
         if not is_valid:
             st.error(result)
-            st.info("필요한 파일: OBJ 모델 파일, 텍스처 이미지 파일 (MTL은 자동 생성됨)")
+            st.info("필요한 파일: OBJ 모델 파일, MTL 재질 파일, 텍스처 이미지 파일들")
+            st.markdown("""
+            **올바른 업로드 방법:**
+            1. 담당자가 준비한 OBJ 파일
+            2. 담당자가 준비한 MTL 파일 (재질 매핑 완료)
+            3. MTL에서 참조하는 모든 텍스처 이미지 파일들
+            """)
         else:
             file_types = result
             
@@ -366,33 +605,121 @@ def main():
         
         **1. 모델 업로드**
         - OBJ 파일 (3D 모델) - 필수
-        - 텍스처 이미지 (PNG, JPG) - 필수
-        - MTL 파일 (재질 정보) - 업로드해도 자동 재생성됨
+        - MTL 파일 (재질 정보) - 필수, 담당자가 미리 매핑 완료
+        - 텍스처 이미지들 (PNG, JPG) - 필수, MTL에서 참조하는 모든 파일
         
-        **2. 공유**
+        **2. 멀티 텍스처 지원** 🆕
+        - 담당자가 준비한 완성된 파일들 업로드
+        - MTL 파일의 재질 매핑 정보 그대로 사용
+        - 업로드된 텍스처와 MTL 참조 확인
+        
+        **3. 파일 준비 방법 (담당자용)**
+        ```
+        1. 3D 모델링 소프트웨어에서 재질별로 분리
+        2. 각 재질에 맞는 텍스처 할당
+        3. MTL 파일로 익스포트
+        4. OBJ + MTL + 모든 텍스처 파일 함께 업로드
+        ```
+        
+        **4. 공유**
         - 업로드 후 생성되는 링크 복사
         - 링크를 통해 누구나 접근 가능
         
-        **3. 관리**
+        **5. 관리**
         - 최대 20개 모델 저장
         - 미리보기 및 삭제 가능
         
-        **4. 뷰어 조작**
+        **6. 뷰어 조작**
         - 마우스 드래그: 회전
         - 마우스 휠: 확대/축소
         - 우클릭 드래그: 이동
         - 우상단 버튼: 배경색 변경 (흰색/회색/검은색)
         
-        **5. 자동 최적화**
+        **7. 자동 최적화**
         - 큰 텍스처 파일 자동 압축
         - 2MB 이상 또는 1024px 초과 시 최적화
         - 투명도 유지 (PNG) 또는 JPEG 변환
         
-        **6. 보안**
+        **8. 보안**
         - 와이어프레임 모드 차단
         - 파일 다운로드 불가
         - 텍스처 필수 적용
+        - 관리자 인증 시스템
         """)
+        
+        # 멀티 텍스처 예시 추가
+        with st.expander("🎨 멀티 텍스처 파일 구조 예시"):
+            st.markdown("""
+            ### 올바른 파일 구조
+            
+            **업로드할 파일들:**
+            ```
+            character.obj          (3D 모델)
+            character.mtl          (재질 매핑, 아래 내용 포함)
+            head_diffuse.jpg       (얼굴 텍스처)
+            body_diffuse.png       (몸통 텍스처)
+            arm_diffuse.jpg        (팔 텍스처)
+            leg_diffuse.png        (다리 텍스처)
+            hair_diffuse.jpg       (머리카락 텍스처)
+            clothes_diffuse.png    (옷 텍스처)
+            ```
+            
+            **character.mtl 파일 내용:**
+            ```mtl
+            newmtl HeadMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd head_diffuse.jpg
+            
+            newmtl BodyMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd body_diffuse.png
+            
+            newmtl ArmMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd arm_diffuse.jpg
+            
+            newmtl LegMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd leg_diffuse.png
+            
+            newmtl HairMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd hair_diffuse.jpg
+            
+            newmtl ClothesMaterial
+            Ka 1.0 1.0 1.0
+            Kd 1.0 1.0 1.0
+            Ks 0.0 0.0 0.0
+            map_Kd clothes_diffuse.png
+            ```
+            
+            **character.obj 파일에는:**
+            ```obj
+            mtllib character.mtl
+            usemtl HeadMaterial
+            f 1/1/1 2/2/2 3/3/3
+            usemtl BodyMaterial  
+            f 4/4/4 5/5/5 6/6/6
+            # ... 각 부분별로 재질 지정
+            ```
+            
+            ### 시스템 동작
+            1. MTL 파일에서 6개 재질 인식
+            2. 6개 텍스처 파일 참조 확인
+            3. 업로드된 텍스처와 매칭 검증
+            4. 모든 텍스처가 있으면 성공 표시
+            5. 3D 뷰어에서 멀티 텍스처 렌더링
+            """)
         
         # 데이터베이스 문제 해결 옵션
         with st.expander("🔧 문제 해결"):
