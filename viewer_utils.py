@@ -682,26 +682,38 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 기존 피드백들 로드 및 표시
             function loadExistingFeedbacks() {{
-                const existingFeedbacks = {json.dumps(existing_feedbacks or [])};
+                // 서버에서 전달된 피드백 (데이터베이스에서)
+                const serverFeedbacks = {json.dumps(existing_feedbacks or [])};
                 
-                console.log('기존 피드백 로드:', existingFeedbacks);
+                // 로컬 스토리지에서 임시 피드백 (테스트용)
+                let localFeedbacks = [];
+                try {{
+                    localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                }} catch (error) {{
+                    console.error('로컬 피드백 로드 오류:', error);
+                }}
                 
-                existingFeedbacks.forEach(feedback => {{
-                    // 3D 좌표를 현재 화면 좌표로 변환
-                    const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
-                    const point2d = toScreenPosition(point3d);
+                // 두 피드백 목록 병합
+                const allFeedbacks = [...serverFeedbacks, ...localFeedbacks];
+                
+                console.log('서버 피드백:', serverFeedbacks.length, '개');
+                console.log('로컬 피드백:', localFeedbacks.length, '개');
+                console.log('전체 피드백:', allFeedbacks.length, '개');
+                
+                allFeedbacks.forEach(feedback => {{
+                    // 3D 좌표를 현재 화면 좌표로 변환 (서버 피드백인 경우)
+                    if (!feedback.screen_x || !feedback.screen_y) {{
+                        const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
+                        const point2d = toScreenPosition(point3d);
+                        feedback.screen_x = point2d.x;
+                        feedback.screen_y = point2d.y;
+                    }}
                     
-                    const feedbackData = {{
-                        ...feedback,
-                        screen_x: point2d.x,
-                        screen_y: point2d.y
-                    }};
-                    
-                    addFeedbackPin(feedbackData);
+                    addFeedbackPin(feedback);
                 }});
             }}
             
-            // 피드백 저장 (URL 파라미터로 전송)
+            // 피드백 저장 (직접 서버 전송)
             function saveFeedback() {{
                 const comment = document.getElementById('feedbackComment').value.trim();
                 
@@ -725,10 +737,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 console.log('피드백 저장:', feedbackData);
                 
-                // URL 파라미터로 피드백 데이터 전송하여 페이지 새로고침
-                const currentUrl = new URL(window.location);
-                currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
-                window.location.href = currentUrl.toString();
+                // 임시로 로컬 스토리지에 저장 (테스트용)
+                try {{
+                    let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                    feedbackData.id = Date.now(); // 임시 ID
+                    feedbackData.status = 'pending';
+                    feedbackData.created_at = new Date().toISOString();
+                    savedFeedbacks.push(feedbackData);
+                    localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
+                    
+                    // 즉시 핀 표시
+                    addFeedbackPin(feedbackData);
+                    
+                    alert('✅ 피드백이 등록되었습니다! (임시 저장)');
+                    
+                    closeFeedbackModal();
+                    toggleFeedbackMode(); // 피드백 모드 종료
+                }} catch (error) {{
+                    console.error('피드백 저장 오류:', error);
+                    alert('피드백 저장에 실패했습니다.');
+                }}
             }}
             
             // 로딩 상태 업데이트 함수
