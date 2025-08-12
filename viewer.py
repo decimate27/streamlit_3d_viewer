@@ -16,37 +16,46 @@ def show_viewer_page(model_data):
     
     print(f"🔍 URL 파라미터들: {dict(query_params)}")  # 디버깅 로그
     
-    if 'feedback_data' in query_params:
-        try:
-            feedback_json = query_params.get('feedback_data')
-            print(f"📝 받은 피드백 JSON: {feedback_json}")  # 디버깅 로그
-            
-            feedback_data = json.loads(feedback_json)
-            print(f"📋 파싱된 피드백 데이터: {feedback_data}")  # 디버깅 로그
-            
-            # 데이터베이스에 피드백 저장
-            db = ModelDatabase()
-            feedback_id = db.add_feedback(
-                model_id=feedback_data['model_id'],
-                x=feedback_data['x'],
-                y=feedback_data['y'], 
-                z=feedback_data['z'],
-                screen_x=feedback_data['screen_x'],
-                screen_y=feedback_data['screen_y'],
-                comment=feedback_data['comment'],
-                feedback_type=feedback_data.get('feedback_type', 'point')
-            )
-            
-            print(f"💾 저장된 피드백 ID: {feedback_id}")  # 디버깅 로그
-            
-            if feedback_id:
-                st.success("✅ 피드백이 등록되었습니다!")
-                # 파라미터 제거하고 페이지 새로고침
-                st.query_params.clear()
-                st.rerun()
-        except Exception as e:
-            print(f"❌ 피드백 저장 오류: {str(e)}")  # 디버깅 로그
-            st.error(f"피드백 저장 중 오류: {str(e)}")
+    # 피드백 저장 액션 처리
+    if 'feedback_action' in query_params and query_params.get('feedback_action') == 'save':
+        if 'feedback_data' in query_params:
+            try:
+                feedback_json = query_params.get('feedback_data')
+                print(f"📝 받은 피드백 JSON: {feedback_json}")  # 디버깅 로그
+                
+                feedback_data = json.loads(feedback_json)
+                print(f"📋 파싱된 피드백 데이터: {feedback_data}")  # 디버깅 로그
+                
+                # 데이터베이스에 피드백 저장
+                db = ModelDatabase()
+                feedback_id = db.add_feedback(
+                    model_id=feedback_data['model_id'],
+                    x=feedback_data['x'],
+                    y=feedback_data['y'], 
+                    z=feedback_data['z'],
+                    screen_x=feedback_data['screen_x'],
+                    screen_y=feedback_data['screen_y'],
+                    comment=feedback_data['comment'],
+                    feedback_type=feedback_data.get('feedback_type', 'point')
+                )
+                
+                print(f"💾 저장된 피드백 ID: {feedback_id}")  # 디버깅 로그
+                
+                if feedback_id:
+                    st.success("✅ 피드백이 데이터베이스에 저장되었습니다!")
+                    print(f"✅ 피드백 #{feedback_id} 저장 성공")
+                else:
+                    st.error("❌ 피드백 저장에 실패했습니다.")
+                    print("❌ 피드백 저장 실패")
+                    
+                # 처리 완료 표시를 위한 간단한 HTML
+                st.markdown("**피드백 저장 처리 완료**")
+                st.stop()  # 나머지 렌더링 중단
+                
+            except Exception as e:
+                print(f"❌ 피드백 저장 오류: {str(e)}")  # 디버깅 로그
+                st.error(f"피드백 저장 중 오류: {str(e)}")
+                st.stop()
     
     # 기존 피드백 조회
     db = ModelDatabase()

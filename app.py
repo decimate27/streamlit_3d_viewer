@@ -584,6 +584,94 @@ def show_model_management():
                     else:
                         st.error("삭제 중 오류가 발생했습니다.")
 
+def show_feedback_management():
+    """피드백 관리 섹션"""
+    st.header("💬 피드백 관리")
+    
+    db = ModelDatabase()
+    models = db.get_all_models()
+    
+    if not models:
+        st.info("📋 업로드된 모델이 없습니다.")
+        return
+    
+    # 모델 선택
+    model_options = [f"{model['name']} (ID: {model['id'][:8]}...)" for model in models]
+    selected_idx = st.selectbox("모델 선택", range(len(models)), format_func=lambda x: model_options[x])
+    
+    if selected_idx is not None:
+        selected_model = models[selected_idx]
+        
+        st.subheader(f"📋 {selected_model['name']} - 피드백 목록")
+        
+        # 선택된 모델의 피드백 조회
+        feedbacks = db.get_feedbacks(selected_model['id'])
+        
+        if not feedbacks:
+            st.info("💬 등록된 피드백이 없습니다.")
+            return
+        
+        st.write(f"**총 {len(feedbacks)}개의 피드백**")
+        
+        # 피드백 목록 표시
+        for i, feedback in enumerate(feedbacks):
+            with st.expander(f"📍 피드백 #{feedback['id']} - {feedback['comment'][:30]}...", expanded=False):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write(f"**내용:** {feedback['comment']}")
+                    st.write(f"**위치:** X={feedback['x']:.3f}, Y={feedback['y']:.3f}, Z={feedback['z']:.3f}")
+                    st.write(f"**등록일:** {feedback['created_at']}")
+                
+                with col2:
+                    # 상태 변경
+                    current_status = feedback['status']
+                    status_options = ['pending', 'reviewed', 'resolved']
+                    status_labels = {'pending': '🔴 대기중', 'reviewed': '🟡 검토중', 'resolved': '🟢 완료'}
+                    
+                    current_idx = status_options.index(current_status) if current_status in status_options else 0
+                    new_status_idx = st.selectbox(
+                        "상태", 
+                        range(len(status_options)),
+                        index=current_idx,
+                        format_func=lambda x: status_labels[status_options[x]],
+                        key=f"status_{feedback['id']}"
+                    )
+                    
+                    new_status = status_options[new_status_idx]
+                    
+                    # 상태 변경 버튼
+                    if new_status != current_status:
+                        if st.button(f"상태 변경", key=f"update_{feedback['id']}"):
+                            if db.update_feedback_status(feedback['id'], new_status):
+                                st.success(f"상태가 '{status_labels[new_status]}'로 변경되었습니다!")
+                                st.rerun()
+                            else:
+                                st.error("상태 변경에 실패했습니다.")
+                    
+                    # 삭제 버튼
+                    if st.button(f"🗑️ 삭제", key=f"delete_{feedback['id']}", type="secondary"):
+                        if db.delete_feedback(feedback['id']):
+                            st.success("피드백이 삭제되었습니다!")
+                            st.rerun()
+                        else:
+                            st.error("삭제에 실패했습니다.")
+        
+        # 통계 정보
+        st.subheader("📊 피드백 통계")
+        col1, col2, col3 = st.columns(3)
+        
+        pending_count = len([f for f in feedbacks if f['status'] == 'pending'])
+        reviewed_count = len([f for f in feedbacks if f['status'] == 'reviewed'])
+        resolved_count = len([f for f in feedbacks if f['status'] == 'resolved'])
+        
+        with col1:
+            st.metric("🔴 대기중", pending_count)
+        with col2:
+            st.metric("🟡 검토중", reviewed_count)
+        with col3:
+            st.metric("🟢 완료", resolved_count)
+
 def main():
     # 타이틀은 이미 상단에 표시됨
     st.write("(주)에어바이블 3D 모델 고객용 뷰어 관리 시스템")
@@ -592,7 +680,7 @@ def main():
     update_activity_time()
     
     # 탭 생성
-    tab1, tab2, tab3 = st.tabs(["📤 업로드", "📋 관리", "ℹ️ 사용법"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📤 업로드", "📋 관리", "💬 피드백", "ℹ️ 사용법"])
     
     with tab1:
         show_upload_section()
@@ -601,6 +689,9 @@ def main():
         show_model_management()
     
     with tab3:
+        show_feedback_management()
+    
+    with tab4:
         st.markdown("""
         ### 🎯 사용법
         

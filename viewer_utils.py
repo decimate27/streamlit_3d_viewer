@@ -750,7 +750,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }});
             }}
             
-            // 피드백 저장 (직접 서버 전송)
+            // 피드백 저장 (서버로 전송)
             function saveFeedback() {{
                 const comment = document.getElementById('feedbackComment').value.trim();
                 
@@ -772,12 +772,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     feedback_type: 'point'
                 }};
                 
-                console.log('피드백 저장:', feedbackData);
+                console.log('서버로 피드백 전송:', feedbackData);
                 
-                // 임시로 로컬 스토리지에 저장 (테스트용)
+                // 서버로 피드백 전송
+                sendFeedbackToServer(feedbackData);
+                
+                closeFeedbackModal();
+                toggleFeedbackMode(); // 피드백 모드 종료
+            }}
+            
+            // 서버로 피드백 전송 (숨겨진 iframe 사용)
+            function sendFeedbackToServer(feedbackData) {{
+                // 임시로 로컬에도 저장 (서버 전송 실패 대비)
                 try {{
                     let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                    feedbackData.id = Date.now(); // 임시 ID
+                    feedbackData.id = Date.now();
                     feedbackData.status = 'pending';
                     feedbackData.created_at = new Date().toISOString();
                     savedFeedbacks.push(feedbackData);
@@ -786,13 +795,38 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 즉시 핀 표시
                     addFeedbackPin(feedbackData);
                     
-                    alert('✅ 피드백이 등록되었습니다! (임시 저장)');
-                    
-                    closeFeedbackModal();
-                    toggleFeedbackMode(); // 피드백 모드 종료
+                    console.log('✅ 피드백이 임시 저장되었습니다.');
                 }} catch (error) {{
                     console.error('피드백 저장 오류:', error);
                     alert('피드백 저장에 실패했습니다.');
+                    return;
+                }}
+                
+                // 서버로 전송 시도 (숨겨진 iframe 사용)
+                try {{
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.style.width = '1px';
+                    iframe.style.height = '1px';
+                    
+                    const currentUrl = new URL(window.location);
+                    currentUrl.searchParams.set('feedback_action', 'save');
+                    currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
+                    
+                    iframe.src = currentUrl.toString();
+                    document.body.appendChild(iframe);
+                    
+                    // 5초 후 iframe 제거
+                    setTimeout(() => {{
+                        if (iframe.parentNode) {{
+                            iframe.parentNode.removeChild(iframe);
+                        }}
+                    }}, 5000);
+                    
+                    console.log('📡 서버로 피드백 전송 시도');
+                    
+                }} catch (error) {{
+                    console.error('서버 전송 오류:', error);
                 }}
             }}
             
