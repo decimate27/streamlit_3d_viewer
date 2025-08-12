@@ -224,7 +224,8 @@ class WebServerDatabase:
             
             return []
         except Exception as e:
-            st.error(f"모델 목록 조회 중 오류: {str(e)}")
+            # 에러는 콘솔에만 출력하고 빈 리스트 반환
+            print(f"모델 목록 조회 중 오류: {str(e)}")
             return []
     
     def get_model_count(self):
@@ -240,7 +241,8 @@ class WebServerDatabase:
             
             return 0
         except Exception as e:
-            st.error(f"모델 수 조회 중 오류: {str(e)}")
+            # 에러는 콘솔에만 출력하고 0 반환
+            print(f"모델 수 조회 중 오류: {str(e)}")
             return 0
     
     def delete_model(self, model_id):

@@ -376,34 +376,34 @@ def show_upload_section():
     """파일 업로드 섹션"""
     st.header("📤 새 모델 업로드")
     
-    # 데이터베이스 연결 (웹서버 DB 우선 시도, 실패 시 로컬 DB)
-    try:
-        db = WebServerDatabase()
-        # 연결 테스트
-        db.initialize_database()
-        st.success("🌐 웹서버 데이터베이스 연결 성공!")
-        current_count = 0  # 웹서버에서는 간단히 0으로 설정
-    except Exception as e:
-        st.warning(f"⚠️ 웹서버 DB 연결 실패, 로컬 DB 사용: {str(e)}")
-        db = ModelDatabase()
-        current_count = db.get_model_count()
+    # 웹서버 DB와 로컬 DB 모두에서 개수 확인
+    web_db = WebServerDatabase()
+    local_db = ModelDatabase()
+    
+    # 웹서버에서 모델 가져오기
+    web_models = web_db.get_all_models()
+    web_count = len(web_models)
+    
+    # 로컬 DB에서 모델 가져오기  
+    local_models = local_db.get_all_models()
+    local_count = len(local_models)
+    
+    # 전체 모델 수
+    current_count = web_count + local_count
+    
+    st.info(f"📊 데이터베이스 상태: 웹서버 {web_count}개, 로컬 {local_count}개")
     
     if current_count >= 20:
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
-    # 저장된 모델들의 storage_type 확인
-    models = db.get_all_models()
-    web_count = sum(1 for model in models if model.get('storage_type') == 'web')
-    local_count = sum(1 for model in models if model.get('storage_type') == 'local')
-    
     # 상태 메시지 생성
     if web_count > 0 and local_count > 0:
         storage_status = f"웹서버: {web_count}개, 로컬: {local_count}개"
     elif web_count > 0:
-        storage_status = "웹서버 저장"
+        storage_status = f"웹서버: {web_count}개"
     elif local_count > 0:
-        storage_status = "로컬 임시 저장"
+        storage_status = f"로컬: {local_count}개"
     else:
         storage_status = "저장소 준비됨"
     
@@ -540,12 +540,35 @@ def show_model_management():
     """모델 관리 섹션"""
     st.header("📋 저장된 모델 관리")
     
-    db = ModelDatabase()
-    models = db.get_all_models()
+    # 웹서버와 로컬 DB 모두에서 모델 가져오기
+    web_db = WebServerDatabase()
+    local_db = ModelDatabase()
     
-    if not models:
+    # 웹서버 모델
+    web_models = web_db.get_all_models()
+    # 로컬 모델  
+    local_models = local_db.get_all_models()
+    
+    # 모든 모델 합치기
+    all_models = []
+    
+    # 웹서버 모델에 storage_type 추가
+    for model in web_models:
+        model['storage_type'] = 'web'
+        all_models.append(model)
+    
+    # 로컬 모델 추가 (이미 storage_type이 있을 수 있음)
+    for model in local_models:
+        if 'storage_type' not in model:
+            model['storage_type'] = 'local'
+        all_models.append(model)
+    
+    if not all_models:
         st.info("저장된 모델이 없습니다.")
         return
+    
+    # 이후 코드에서 models 대신 all_models 사용
+    models = all_models
     
     for model in models:
         # 저장 타입에 따른 아이콘과 설명

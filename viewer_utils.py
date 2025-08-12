@@ -916,9 +916,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 toggleFeedbackMode(); // 피드백 모드 종료
             }}
             
-            // 서버로 피드백 전송 (Streamlit 프록시 사용)
+            // 서버로 피드백 전송 (HTTPS)
             function sendFeedbackToServer(feedbackData) {{
-                // 1. 우선 로컬에 저장하고 핀 표시
+                // 1. 로컬에 저장하고 핀 표시
                 try {{
                     let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
                     feedbackData.id = Date.now();
@@ -937,62 +937,38 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     return;
                 }}
                 
-                // 2. Streamlit 프록시로 전송
-                console.log('📡 Streamlit 프록시를 통한 서버 전송 시도');
+                // 2. 서버로 전송 (HTTPS)
+                console.log('📡 서버로 피드백 전송 시도');
                 
-                try {{
-                    // 현재 페이지 URL을 사용해서 프록시 요청
-                    const currentUrl = new URL(window.location);
-                    currentUrl.searchParams.set('feedback_action', 'proxy_save');
-                    currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
-                    
-                    // iframe으로 프록시 요청 (HTTPS 내에서 처리)
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = currentUrl.toString();
-                    document.body.appendChild(iframe);
-                    
-                    // 프록시 결과 메시지 리스너
-                    const messageHandler = function(event) {{
-                        if (event.data && event.data.type === 'feedback_proxy_result') {{
-                            if (event.data.success) {{
-                                console.log('✅ 프록시를 통한 서버 저장 성공:', event.data.data);
-                                
-                                // 로컬 스토리지에서 동기화 완료 표시
-                                let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                                const idx = allFeedbacks.findIndex(f => f.id === feedbackData.id);
-                                if (idx >= 0) {{
-                                    allFeedbacks[idx].server_saved = true;
-                                    allFeedbacks[idx].server_id = event.data.data.feedback_id;
-                                    localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
-                                }}
-                                
-                                // 성공 메시지 표시 (조용히)
-                                console.log('피드백이 서버에 저장되었습니다.');
-                            }} else {{
-                                console.error('프록시를 통한 서버 저장 실패:', event.data.error);
-                            }}
-                            
-                            // iframe 제거 및 리스너 해제
-                            document.body.removeChild(iframe);
-                            window.removeEventListener('message', messageHandler);
+                fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                    }},
+                    body: JSON.stringify(feedbackData)
+                }})
+                .then(response => response.json())
+                .then(data => {{
+                    console.log('✅ 서버 응답:', data);
+                    if (data.success) {{
+                        console.log('서버 저장 성공 - ID:', data.feedback_id);
+                        // 로컬 스토리지에서 서버 저장 완료로 표시
+                        let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                        const idx = savedFeedbacks.findIndex(f => f.id === feedbackData.id);
+                        if (idx >= 0) {{
+                            savedFeedbacks[idx].server_saved = true;
+                            savedFeedbacks[idx].server_id = data.feedback_id;
+                            localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
                         }}
-                    }};
-                    
-                    window.addEventListener('message', messageHandler);
-                    
-                    // 5초 후 타임아웃
-                    setTimeout(() => {{
-                        if (document.body.contains(iframe)) {{
-                            document.body.removeChild(iframe);
-                            window.removeEventListener('message', messageHandler);
-                            console.log('⏰ 프록시 요청 타임아웃');
-                        }}
-                    }}, 5000);
-                    
-                }} catch (error) {{
-                    console.error('프록시 전송 오류:', error);
-                }}
+                    }} else {{
+                        console.error('서버 저장 실패:', data.error);
+                    }}
+                }})
+                .catch(error => {{
+                    console.error('네트워크 오류:', error);
+                    alert(`❌ 서버 연결 실패: ${{error.message}}`);
+                    console.log('서버가 실행 중인지 확인하세요: http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php');
+                }});
             }}
             
             // 로딩 상태 업데이트 함수
