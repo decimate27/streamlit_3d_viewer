@@ -521,7 +521,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             <!-- 피드백 핀들 컨테이너 -->
             <div id="feedbackPins"></div>
             
-            <!-- 피드백 입력 모달 -->
+            <!-- Mixed Content 안내 모달 -->
+            <div class="feedback-modal" id="mixedContentModal" style="display: none;">
+                <div class="feedback-modal-content" style="max-width: 500px;">
+                    <h3>🔒 보안 설정 필요</h3>
+                    <p>HTTPS 페이지에서 HTTP API 호출이 차단되었습니다.</p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                        <h4>✅ 해결 방법 (Chrome):</h4>
+                        <ol style="margin: 10px 0; padding-left: 20px;">
+                            <li>주소창 오른쪽의 <strong>방패🛡️ 아이콘</strong> 클릭</li>
+                            <li><strong>"안전하지 않은 콘텐츠 허용"</strong> 클릭</li>
+                            <li>페이지 자동 새로고침 후 다시 시도</li>
+                        </ol>
+                        
+                        <h4>🔧 또는 설정에서:</h4>
+                        <ol style="margin: 10px 0; padding-left: 20px;">
+                            <li>주소창 왼쪽 <strong>자물쇠🔒 아이콘</strong> 클릭</li>
+                            <li><strong>"Site settings"</strong> 클릭</li>
+                            <li><strong>"Insecure content"</strong> → <strong>"Allow"</strong> 변경</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="feedback-modal-buttons">
+                        <button class="btn-primary" onclick="closeMixedContentModal()">확인</button>
+                        <button class="btn-secondary" onclick="location.reload()">페이지 새로고침</button>
+                    </div>
+                </div>
+            </div>
             <div class="feedback-modal" id="feedbackModal" style="display: none;">
                 <div class="feedback-modal-content">
                     <h3>피드백 등록</h3>
@@ -589,6 +616,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 document.getElementById('feedbackModal').style.display = 'flex';
                 document.getElementById('feedbackComment').focus();
+            }}
+            
+            // Mixed Content 모달 관련 함수들
+            function showMixedContentModal() {{
+                document.getElementById('mixedContentModal').style.display = 'flex';
+            }}
+            
+            function closeMixedContentModal() {{
+                document.getElementById('mixedContentModal').style.display = 'none';
             }}
             
             // 피드백 모달 닫기
@@ -764,17 +800,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         
                         // Mixed Content 오류인지 확인
                         if (error.message.includes('Failed to fetch') && window.location.protocol === 'https:') {{
-                            alert(`❌ 보안 오류: HTTPS 페이지에서 HTTP API 호출이 차단되었습니다.
-
-해결 방법:
-1. 주소창 오른쪽의 방패 아이콘 클릭
-2. "안전하지 않은 콘텐츠 허용" 선택  
-3. 페이지 새로고침
-
-또는 Chrome에서:
-1. 주소창 왼쪽의 자물쇠 아이콘 클릭
-2. "Site settings" 클릭
-3. "Insecure content" 를 "Allow" 로 변경`);
+                            showMixedContentModal();
                         }} else {{
                             alert(`❌ 네트워크 오류: ${{error.message}}`);
                         }}
@@ -890,7 +916,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 toggleFeedbackMode(); // 피드백 모드 종료
             }}
             
-            // 서버로 피드백 전송 (fetch API 사용)
+            // 서버로 피드백 전송 (Streamlit 프록시 사용)
             function sendFeedbackToServer(feedbackData) {{
                 // 1. 우선 로컬에 저장하고 핀 표시
                 try {{
@@ -911,48 +937,62 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     return;
                 }}
                 
-                // 2. 서버로 전송 (fetch API 사용)
-                console.log('📡 서버로 피드백 전송 시도');
+                // 2. Streamlit 프록시로 전송
+                console.log('📡 Streamlit 프록시를 통한 서버 전송 시도');
                 
-                fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify(feedbackData)
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    console.log('✅ 서버 응답:', data);
-                    if (data.success) {{
-                        console.log('서버 저장 성공 - ID:', data.feedback_id);
-                        // 로컬 스토리지에서 해당 피드백을 서버 저장 완료로 표시
-                        let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                        const idx = savedFeedbacks.findIndex(f => f.id === feedbackData.id);
-                        if (idx >= 0) {{
-                            savedFeedbacks[idx].server_saved = true;
-                            savedFeedbacks[idx].server_id = data.feedback_id;
-                            localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
+                try {{
+                    // 현재 페이지 URL을 사용해서 프록시 요청
+                    const currentUrl = new URL(window.location);
+                    currentUrl.searchParams.set('feedback_action', 'proxy_save');
+                    currentUrl.searchParams.set('feedback_data', JSON.stringify(feedbackData));
+                    
+                    // iframe으로 프록시 요청 (HTTPS 내에서 처리)
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = currentUrl.toString();
+                    document.body.appendChild(iframe);
+                    
+                    // 프록시 결과 메시지 리스너
+                    const messageHandler = function(event) {{
+                        if (event.data && event.data.type === 'feedback_proxy_result') {{
+                            if (event.data.success) {{
+                                console.log('✅ 프록시를 통한 서버 저장 성공:', event.data.data);
+                                
+                                // 로컬 스토리지에서 동기화 완료 표시
+                                let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
+                                const idx = allFeedbacks.findIndex(f => f.id === feedbackData.id);
+                                if (idx >= 0) {{
+                                    allFeedbacks[idx].server_saved = true;
+                                    allFeedbacks[idx].server_id = event.data.data.feedback_id;
+                                    localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
+                                }}
+                                
+                                // 성공 메시지 표시 (조용히)
+                                console.log('피드백이 서버에 저장되었습니다.');
+                            }} else {{
+                                console.error('프록시를 통한 서버 저장 실패:', event.data.error);
+                            }}
+                            
+                            // iframe 제거 및 리스너 해제
+                            document.body.removeChild(iframe);
+                            window.removeEventListener('message', messageHandler);
                         }}
-                    }} else {{
-                        console.error('서버 저장 실패:', data.error);
-                    }}
-                }})
-                .catch(error => {{
-                    console.error('네트워크 오류:', error);
+                    }};
                     
-                    // Mixed Content 오류인지 확인
-                    if (error.message.includes('Failed to fetch') && window.location.protocol === 'https:') {{
-                        alert(`❌ 보안 오류: HTTPS에서 HTTP API 차단됨
-
-해결 방법:
-1. 브라우저 주소창의 방패🛡️ 아이콘 클릭
-2. "안전하지 않은 콘텐츠 허용" 선택
-3. 페이지 새로고침 후 다시 시도`);
-                    }}
+                    window.addEventListener('message', messageHandler);
                     
-                    console.log('서버가 실행 중인지 확인하세요: http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php');
-                }});
+                    // 5초 후 타임아웃
+                    setTimeout(() => {{
+                        if (document.body.contains(iframe)) {{
+                            document.body.removeChild(iframe);
+                            window.removeEventListener('message', messageHandler);
+                            console.log('⏰ 프록시 요청 타임아웃');
+                        }}
+                    }}, 5000);
+                    
+                }} catch (error) {{
+                    console.error('프록시 전송 오류:', error);
+                }}
             }}
             
             // 로딩 상태 업데이트 함수
