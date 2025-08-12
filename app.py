@@ -382,7 +382,7 @@ def show_upload_section():
         # 연결 테스트
         db.initialize_database()
         st.success("🌐 웹서버 데이터베이스 연결 성공!")
-        current_count = 0  # 웹서버에서는 간단히 0으로 설정
+        current_count = db.get_model_count()  # 실제 웹서버 모델 개수 조회
     except Exception as e:
         st.warning(f"⚠️ 웹서버 DB 연결 실패, 로컬 DB 사용: {str(e)}")
         db = ModelDatabase()
@@ -540,8 +540,16 @@ def show_model_management():
     """모델 관리 섹션"""
     st.header("📋 저장된 모델 관리")
     
-    db = ModelDatabase()
-    models = db.get_all_models()
+    # 데이터베이스 연결 (웹서버 DB 우선 시도, 실패 시 로컬 DB)
+    try:
+        db = WebServerDatabase()
+        # 연결 테스트
+        db.initialize_database()
+        models = db.get_all_models()
+    except Exception as e:
+        st.warning(f"⚠️ 웹서버 DB 연결 실패, 로컬 DB 사용: {str(e)}")
+        db = ModelDatabase()
+        models = db.get_all_models()
     
     if not models:
         st.info("저장된 모델이 없습니다.")
