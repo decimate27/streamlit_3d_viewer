@@ -308,10 +308,43 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     {create_texture_loading_code(texture_base64)}
                     
                     console.log('Textures loaded:', Object.keys(textures));
+                    console.log('Total textures:', Object.keys(textures).length);
+                    
+                    // 텍스처 디버깅 정보
+                    for (let texName in textures) {{
+                        console.log('  - ' + texName + ': Loaded successfully');
+                    }}
                     
                     // MTL 로더
                     console.log('Loading MTL...');
                     const mtlLoader = new THREE.MTLLoader();
+                    
+                    // MTLLoader에 텍스처 매니저 설정
+                    mtlLoader.setMaterialOptions({{
+                        ignoreZeroRGBs: true,
+                        invertTrProperty: false
+                    }});
+                    
+                    // MTL 파싱 전에 텍스처를 매니저에 등록
+                    const manager = new THREE.LoadingManager();
+                    const textureLoader2 = new THREE.TextureLoader(manager);
+                    
+                    // 커스텀 텍스처 로더 함수
+                    const customTextureLoader = function(url) {{
+                        console.log('MTLLoader requesting texture:', url);
+                        
+                        // 이미 로드된 텍스처가 있으면 반환
+                        if (textures[url]) {{
+                            console.log('  Using preloaded texture:', url);
+                            return textures[url];
+                        }}
+                        
+                        // 텍스처가 없으면 빈 텍스처 반환 (에러 방지)
+                        console.warn('  Texture not found, creating placeholder:', url);
+                        return new THREE.Texture();
+                    }};
+                    
+                    // MTL 파싱
                     const materials = mtlLoader.parse(`{mtl_content}`, '');
                     materials.preload();
                     
@@ -323,18 +356,29 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         material.shininess = 0;
                         material.specular.setRGB(0, 0, 0);
                         
-                        // 텍스처 적용 보장
-                        if (material.map && !material.map.image) {{
-                            const textureNames = Object.keys(textures);
-                            if (textureNames.length > 0) {{
-                                material.map = textures[textureNames[0]];
-                            }}
-                        }}
-                        
-                        // 추가 매트 설정
+                        // 텍스처 적용 - MTL에서 지정한 올바른 텍스처 매핑
                         if (material.map) {{
-                            material.map.minFilter = THREE.LinearFilter;
-                            material.map.magFilter = THREE.LinearFilter;
+                            // sourceFile에 원래 텍스처 파일명이 있는 경우
+                            if (material.map.sourceFile) {{
+                                const textureFileName = material.map.sourceFile;
+                                console.log('Material ' + materialName + ' -> Texture ' + textureFileName);
+                                
+                                // 해당 텍스처가 로드되어 있으면 적용
+                                if (textures[textureFileName]) {{
+                                    material.map = textures[textureFileName];
+                                    console.log('  ✅ Texture applied: ' + textureFileName);
+                                }} else {{
+                                    console.warn('  ⚠️ Texture not found: ' + textureFileName);
+                                    // 텍스처를 찾을 수 없는 경우, 사용 가능한 텍스처 목록 출력
+                                    console.log('  Available textures:', Object.keys(textures));
+                                }}
+                            }}
+                            
+                            // 텍스처가 성공적으로 적용된 경우 필터 설정
+                            if (material.map.image) {{
+                                material.map.minFilter = THREE.LinearFilter;
+                                material.map.magFilter = THREE.LinearFilter;
+                            }}
                         }}
                     }}
                     
@@ -360,6 +404,23 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     scene.add(object);
                     model = object;
+                    
+                    // 최종 재질 확인 (디버깅)
+                    console.log('=== Final Material Check ===');
+                    object.traverse((child) => {{
+                        if (child.isMesh && child.material) {{
+                            const mat = child.material;
+                            if (mat.name) {{
+                                console.log('Mesh uses material: ' + mat.name);
+                                if (mat.map) {{
+                                    console.log('  -> Has texture: ' + (mat.map.sourceFile || 'Unknown'));
+                                }} else {{
+                                    console.log('  -> No texture');
+                                }}
+                            }}
+                        }}
+                    }});
+                    console.log('=========================');
                     
                     // 카메라 위치 조정
                     const distance = maxDim * scale * 2;
