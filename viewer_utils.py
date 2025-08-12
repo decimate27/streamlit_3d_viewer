@@ -821,8 +821,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 // Base64로 인코딩
                 const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataToSave))));
                 
-                // URL 파라미터로 전송
+                // 현재 URL 파라미터 가져오기
+                const currentUrl = new URL(window.location.href);
+                const currentParams = new URLSearchParams(currentUrl.search);
+                
+                // 기존 token 파라미터 유지
+                const token = currentParams.get('token') || modelToken;
+                
+                // 새로운 파라미터 설정
                 const params = new URLSearchParams();
+                params.set('token', token);  // token 파라미터 유지
                 params.set('action', 'save_annotations');
                 params.set('data', encodedData);
                 

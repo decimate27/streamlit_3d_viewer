@@ -37,20 +37,36 @@ def show_viewer_page(model_data):
                             # 각 annotation 저장
                             saved_count = 0
                             for ann in data.get('annotations', []):
-                                db.add_annotation(
-                                    share_token, 
-                                    ann['position'], 
-                                    ann['text']
-                                )
-                                saved_count += 1
+                                try:
+                                    ann_id = db.add_annotation(
+                                        share_token, 
+                                        ann['position'], 
+                                        ann['text']
+                                    )
+                                    saved_count += 1
+                                    print(f"Annotation saved with ID: {ann_id}")  # 디버깅용
+                                except Exception as e:
+                                    print(f"Error saving annotation: {e}")
+                                    st.error(f"수정점 저장 오류: {str(e)}")
                             
-                            st.success(f"✅ {saved_count}개의 수정점이 제출완료되었습니다!")
+                            if saved_count > 0:
+                                st.success(f"✅ {saved_count}개의 수정점이 제출완료되었습니다!")
+                            else:
+                                st.warning("저장된 수정점이 없습니다.")
+                            
+                            # 성공 후 token 파라미터만 유지하고 리다이렉트
+                            import time
+                            time.sleep(2)  # 성공 메시지를 보여주기 위한 딜레이
+                            st.query_params.clear()
+                            st.query_params["token"] = share_token
+                            st.rerun()
                     except Exception as e:
                         st.error(f"데이터 디코딩 오류: {str(e)}")
-                
-                # 파라미터 제거하고 리다이렉트
-                st.query_params.clear()
-                st.rerun()
+                        import time
+                        time.sleep(2)
+                        st.query_params.clear()
+                        st.query_params["token"] = share_token
+                        st.rerun()
             
             elif action == "add_annotation":
                 # 개별 수정점 추가 (기존 코드)
