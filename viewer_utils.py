@@ -685,6 +685,35 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
+            // 페이지 로드 시 localStorage 확인 및 서버 동기화
+            window.addEventListener('load', function() {{
+                if (modelToken) {{
+                    const pendingAnnotations = JSON.parse(localStorage.getItem('pendingAnnotations_' + modelToken) || '[]');
+                    if (pendingAnnotations.length > 0) {{
+                        console.log('Pending annotations found:', pendingAnnotations.length);
+                        // 첫 번째 pending annotation을 URL 파라미터로 전송
+                        const first = pendingAnnotations[0];
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('action', 'add_annotation');
+                        params.set('x', first.position.x);
+                        params.set('y', first.position.y);
+                        params.set('z', first.position.z);
+                        params.set('text', first.text);
+                        
+                        // 나머지는 localStorage에 유지
+                        pendingAnnotations.shift();
+                        if (pendingAnnotations.length > 0) {{
+                            localStorage.setItem('pendingAnnotations_' + modelToken, JSON.stringify(pendingAnnotations));
+                        }} else {{
+                            localStorage.removeItem('pendingAnnotations_' + modelToken);
+                        }}
+                        
+                        // 서버로 전송
+                        window.location.href = window.location.pathname + '?' + params.toString();
+                    }}
+                }}
+            }});
+            
             // 서버에 수정점 저장
             function saveAnnotationToServer(point, text) {{
                 if (!modelToken) {{
@@ -692,31 +721,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     return;
                 }}
                 
-                const data = {{
-                    model_token: modelToken,
-                    position: {{ x: point.x, y: point.y, z: point.z }},
-                    text: text
-                }};
+                // URL 파라미터로 직접 전송
+                const params = new URLSearchParams(window.location.search);
+                params.set('action', 'add_annotation');
+                params.set('x', point.x);
+                params.set('y', point.y);
+                params.set('z', point.z);
+                params.set('text', text);
                 
-                // 임시로 로컬에 표시 (서버 응답 전)
-                createAnnotation(point, text, null);
-                
-                // 서버에 저장 요청 (AJAX 대신 페이지 리로드 방식)
-                // Streamlit과 통신하기 위해 hidden form 사용
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = window.location.href;
-                
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'annotation_data';
-                input.value = JSON.stringify(data);
-                
-                form.appendChild(input);
-                document.body.appendChild(form);
-                
-                // 실제 서버 통신은 Streamlit 백엔드에서 처리
-                console.log('Annotation saved locally:', data);
+                // 페이지 리로드하여 서버에 저장
+                window.location.href = window.location.pathname + '?' + params.toString();
             }}
             
             // 수정점 생성
@@ -780,25 +794,41 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function completeAnnotation(id) {{
                 const annotation = annotations.find(a => a.id == id);
                 if (annotation) {{
+                    // 서버에 상태 업데이트
+                    if (modelToken && !String(id).startsWith('temp_')) {{
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('action', 'complete_annotation');
+                        params.set('annotation_id', id);
+                        
+                        window.location.href = window.location.pathname + '?' + params.toString();
+                        return;
+                    }}
+                    
+                    // 임시 annotation인 경우 로컬에서만 처리
                     annotation.completed = true;
                     annotation.mesh.material.color.setHex(0x0000ff);
-                    
-                    // 서버에 상태 업데이트 (실제 구현 시 AJAX 필요)
-                    console.log('Annotation completed:', id);
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
             
             // 수정점 삭제
             function deleteAnnotation(id) {{
+                // 서버에서 삭제
+                if (modelToken && !String(id).startsWith('temp_')) {{
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('action', 'delete_annotation');
+                    params.set('annotation_id', id);
+                    
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                    return;
+                }}
+                
+                // 임시 annotation인 경우 로컬에서만 처리
                 const index = annotations.findIndex(a => a.id == id);
                 if (index !== -1) {{
                     const annotation = annotations[index];
                     scene.remove(annotation.mesh);
                     annotations.splice(index, 1);
-                    
-                    // 서버에서 삭제 (실제 구현 시 AJAX 필요)
-                    console.log('Annotation deleted:', id);
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}

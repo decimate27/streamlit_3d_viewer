@@ -14,19 +14,21 @@ def show_viewer_page(model_data):
     query_params = st.query_params
     action = query_params.get("action", "")
     
-    if action:
+    # share_token 가져오기
+    share_token = model_data.get('share_token', None)
+    
+    if action and share_token:
         db = ModelDatabase()
         
         if action == "add_annotation":
             # 새 수정점 추가
-            token = query_params.get("token", "")
             x = float(query_params.get("x", "0"))
             y = float(query_params.get("y", "0"))
             z = float(query_params.get("z", "0"))
             text = query_params.get("text", "")
             
-            if token and text:
-                db.add_annotation(token, {"x": x, "y": y, "z": z}, text)
+            if text:
+                db.add_annotation(share_token, {"x": x, "y": y, "z": z}, text)
                 # 파라미터 제거하고 리다이렉트
                 st.query_params.clear()
                 st.rerun()
