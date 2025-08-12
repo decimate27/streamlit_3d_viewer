@@ -13,10 +13,16 @@ def show_viewer_page(model_data):
     
     # 피드백 처리 (URL 파라미터로 전송된 피드백 데이터 처리)
     query_params = st.query_params
+    
+    print(f"🔍 URL 파라미터들: {dict(query_params)}")  # 디버깅 로그
+    
     if 'feedback_data' in query_params:
         try:
             feedback_json = query_params.get('feedback_data')
+            print(f"📝 받은 피드백 JSON: {feedback_json}")  # 디버깅 로그
+            
             feedback_data = json.loads(feedback_json)
+            print(f"📋 파싱된 피드백 데이터: {feedback_data}")  # 디버깅 로그
             
             # 데이터베이스에 피드백 저장
             db = ModelDatabase()
@@ -31,17 +37,21 @@ def show_viewer_page(model_data):
                 feedback_type=feedback_data.get('feedback_type', 'point')
             )
             
+            print(f"💾 저장된 피드백 ID: {feedback_id}")  # 디버깅 로그
+            
             if feedback_id:
                 st.success("✅ 피드백이 등록되었습니다!")
                 # 파라미터 제거하고 페이지 새로고침
                 st.query_params.clear()
                 st.rerun()
         except Exception as e:
+            print(f"❌ 피드백 저장 오류: {str(e)}")  # 디버깅 로그
             st.error(f"피드백 저장 중 오류: {str(e)}")
     
     # 기존 피드백 조회
     db = ModelDatabase()
     existing_feedbacks = db.get_feedbacks(model_data['id'])
+    print(f"📊 기존 피드백 수: {len(existing_feedbacks)}")  # 디버깅 로그
     
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
