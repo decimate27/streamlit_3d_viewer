@@ -315,6 +315,23 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
+            /* 상단 안내 텍스트 스타일 */
+            .top-notice {{
+                position: fixed !important;
+                top: 5px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                color: #333 !important;
+                padding: 5px 15px !important;
+                border-radius: 20px !important;
+                font-size: 12px !important;
+                font-weight: normal !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+                z-index: 99998 !important;
+                white-space: nowrap !important;
+            }}
+            
             /* 수정점 표시 버튼 스타일 */
             .annotation-btn {{
                 position: fixed !important;
@@ -359,6 +376,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     padding: 6px 8px !important;
                     font-size: 11px !important;
                 }}
+            }}
+            
+            /* 제출완료 버튼 스타일 */
+            .db-save-btn {{
+                position: fixed !important;
+                top: 70px !important;
+                right: 20px !important;
+                padding: 10px 15px !important;
+                background: #2196F3 !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 5px !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                font-weight: bold !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+                z-index: 99999 !important;
+                display: block !important;
+                visibility: visible !important;
+            }}
+            
+            .db-save-btn:hover {{
+                background: #1976D2 !important;
+            }}
+            
+            .db-save-btn:disabled {{
+                background: #ccc !important;
+                cursor: not-allowed !important;
             }}
             
             /* 수정점 입력 모달 */
@@ -476,9 +521,19 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         </style>
     </head>
     <body>
+        <!-- 상단 안내 텍스트 -->
+        <div class="top-notice">
+            수정점 표시 다 하신후 반드시 제출완료 꼭 눌러주세요.
+        </div>
+        
         <!-- 수정점 표시 버튼을 최상단에 배치 -->
         <button class="annotation-btn" id="annotationBtn" onclick="toggleAnnotationMode()">
             수정점표시
+        </button>
+        
+        <!-- 제출완료 버튼 -->
+        <button class="db-save-btn" id="dbSaveBtn" onclick="saveToDatabase()">
+            제출완료
         </button>
         
         <div id="container">
@@ -565,6 +620,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 기존 수정점 로드
             function loadExistingAnnotations() {{
+                // 서버에서 전달된 annotations 로드
                 if (initialAnnotations && initialAnnotations.length > 0) {{
                     initialAnnotations.forEach(ann => {{
                         const geometry = new THREE.SphereGeometry(0.05, 16, 16);
@@ -581,10 +637,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             mesh: mesh,
                             point: new THREE.Vector3(ann.position.x, ann.position.y, ann.position.z),
                             text: ann.text,
-                            completed: ann.completed
+                            completed: ann.completed,
+                            saved: true  // DB에 저장된 항목 표시
                         }});
                     }});
                 }}
+                
+                // 제출완료 버튼 초기 상태 설정
+                updateDbSaveButton();
             }}
             
             // 마우스 클릭 처리
@@ -694,31 +754,109 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 return decodeURIComponent(escape(atob(str)));
             }}
             
-            // 서버에 수정점 저장
-            function saveAnnotationToServer(point, text) {{
+            // DB에 저장할 수정점들을 추적
+            let pendingAnnotations = [];
+            
+            // 서버에 수정점 저장 (로컬에만 저장)
+            async function saveAnnotationToServer(point, text) {{
                 if (!modelToken) {{
                     console.error('Model token is missing');
                     return;
                 }}
                 
                 try {{
-                    // 텍스트를 Base64로 인코딩
-                    const encodedText = encodeBase64(text);
+                    // 임시 ID 생성
+                    const tempId = 'temp_' + Date.now();
                     
-                    // URL 파라미터로 전송
-                    const params = new URLSearchParams();
-                    params.set('action', 'add_annotation');
-                    params.set('x', point.x.toFixed(6));
-                    params.set('y', point.y.toFixed(6));
-                    params.set('z', point.z.toFixed(6));
-                    params.set('text_b64', encodedText);
+                    // 로컬에 즉시 표시
+                    createAnnotation(point, text, tempId);
                     
-                    // 페이지 리로드하여 서버에 저장
-                    window.location.href = window.location.pathname + '?' + params.toString();
+                    // pendingAnnotations에 추가
+                    pendingAnnotations.push({{
+                        tempId: tempId,
+                        position: {{ x: point.x, y: point.y, z: point.z }},
+                        text: text,
+                        completed: false
+                    }});
+                    
+                    // 제출완료 버튼 활성화
+                    updateDbSaveButton();
+                    
+                    // 성공 메시지
+                    showMessage('✅ 수정점이 추가되었습니다', 'success');
+                    
                 }} catch (error) {{
                     console.error('Error saving annotation:', error);
-                    alert('수정점 저장 중 오류가 발생했습니다.');
+                    showMessage('❌ 오류: ' + error.message, 'error');
                 }}
+            }}
+            
+            // 제출완료 버튼 상태 업데이트
+            function updateDbSaveButton() {{
+                const btn = document.getElementById('dbSaveBtn');
+                if (btn) {{
+                    if (pendingAnnotations.length > 0) {{
+                        btn.textContent = `제출완료 (${{pendingAnnotations.length}})`;
+                        btn.disabled = false;
+                    }} else {{
+                        btn.textContent = '제출완료';
+                        btn.disabled = true;
+                    }}
+                }}
+            }}
+            
+            // DB에 모든 수정점 저장
+            function saveToDatabase() {{
+                if (!modelToken || pendingAnnotations.length === 0) {{
+                    showMessage('저장할 수정점이 없습니다', 'info');
+                    return;
+                }}
+                
+                // 저장할 데이터를 JSON으로 인코딩
+                const dataToSave = {{
+                    model_token: modelToken,
+                    annotations: pendingAnnotations
+                }};
+                
+                // Base64로 인코딩
+                const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataToSave))));
+                
+                // URL 파라미터로 전송
+                const params = new URLSearchParams();
+                params.set('action', 'save_annotations');
+                params.set('data', encodedData);
+                
+                // 저장 중 메시지
+                showMessage('💾 제출 중...', 'info');
+                
+                // 페이지 리로드하여 서버에 저장
+                setTimeout(() => {{
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                }}, 1000);
+            }}
+            
+            // 메시지 표시 함수
+            function showMessage(text, type) {{
+                const message = document.createElement('div');
+                message.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: ${{type === 'success' ? '#4CAF50' : '#f44336'}};
+                    color: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    z-index: 100000;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                `;
+                message.textContent = text;
+                document.body.appendChild(message);
+                
+                setTimeout(() => {{
+                    message.remove();
+                }}, 2000);
             }}
             
             // 수정점 생성
@@ -782,41 +920,42 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function completeAnnotation(id) {{
                 const annotation = annotations.find(a => a.id == id);
                 if (annotation) {{
-                    // 서버에 상태 업데이트
-                    if (modelToken && !String(id).startsWith('temp_')) {{
-                        const params = new URLSearchParams(window.location.search);
-                        params.set('action', 'complete_annotation');
-                        params.set('annotation_id', id);
-                        
-                        window.location.href = window.location.pathname + '?' + params.toString();
-                        return;
-                    }}
-                    
-                    // 임시 annotation인 경우 로컬에서만 처리
                     annotation.completed = true;
                     annotation.mesh.material.color.setHex(0x0000ff);
+                    
+                    // pendingAnnotations에서도 업데이트
+                    const pending = pendingAnnotations.find(p => p.tempId === id);
+                    if (pending) {{
+                        pending.completed = true;
+                    }}
+                    
+                    showMessage('✅ 수정 완료로 표시되었습니다', 'success');
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}
             
             // 수정점 삭제
             function deleteAnnotation(id) {{
-                // 서버에서 삭제
-                if (modelToken && !String(id).startsWith('temp_')) {{
-                    const params = new URLSearchParams(window.location.search);
-                    params.set('action', 'delete_annotation');
-                    params.set('annotation_id', id);
-                    
-                    window.location.href = window.location.pathname + '?' + params.toString();
-                    return;
-                }}
-                
-                // 임시 annotation인 경우 로컬에서만 처리
                 const index = annotations.findIndex(a => a.id == id);
                 if (index !== -1) {{
                     const annotation = annotations[index];
                     scene.remove(annotation.mesh);
                     annotations.splice(index, 1);
+                    
+                    // pendingAnnotations에서도 제거
+                    const pendingIndex = pendingAnnotations.findIndex(p => p.tempId === id);
+                    if (pendingIndex !== -1) {{
+                        pendingAnnotations.splice(pendingIndex, 1);
+                        updateDbSaveButton();
+                    }}
+                    
+                    // DB에 저장된 항목이면 서버에서도 삭제 필요
+                    if (annotation.saved && !String(id).startsWith('temp_')) {{
+                        // 삭제 마크 표시
+                        showMessage('⚠️ DB에서 삭제하려면 페이지를 새로고침하세요', 'warning');
+                    }} else {{
+                        showMessage('✅ 수정점이 삭제되었습니다', 'success');
+                    }}
                 }}
                 document.getElementById('annotationPopup').classList.remove('show');
             }}

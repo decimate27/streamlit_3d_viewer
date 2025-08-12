@@ -21,8 +21,39 @@ def show_viewer_page(model_data):
         db = ModelDatabase()
         
         try:
-            if action == "add_annotation":
-                # 새 수정점 추가
+            if action == "save_annotations":
+                # 여러 수정점 일괄 저장
+                import base64
+                import json
+                
+                encoded_data = query_params.get("data", "")
+                if encoded_data:
+                    # Base64 디코딩
+                    try:
+                        decoded = base64.b64decode(encoded_data).decode('utf-8')
+                        data = json.loads(decoded)
+                        
+                        if data.get('model_token') == share_token:
+                            # 각 annotation 저장
+                            saved_count = 0
+                            for ann in data.get('annotations', []):
+                                db.add_annotation(
+                                    share_token, 
+                                    ann['position'], 
+                                    ann['text']
+                                )
+                                saved_count += 1
+                            
+                            st.success(f"✅ {saved_count}개의 수정점이 제출완료되었습니다!")
+                    except Exception as e:
+                        st.error(f"데이터 디코딩 오류: {str(e)}")
+                
+                # 파라미터 제거하고 리다이렉트
+                st.query_params.clear()
+                st.rerun()
+            
+            elif action == "add_annotation":
+                # 개별 수정점 추가 (기존 코드)
                 x = float(query_params.get("x", "0"))
                 y = float(query_params.get("y", "0"))
                 z = float(query_params.get("z", "0"))
