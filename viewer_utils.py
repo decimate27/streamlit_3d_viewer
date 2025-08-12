@@ -430,11 +430,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 렌더러 설정 - 색상 정확도 유지
-                    renderer.outputEncoding = THREE.LinearEncoding; // sRGB가 아닌 Linear 사용
-                    renderer.toneMapping = THREE.NoToneMapping; // 톤매핑 없음
+                    // 색상 보정 완전 비활성화
+                    renderer.outputEncoding = THREE.LinearEncoding;
+                    renderer.toneMapping = THREE.NoToneMapping;
                     renderer.shadowMap.enabled = false;
-                    renderer.gammaFactor = 1.0; // 감마 보정 없음
+                    renderer.gammaFactor = 1.0;
+                    renderer.gammaInput = false;
+                    renderer.gammaOutput = false;
+                    renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
                     
                     // 모바일에서는 초기에 캔버스 숨기기
                     if (isMobile) {{
@@ -456,18 +459,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
                     
-                    // 조명 설정 - 색상 정확도를 위해 중립적인 조명
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 주변광 약간 감소
+                    // 조명 설정 - 원본 색상 100% 유지
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // 밝은 주변광
                     scene.add(ambientLight);
                     
-                    // 방향광 - 매우 약하게 (형태감만 살짝)
-                    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.2);
-                    directionalLight1.position.set(1, 1, 1);
-                    scene.add(directionalLight1);
-                    
-                    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.2);
-                    directionalLight2.position.set(-1, -1, -1);
-                    scene.add(directionalLight2);
+                    // 방향광 제거 또는 최소화 - 그림자나 명암 효과 없이
+                    // const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.0);
+                    // directionalLight1.position.set(1, 1, 1);
+                    // scene.add(directionalLight1);
                     
                     console.log('Scene setup complete');
                     
@@ -537,41 +536,44 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
                         
-                        // UV Seam 방지 설정
-                        material.side = THREE.FrontSide;
-                        material.transparent = false;
-                        material.alphaTest = 0;
-                        material.depthWrite = true;
-                        material.depthTest = true;
-                        
-                        // 색상 정확도 유지 - 반사/광택 제거만
-                        material.shininess = 0;
-                        material.specular.setRGB(0, 0, 0);
-                        
-                        // 색상 관련 설정 - 원본 유지
-                        material.color = material.color || new THREE.Color(1, 1, 1); // 흰색 기본값
-                        material.emissive = material.emissive || new THREE.Color(0, 0, 0); // 발광 없음
-                        
-                        // 텍스처 적용
+                        // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
+                        
+                        // MeshBasicMaterial로 변환하여 조명 영향 제거
                         if (textureFileName && textures[textureFileName]) {{
-                            material.map = textures[textureFileName];
-                            material.map.sourceFile = textureFileName;
+                            // 기존 material 대신 새로운 BasicMaterial 생성
+                            const basicMaterial = new THREE.MeshBasicMaterial({{
+                                map: textures[textureFileName],
+                                side: THREE.FrontSide,
+                                transparent: false,
+                                alphaTest: 0,
+                                depthWrite: true,
+                                depthTest: true
+                            }});
                             
-                            // 색상 정확도 유지
-                            material.map.encoding = THREE.LinearEncoding;
+                            // 텍스처 설정
+                            basicMaterial.map.encoding = THREE.LinearEncoding;
+                            basicMaterial.map.minFilter = THREE.LinearFilter;
+                            basicMaterial.map.magFilter = THREE.LinearFilter;
+                            basicMaterial.map.generateMipmaps = false;
+                            basicMaterial.map.anisotropy = 1;
+                            basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
+                            basicMaterial.map.needsUpdate = true;
                             
-                            // UV Seam 방지를 위한 텍스처 설정
-                            material.map.minFilter = THREE.LinearFilter;
-                            material.map.magFilter = THREE.LinearFilter;
-                            material.map.generateMipmaps = false;
-                            material.map.anisotropy = 1;
-                            material.map.wrapS = THREE.ClampToEdgeWrapping;
-                            material.map.wrapT = THREE.ClampToEdgeWrapping;
-                            material.map.format = THREE.RGBAFormat;
-                            material.map.needsUpdate = true;
+                            // 기존 material을 basicMaterial로 교체
+                            materials.materials[materialName] = basicMaterial;
                             
-                            console.log('✅ Texture applied: ' + textureFileName);
+                            console.log('✅ BasicMaterial applied: ' + textureFileName);
+                        }} else {{
+                            // 텍스처가 없는 경우 기존 설정 유지
+                            material.side = THREE.FrontSide;
+                            material.transparent = false;
+                            material.alphaTest = 0;
+                            material.depthWrite = true;
+                            material.depthTest = true;
+                            material.shininess = 0;
+                            material.specular.setRGB(0, 0, 0);
                         }}
                     }}
                     
@@ -875,23 +877,23 @@ def create_texture_loading_code(texture_base64):
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 색상 정확도 유지 설정
-                tex_{safe_name}.encoding = THREE.LinearEncoding; // 원본 색상 유지
-                tex_{safe_name}.flipY = true; // Y축 플립 (Three.js 기본값)
+                // 원본 색상 100% 유지
+                tex_{safe_name}.encoding = THREE.LinearEncoding;
+                tex_{safe_name}.flipY = true;
                 
-                // UV Seam 방지 설정
+                // UV Seam 방지 + 색상 정확도
                 tex_{safe_name}.generateMipmaps = false;
                 tex_{safe_name}.minFilter = THREE.LinearFilter;
                 tex_{safe_name}.magFilter = THREE.LinearFilter;
                 tex_{safe_name}.anisotropy = 1;
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.format = THREE.RGBAFormat;
+                tex_{safe_name}.format = THREE.RGBFormat; // RGBA 대신 RGB 사용
                 tex_{safe_name}.type = THREE.UnsignedByteType;
                 tex_{safe_name}.needsUpdate = true;
                 
                 textures['{name}'] = tex_{safe_name};
-                console.log('Texture loaded: {name}');
+                console.log('Texture loaded with original colors: {name}');
         """)
     
     return '\n'.join(code_lines)
