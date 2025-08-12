@@ -412,7 +412,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     scene.background = new THREE.Color(0x{bg_color[1:]});
                     
                     // Camera 생성 - 제품 전시용 FOV (45도)
-                    // FOV 45도: 왜곡 최소화, 전문적인 제품 사진 느낌
                     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
                     camera.position.set(0, 0, 5);
                     
@@ -420,16 +419,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const container = document.getElementById('container');
                     renderer = new THREE.WebGLRenderer({{ 
                         antialias: true,
-                        powerPreference: "high-performance", // 고성능 GPU 사용
-                        preserveDrawingBuffer: true // 모바일 호환성
+                        powerPreference: "high-performance",
+                        preserveDrawingBuffer: true,
+                        alpha: false,
+                        premultipliedAlpha: false,
+                        stencil: false,
+                        depth: true
                     }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
-                    renderer.setPixelRatio(window.devicePixelRatio);
-                    renderer.setClearColor(0x{bg_color[1:]}, 1); // 초기 배경색 설정
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 이방성 필터링 최대값 확인 (모바일은 제한)
-                    const maxAnisotropy = isMobile ? 1 : renderer.capabilities.getMaxAnisotropy();
-                    console.log('Anisotropy setting:', maxAnisotropy);
+                    // 렌더러 추가 설정
+                    renderer.outputEncoding = THREE.sRGBEncoding;
+                    renderer.toneMapping = THREE.NoToneMapping;
+                    renderer.shadowMap.enabled = false;
                     
                     // 모바일에서는 초기에 캔버스 숨기기
                     if (isMobile) {{
@@ -439,25 +443,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     container.appendChild(renderer.domElement);
                     
-                    // Controls 생성 - 제품 전시용 설정
+                    // Controls 생성
                     controls = new THREE.OrbitControls(camera, renderer.domElement);
                     controls.enableDamping = true;
-                    controls.dampingFactor = 0.08; // 더 부드러운 움직임
+                    controls.dampingFactor = 0.08;
                     controls.enableZoom = true;
                     controls.enablePan = true;
                     controls.enableRotate = true;
-                    controls.rotateSpeed = 0.5; // 천천히 회전
-                    controls.zoomSpeed = 0.8; // 부드러운 줌
-                    
-                    // 줌 제한 설정 (너무 가깝거나 멀어지지 않도록)
+                    controls.rotateSpeed = 0.5;
+                    controls.zoomSpeed = 0.8;
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
                     
-                    // 조명 설정 - 매트한 렌더링용
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // 밝은 주변광
+                    // 조명 설정
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
                     scene.add(ambientLight);
                     
-                    // 방향광은 매우 부드럽게
                     const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.3);
                     directionalLight1.position.set(1, 1, 1);
                     scene.add(directionalLight1);
@@ -475,7 +476,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     if (!isMobile) {{
                         animate();
                     }}
-                    // 모바일은 loadModel 내부의 setTimeout 후에 animate 시작
                     
                     // 창 크기 변경 이벤트
                     window.addEventListener('resize', onWindowResize);
@@ -489,7 +489,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 try {{
                     console.log('Starting model load...');
                     
-                    // 모바일 감지 (loadModel 스코프용)
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                     const isAndroid = /Android/i.test(navigator.userAgent);
                     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -502,32 +501,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     {create_texture_loading_code(texture_base64)}
                     
                     console.log('Textures loaded:', Object.keys(textures));
-                    console.log('Total textures:', Object.keys(textures).length);
-                    
-                    // 텍스처 디버깅 정보
-                    for (let texName in textures) {{
-                        const tex = textures[texName];
-                        const hasImage = tex && tex.image ? 'Yes' : 'No';
-                        console.log('  - ' + texName + ': Loaded (has image: ' + hasImage + ')');
-                    }}
                     
                     // MTL 로더
                     console.log('Loading MTL...');
                     const mtlLoader = new THREE.MTLLoader();
-                    
-                    // MTLLoader에 텍스처 매니저 설정
                     mtlLoader.setMaterialOptions({{
                         ignoreZeroRGBs: true,
                         invertTrProperty: false
                     }});
                     
-                    // MTL 파싱 전에 모든 텍스처가 로드되었는지 확인
-                    console.log('Pre-check: Available textures before MTL parsing:');
-                    for (let texName in textures) {{
-                        console.log('  ✓ ' + texName);
-                    }}
-                    
-                    // MTL 파싱
                     const materials = mtlLoader.parse(`{mtl_content}`, '');
                     
                     // MTL에서 텍스처 참조 추출
@@ -543,58 +525,42 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         }} else if (line.startsWith('map_Kd ') && currentMaterial) {{
                             const textureName = line.substring(7).trim();
                             textureRefs[currentMaterial] = textureName;
-                            console.log('MTL mapping found: ' + currentMaterial + ' -> ' + textureName);
+                            console.log('MTL mapping: ' + currentMaterial + ' -> ' + textureName);
                         }}
                     }}
                     
                     materials.preload();
                     
-                    // 모든 재질을 매트하게 처리
+                    // 모든 재질 처리
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
                         
-                        // 반사도 제거 (매트 효과)
+                        // UV Seam 방지 설정
+                        material.side = THREE.FrontSide;
+                        material.transparent = false;
+                        material.alphaTest = 0;
+                        material.depthWrite = true;
+                        material.depthTest = true;
                         material.shininess = 0;
                         material.specular.setRGB(0, 0, 0);
                         
-                        // 텍스처 적용 - MTL 파싱에서 찾은 매핑 사용
+                        // 텍스처 적용
                         const textureFileName = textureRefs[materialName];
-                        if (textureFileName) {{
-                            console.log('Applying texture to ' + materialName + ': ' + textureFileName);
+                        if (textureFileName && textures[textureFileName]) {{
+                            material.map = textures[textureFileName];
+                            material.map.sourceFile = textureFileName;
                             
-                            if (textures[textureFileName]) {{
-                                material.map = textures[textureFileName];
-                                material.map.sourceFile = textureFileName; // sourceFile 설정
-                                console.log('  ✅ Texture applied: ' + textureFileName);
-                            }} else {{
-                                console.warn('  ⚠️ Texture not found: ' + textureFileName);
-                                console.log('  Available textures:', Object.keys(textures));
-                            }}
-                        }} else if (material.map) {{
-                            // MTL에서 매핑을 찾지 못했지만 map이 있는 경우
-                            console.warn('Material ' + materialName + ' has map but no texture reference found');
-                        }}
-                        
-                        // 텍스처가 성공적으로 적용된 경우 필터 설정
-                        if (material.map && material.map.image) {{
-                            if (isMobile) {{
-                                // 모바일: 간단한 설정으로 UV 시음 최소화
-                                material.map.minFilter = THREE.LinearFilter;
-                                material.map.magFilter = THREE.LinearFilter;
-                                material.map.generateMipmaps = false;
-                                material.map.anisotropy = 1;
-                            }} else {{
-                                // 데스크톱: 고품질 설정
-                                material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                                material.map.minFilter = THREE.LinearMipmapLinearFilter;
-                                material.map.magFilter = THREE.LinearFilter;
-                                material.map.generateMipmaps = true;
-                            }}
-                            
-                            // 공통: 텍스처 래핑
+                            // UV Seam 방지를 위한 텍스처 설정
+                            material.map.minFilter = THREE.LinearFilter;
+                            material.map.magFilter = THREE.LinearFilter;
+                            material.map.generateMipmaps = false;
+                            material.map.anisotropy = 1;
                             material.map.wrapS = THREE.ClampToEdgeWrapping;
                             material.map.wrapT = THREE.ClampToEdgeWrapping;
+                            material.map.format = THREE.RGBAFormat;
                             material.map.needsUpdate = true;
+                            
+                            console.log('✅ Texture applied: ' + textureFileName);
                         }}
                     }}
                     
@@ -606,6 +572,28 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     objLoader.setMaterials(materials);
                     
                     const object = objLoader.parse(`{obj_content}`);
+                    
+                    // UV 좌표 조정 - 경계에서 약간 안쪽으로
+                    object.traverse((child) => {{
+                        if (child.isMesh && child.geometry) {{
+                            const geometry = child.geometry;
+                            if (geometry.attributes.uv) {{
+                                const uvArray = geometry.attributes.uv.array;
+                                const epsilon = 0.001; // UV 경계에서 0.1% 안쪽으로
+                                
+                                for (let i = 0; i < uvArray.length; i++) {{
+                                    // UV 좌표를 epsilon만큼 안쪽으로 조정
+                                    if (uvArray[i] < epsilon) {{
+                                        uvArray[i] = epsilon;
+                                    }} else if (uvArray[i] > 1 - epsilon) {{
+                                        uvArray[i] = 1 - epsilon;
+                                    }}
+                                }}
+                                
+                                geometry.attributes.uv.needsUpdate = true;
+                            }}
+                        }}
+                    }});
                     
                     // 모델 크기 조정 및 중앙 정렬
                     const box = new THREE.Box3().setFromObject(object);
@@ -621,35 +609,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     scene.add(object);
                     model = object;
                     
-                    // 최종 재질 확인 (디버깅)
-                    console.log('=== Final Material Check ===');
-                    object.traverse((child) => {{
-                        if (child.isMesh && child.material) {{
-                            const mat = child.material;
-                            if (mat.name) {{
-                                console.log('Mesh uses material: ' + mat.name);
-                                if (mat.map) {{
-                                    const sourceFile = mat.map.sourceFile || 'Not set';
-                                    const hasImage = mat.map.image ? 'Yes' : 'No';
-                                    console.log('  -> Texture file: ' + sourceFile);
-                                    console.log('  -> Has image data: ' + hasImage);
-                                }} else {{
-                                    console.log('  -> No texture');
-                                }}
-                            }}
-                        }}
-                    }});
-                    console.log('=========================');
-                    
-                    // 카메라 위치 조정 - FOV 45도에 맞춰 거리 증가
-                    // FOV가 작아지면 같은 크기로 보이려면 더 멀리서 봐야 함
-                    const distance = maxDim * scale * 3; // 2 -> 3으로 증가
+                    // 카메라 위치 조정
+                    const distance = maxDim * scale * 3;
                     camera.position.set(distance, distance * 0.7, distance);
                     camera.lookAt(0, 0, 0);
-                    
-                    // 카메라 설정 로그
-                    console.log('Camera FOV: 45° (Product display mode)');
-                    console.log('Camera distance: ' + distance.toFixed(2));
                     
                     console.log('Model loaded successfully');
                     
@@ -657,34 +620,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     if (isMobile) {{
                         console.log('Mobile optimization: GPU warmup starting...');
                         
-                        // GPU 워밍업: 보이지 않는 상태에서 여러 프레임 렌더링
                         const warmupFrames = isAndroid ? 5 : 3;
                         for (let i = 0; i < warmupFrames; i++) {{
                             renderer.render(scene, camera);
                         }}
-                        console.log('GPU warmup complete (' + warmupFrames + ' frames)');
                         
-                        // 지연 시간 설정 (Android는 더 길게)
                         const delay = isAndroid ? 500 : 300;
                         
-                        // 지연 후 표시
                         setTimeout(() => {{
-                            // 로딩 애니메이션 페이드 아웃
                             hideLoadingSpinner();
-                            
-                            // 캔버스 페이드인
                             renderer.domElement.style.opacity = '1';
-                            
-                            // 최종 렌더링
                             renderer.render(scene, camera);
-                            
-                            // 모바일에서 애니메이션 시작
                             animate();
-                            
-                            console.log('Mobile optimization complete, displaying model');
+                            console.log('Mobile optimization complete');
                         }}, delay);
                     }} else {{
-                        // 데스크톱: 잠시 후 페이드 아웃
                         setTimeout(() => {{
                             hideLoadingSpinner();
                         }}, 500);
@@ -724,30 +674,24 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     'black': '#000000'
                 }};
                 
-                // Three.js Scene 배경색 변경
                 if (scene) {{
                     scene.background = new THREE.Color(colors[color]);
-                    console.log('Scene 배경색 변경됨:', color);
                 }}
                 
-                // Three.js 렌더러 배경색 변경
                 if (renderer) {{
                     renderer.setClearColor(colors[color], 1);
-                    console.log('Renderer 배경색 변경됨:', color);
                 }}
                 
-                // HTML body 배경색 변경
                 document.body.style.background = bodyColors[color];
                 document.body.style.backgroundColor = bodyColors[color];
                 
-                // 컨테이너 배경색도 변경
                 const container = document.getElementById('container');
                 if (container) {{
                     container.style.background = bodyColors[color];
                     container.style.backgroundColor = bodyColors[color];
                 }}
                 
-                // 로딩 요소 색상 변경 (아직 보이는 경우)
+                // 로고 색상도 변경
                 const isDark = color === 'black';
                 const logoBody = document.getElementById('logoBody');
                 const logoInner = document.getElementById('logoInner');
@@ -765,7 +709,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
                 }}
                 
-                // 강제 렌더링
                 if (renderer && scene && camera) {{
                     renderer.render(scene, camera);
                 }}
@@ -775,13 +718,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 배경색 버튼 강제 생성
             function createBackgroundButtons() {{
-                // 기존 컨트롤 제거
                 const existingControls = document.querySelector('.controls');
                 if (existingControls) {{
                     existingControls.remove();
                 }}
                 
-                // 새 컨트롤 생성
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'controls';
                 controlsDiv.innerHTML = `
@@ -871,9 +812,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 // 즉시 실행 및 주기적 실행
                 hideStreamlitElements();
-                setInterval(hideStreamlitElements, 500); // 더 빈번하게 실행
+                setInterval(hideStreamlitElements, 500);
                 
-                // 추가적인 MutationObserver로 DOM 변화 감지
+                // MutationObserver로 DOM 변화 감지
                 const observer = new MutationObserver(function(mutations) {{
                     hideStreamlitElements();
                 }});
@@ -918,31 +859,23 @@ def create_texture_loading_code(texture_base64):
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
+                // {name} 텍스처 로딩
                 const img_{safe_name} = new Image();
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 모바일 최적화 설정
-                if (typeof isMobile !== 'undefined' && isMobile) {{
-                    // 모바일: 밉맵 OFF, 단순 필터
-                    tex_{safe_name}.generateMipmaps = false;
-                    tex_{safe_name}.minFilter = THREE.LinearFilter;
-                    tex_{safe_name}.magFilter = THREE.LinearFilter;
-                    tex_{safe_name}.anisotropy = 1;
-                }} else {{
-                    // 데스크톱: 고품질 설정
-                    tex_{safe_name}.anisotropy = 16;
-                    tex_{safe_name}.generateMipmaps = true;
-                    tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
-                    tex_{safe_name}.magFilter = THREE.LinearFilter;
-                }}
-                
-                // 공통 설정
+                // UV Seam 방지 설정
+                tex_{safe_name}.generateMipmaps = false;
+                tex_{safe_name}.minFilter = THREE.LinearFilter;
+                tex_{safe_name}.magFilter = THREE.LinearFilter;
+                tex_{safe_name}.anisotropy = 1;
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.format = THREE.RGBAFormat;
                 tex_{safe_name}.needsUpdate = true;
                 
                 textures['{name}'] = tex_{safe_name};
+                console.log('Texture loaded: {name}');
         """)
     
     return '\n'.join(code_lines)
