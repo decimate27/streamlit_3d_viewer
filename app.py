@@ -538,76 +538,6 @@ def show_model_management():
         st.info("저장된 모델이 없습니다.")
         return
     
-    # 삭제 확인 상태 관리
-    if "delete_confirm_model_id" not in st.session_state:
-        st.session_state.delete_confirm_model_id = None
-    if "delete_password_verified" not in st.session_state:
-        st.session_state.delete_password_verified = False
-    
-    # 패스워드 확인을 위해 auth 모듈 import
-    from auth import hash_password, ADMIN_PASSWORD
-    
-    # 삭제 확인 다이얼로그 표시
-    if st.session_state.delete_confirm_model_id:
-        model_to_delete = next((m for m in models if m['id'] == st.session_state.delete_confirm_model_id), None)
-        if model_to_delete:
-            # 경고 메시지
-            st.error("🚨 **위험한 작업입니다!**")
-            st.warning("⚠️ **이 작업은 절대 복구할 수 없습니다!**")
-            st.info(f"📄 삭제하려는 모델: **{model_to_delete['name']}**")
-            
-            st.markdown("""
-            ---
-            ### 🔐 관리자 패스워드 재확인
-            
-            **주의사항:**
-            - 삭제된 3D 모델은 **절대 복구할 수 없습니다**
-            - 모든 관련 파일이 영구적으로 삭제됩니다
-            - 공유 링크도 더 이상 사용할 수 없게 됩니다
-            
-            **정말로 삭제하시겠습니까?**
-            """)
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            
-            with col2:
-                # 패스워드 입력
-                delete_password = st.text_input(
-                    "관리자 패스워드를 입력하세요", 
-                    type="password", 
-                    key="delete_password_input",
-                    placeholder="패스워드 확인 후 삭제됩니다"
-                )
-                
-                col_btn1, col_btn2 = st.columns(2)
-                
-                with col_btn1:
-                    if st.button("❌ 취소", type="secondary", use_container_width=True):
-                        st.session_state.delete_confirm_model_id = None
-                        st.session_state.delete_password_verified = False
-                        if "delete_password_input" in st.session_state:
-                            del st.session_state["delete_password_input"]
-                        st.rerun()
-                
-                with col_btn2:
-                    if st.button("🗑️ 확인 후 삭제", type="primary", use_container_width=True):
-                        if delete_password and hash_password(delete_password) == hash_password(ADMIN_PASSWORD):
-                            # 패스워드 확인 성공 - 실제 삭제 실행
-                            if db.delete_model(st.session_state.delete_confirm_model_id):
-                                st.success(f"✅ 모델 '{model_to_delete['name']}'이 영구적으로 삭제되었습니다.")
-                                st.session_state.delete_confirm_model_id = None
-                                st.session_state.delete_password_verified = False
-                                if "delete_password_input" in st.session_state:
-                                    del st.session_state["delete_password_input"]
-                                st.rerun()
-                            else:
-                                st.error("❌ 삭제 중 오류가 발생했습니다.")
-                        else:
-                            st.error("❌ 패스워드가 틀렸습니다. 다시 확인해주세요.")
-            
-            st.markdown("---")
-            return  # 삭제 확인 화면일 때는 모델 리스트를 표시하지 않음
-    
     for model in models:
         # 저장 타입에 따른 아이콘과 설명
         storage_type = model.get('storage_type', 'local')
@@ -648,9 +578,11 @@ def show_model_management():
                 st.write("")  # 여백
                 st.write("")  # 여백
                 if st.button("🗑️ 삭제", key=f"delete_{model['id']}", type="secondary", use_container_width=True):
-                    # 삭제 확인 모드로 전환
-                    st.session_state.delete_confirm_model_id = model['id']
-                    st.rerun()
+                    if db.delete_model(model['id']):
+                        st.success("모델이 삭제되었습니다.")
+                        st.rerun()
+                    else:
+                        st.error("삭제 중 오류가 발생했습니다.")
 
 def main():
     # 타이틀은 이미 상단에 표시됨

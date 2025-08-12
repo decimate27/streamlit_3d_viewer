@@ -89,7 +89,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 padding: 0 !important;
                 border: none !important;
                 z-index: 1000;
-                background-color: {bg_color} !important;
             }}
             canvas {{
                 width: 100% !important;
@@ -209,7 +208,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            /* 로딩 스피너 스타일 - 페이지 로드 즉시 표시 */
+            /* 로딩 스피너 스타일 */
             .loading-container {{
                 position: absolute;
                 top: 50%;
@@ -217,10 +216,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 transform: translate(-50%, -50%);
                 text-align: center;
                 z-index: 1000;
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                background-color: transparent;
             }}
             
             .spinner {{
@@ -291,47 +286,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             </div>
         </div>
         
-        <!-- 페이지 로드 즉시 실행 스크립트 -->
-        <script>
-            // DOM 로드 즉시 배경색과 로딩 표시 확인
-            document.addEventListener('DOMContentLoaded', function() {{
-                const container = document.getElementById('container');
-                const loadingEl = document.getElementById('loading');
-                const body = document.body;
-                
-                // 배경색 즉시 적용
-                if (container) {{
-                    container.style.backgroundColor = '{bg_color}';
-                    container.style.background = '{bg_color}';
-                }}
-                if (body) {{
-                    body.style.backgroundColor = '{bg_color}';
-                    body.style.background = '{bg_color}';
-                }}
-                document.documentElement.style.backgroundColor = '{bg_color}';
-                document.documentElement.style.background = '{bg_color}';
-                
-                // 로딩 요소 즉시 표시
-                if (loadingEl) {{
-                    loadingEl.style.display = 'block';
-                    loadingEl.style.visibility = 'visible';
-                    loadingEl.style.opacity = '1';
-                }}
-                
-                console.log('페이지 로드 완료, 배경색 적용:', '{bg_color}');
-            }});
-            
-            // HTML 파싱 즉시 실행 (DOM 기다리지 않음)
-            (function() {{
-                const container = document.getElementById('container');
-                if (container) {{
-                    container.style.backgroundColor = '{bg_color}';
-                }}
-                document.body.style.backgroundColor = '{bg_color}';
-                document.documentElement.style.backgroundColor = '{bg_color}';
-            }})();
-        </script>
-        
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
         <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
         <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
@@ -340,33 +294,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <script>
             let scene, camera, renderer, controls;
             let model;
-            
-            // 스크립트 로드 즉시 로딩 상태 표시
-            console.log('Three.js 스크립트 로딩 시작...');
-            
-            // 배경색과 로딩 표시 즉시 적용
-            (function() {{
-                const container = document.getElementById('container');
-                const loadingEl = document.getElementById('loading');
-                
-                if (container) {{
-                    container.style.backgroundColor = '{bg_color}';
-                    container.style.display = 'block';
-                }}
-                if (loadingEl) {{
-                    loadingEl.style.display = 'block';
-                    loadingEl.style.visibility = 'visible';
-                    loadingEl.style.opacity = '1';
-                }}
-                
-                // 로딩 메시지 즉시 업데이트
-                const progressEl = document.getElementById('loadingProgress');
-                if (progressEl) {{
-                    progressEl.textContent = 'Three.js 라이브러리 로딩 중...';
-                }}
-                
-                console.log('로딩 UI 초기화 완료');
-            }})();
             
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
@@ -906,49 +833,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}, 1000);
             }});
             
-            // 모든 리소스 로드 완료 후 3D 뷰어 초기화
-            window.addEventListener('load', function() {{
-                console.log('모든 리소스 로드 완료, 3D 뷰어 초기화 시작');
-                updateLoadingProgress('3D 뷰어 초기화 중...');
-                
-                // 짧은 지연 후 초기화 (로딩 메시지가 보이도록)
-                setTimeout(function() {{
-                    init();
-                }}, 100);
-            }});
-            
-            // 백업: DOMContentLoaded 이벤트에서도 실행 (혹시 load 이벤트가 실패할 경우)
-            if (document.readyState === 'loading') {{
-                document.addEventListener('DOMContentLoaded', function() {{
-                    console.log('DOM 로드 완료, Three.js 대기 중...');
-                    updateLoadingProgress('Three.js 준비 중...');
-                    
-                    // Three.js가 로드되었는지 확인
-                    if (typeof THREE !== 'undefined') {{
-                        setTimeout(function() {{
-                            init();
-                        }}, 200);
-                    }} else {{
-                        console.log('Three.js 아직 로드되지 않음, 대기 중...');
-                        const checkThree = setInterval(function() {{
-                            if (typeof THREE !== 'undefined') {{
-                                clearInterval(checkThree);
-                                setTimeout(function() {{
-                                    init();
-                                }}, 200);
-                            }}
-                        }}, 100);
-                    }}
-                }});
-            }} else {{
-                // DOM이 이미 로드된 경우
-                console.log('DOM 이미 로드됨, 즉시 초기화');
-                if (typeof THREE !== 'undefined') {{
-                    setTimeout(function() {{
-                        init();
-                    }}, 100);
-                }}
-            }}
+            init();
         </script>
     </body>
     </html>
