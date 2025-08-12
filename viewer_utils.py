@@ -1326,10 +1326,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const textureLoader = new THREE.TextureLoader();
                     const textures = {{}};
                     
-                    // 텍스처 로딩 (Base64 방식)
+                    // 텍스처 로딩 (Base64 방식) 
+                    console.log('=== TEXTURE LOADING DEBUG ===');
+                    console.log('Available texture names: {", ".join(texture_base64.keys())}');
+                    
                     {create_texture_loading_code(texture_base64)}
                     
+                    console.log('Textures object:', textures);
                     console.log('Textures loaded:', Object.keys(textures));
+                    console.log('=== TEXTURE LOADING END ===');
                     
                     // MTL 로더
                     console.log('Loading MTL...');
@@ -1361,11 +1366,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     materials.preload();
                     
                     // 모든 재질 처리
+                    console.log('=== MATERIAL PROCESSING DEBUG ===');
+                    console.log('Available materials:', Object.keys(materials.materials));
+                    console.log('Texture references:', textureRefs);
+                    
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
                         
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
+                        console.log(`Processing material: ${{materialName}}, texture: ${{textureFileName}}`);
                         
                         // MeshBasicMaterial로 변환하여 조명 영향 제거 (색상 100% 정확)
                         if (textureFileName && textures[textureFileName]) {{
@@ -1386,16 +1396,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             
                             console.log('✅ BasicMaterial applied: ' + textureFileName);
                         }} else {{
-                            // 텍스처가 없는 경우 기존 설정 유지
-                            material.side = THREE.FrontSide;
-                            material.transparent = false;
-                            material.alphaTest = 0;
-                            material.depthWrite = true;
-                            material.depthTest = true;
-                            material.shininess = 0;
-                            material.specular.setRGB(0, 0, 0);
+                            // 텍스처가 없는 경우 기본 색상 설정
+                            const fallbackMaterial = new THREE.MeshBasicMaterial({{
+                                color: 0x808080,  // 회색
+                                side: THREE.FrontSide
+                            }});
+                            materials.materials[materialName] = fallbackMaterial;
+                            console.log('⚠️ No texture found for material: ' + materialName + ', using fallback color');
                         }}
                     }}
+                    console.log('=== MATERIAL PROCESSING END ===');
                     
                     console.log('Materials loaded');
                     
@@ -1818,6 +1828,7 @@ def create_texture_loading_code(texture_base64):
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
                 // {name} 텍스처 로딩 (동기 방식)
+                console.log('Processing texture: {name}, data length: {len(data)} chars');
                 const img_{safe_name} = new Image();
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 
@@ -1838,7 +1849,12 @@ def create_texture_loading_code(texture_base64):
                 // 이미지 로드 완료 시 텍스처 업데이트
                 img_{safe_name}.onload = function() {{
                     tex_{safe_name}.needsUpdate = true;
-                    console.log('Texture loaded and updated: {name}');
+                    console.log('✅ Texture loaded and updated: {name}');
+                }};
+                
+                // 이미지 로드 실패 시 처리
+                img_{safe_name}.onerror = function() {{
+                    console.error('❌ Failed to load texture: {name}');
                 }};
                 
                 textures['{name}'] = tex_{safe_name};
