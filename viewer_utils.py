@@ -433,7 +433,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 색상 보정 완전 비활성화
                     renderer.outputEncoding = THREE.LinearEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
-                    renderer.shadowMap.enabled = false;
+                    renderer.shadowMap.enabled = true; // 그림자 활성화
+                    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 부드러운 그림자
                     renderer.gammaFactor = 1.0;
                     renderer.gammaInput = false;
                     renderer.gammaOutput = false;
@@ -459,12 +460,31 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
                     
-                    // 조명 설정 - MeshBasicMaterial은 조명의 영향을 받지 않음
-                    // 조명을 완전히 제거하거나 최소화
-                    // const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-                    // scene.add(ambientLight);
+                    // 조명 설정 - 그림자를 위한 최소한의 조명
+                    // 주 조명 (그림자 생성용)
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    directionalLight.position.set(5, 10, 5);
+                    directionalLight.castShadow = true;
+                    directionalLight.shadow.mapSize.width = 1024;
+                    directionalLight.shadow.mapSize.height = 1024;
+                    directionalLight.shadow.camera.near = 0.5;
+                    directionalLight.shadow.camera.far = 500;
+                    directionalLight.shadow.camera.left = -10;
+                    directionalLight.shadow.camera.right = 10;
+                    directionalLight.shadow.camera.top = 10;
+                    directionalLight.shadow.camera.bottom = -10;
+                    directionalLight.shadow.bias = -0.0001;
+                    directionalLight.shadow.normalBias = 0.02;
+                    scene.add(directionalLight);
                     
-                    // 조명 없이도 MeshBasicMaterial은 텍스처 색상을 그대로 표시
+                    // 보조 조명 (형태 강조용 - 매우 약함)
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+                    scene.add(ambientLight);
+                    
+                    // 추가 보조 조명 (반대편에서 - 더 약함)
+                    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
+                    fillLight.position.set(-5, -5, -5);
+                    scene.add(fillLight);
                     
                     console.log('Scene setup complete');
                     
@@ -537,41 +557,48 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
                         
-                        // MeshBasicMaterial로 변환하여 조명 영향 제거 (색상 100% 정확)
+                        // MeshLambertMaterial로 변환 (그림자 지원 + 색상 유지)
                         if (textureFileName && textures[textureFileName]) {{
-                            // 기존 material 대신 새로운 BasicMaterial 생성
-                            const basicMaterial = new THREE.MeshBasicMaterial({{
+                            // Lambert 재질로 변경 (조명 영향 최소화하면서 그림자 지원)
+                            const lambertMaterial = new THREE.MeshLambertMaterial({{
                                 map: textures[textureFileName],
                                 side: THREE.FrontSide,
                                 transparent: false,
                                 alphaTest: 0,
                                 depthWrite: true,
-                                depthTest: true
+                                depthTest: true,
+                                emissive: new THREE.Color(0x000000), // 자체 발광 없음
+                                emissiveIntensity: 0
                             }});
                             
                             // 텍스처 설정
-                            basicMaterial.map.encoding = THREE.LinearEncoding;
-                            basicMaterial.map.minFilter = THREE.LinearFilter;
-                            basicMaterial.map.magFilter = THREE.LinearFilter;
-                            basicMaterial.map.generateMipmaps = false;
-                            basicMaterial.map.anisotropy = 1;
-                            basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
-                            basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
-                            basicMaterial.map.needsUpdate = true;
+                            lambertMaterial.map.encoding = THREE.LinearEncoding;
+                            lambertMaterial.map.minFilter = THREE.LinearFilter;
+                            lambertMaterial.map.magFilter = THREE.LinearFilter;
+                            lambertMaterial.map.generateMipmaps = false;
+                            lambertMaterial.map.anisotropy = 1;
+                            lambertMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
+                            lambertMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
+                            lambertMaterial.map.needsUpdate = true;
                             
-                            // 기존 material을 basicMaterial로 교체
-                            materials.materials[materialName] = basicMaterial;
+                            // 기존 material을 lambertMaterial로 교체
+                            materials.materials[materialName] = lambertMaterial;
                             
-                            console.log('✅ BasicMaterial applied: ' + textureFileName);
+                            console.log('✅ LambertMaterial applied with shadows: ' + textureFileName);
                         }} else {{
-                            // 텍스처가 없는 경우 기존 설정 유지
-                            material.side = THREE.FrontSide;
-                            material.transparent = false;
-                            material.alphaTest = 0;
-                            material.depthWrite = true;
-                            material.depthTest = true;
-                            material.shininess = 0;
-                            material.specular.setRGB(0, 0, 0);
+                            // 텍스처가 없는 경우 Lambert 재질로 변경
+                            const lambertMaterial = new THREE.MeshLambertMaterial({{
+                                color: material.color || 0xffffff,
+                                side: THREE.FrontSide,
+                                transparent: false,
+                                alphaTest: 0,
+                                depthWrite: true,
+                                depthTest: true,
+                                emissive: new THREE.Color(0x000000),
+                                emissiveIntensity: 0
+                            }});
+                            
+                            materials.materials[materialName] = lambertMaterial;
                         }}
                     }}
                     
@@ -603,42 +630,25 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 
                                 geometry.attributes.uv.needsUpdate = true;
                             }}
+                            
+                            // 그림자 설정
+                            child.castShadow = true;   // 그림자 생성
+                            child.receiveShadow = true; // 그림자 받기
                         }}
                     }});
                     
-                    // 아웃라인 효과 생성 (텍스처 색상 100% 유지하면서 형태 강조)
-                    object.traverse((child) => {{
-                        if (child.isMesh && child.geometry && child.material) {{
-                            // 아웃라인용 geometry 복사
-                            const outlineGeometry = child.geometry.clone();
-                            
-                            // 아웃라인용 머티리얼 (검정색, 뒷면만 렌더링)
-                            const outlineMaterial = new THREE.MeshBasicMaterial({{
-                                color: 0x000000,  // 검정색
-                                side: THREE.BackSide,  // 뒷면만 렌더링
-                                transparent: true,
-                                opacity: 0.7,
-                                depthWrite: false,
-                                depthTest: true
-                            }});
-                            
-                            // 아웃라인 메쉬 생성
-                            const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
-                            
-                            // 아웃라인을 살짝 크게 스케일 (1.003 = 0.3% 확대 - 매우 얇은 아웃라인)
-                            outlineMesh.scale.multiplyScalar(1.003);
-                            
-                            // 원본 메쉬와 같은 위치/회전
-                            outlineMesh.position.copy(child.position);
-                            outlineMesh.rotation.copy(child.rotation);
-                            outlineMesh.quaternion.copy(child.quaternion);
-                            
-                            // 아웃라인을 부모 객체에 추가 (원본 메쉬 뒤에)
-                            child.parent.add(outlineMesh);
-                            
-                            console.log('Outline added for mesh:', child.name || 'unnamed');
-                        }}
+                    // 그라운드 플레인 추가 (그림자를 받을 바닥)
+                    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+                    const groundMaterial = new THREE.MeshLambertMaterial({{ 
+                        color: 0x{bg_color[1:]}, 
+                        transparent: true, 
+                        opacity: 0.1 
                     }});
+                    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                    ground.rotation.x = -Math.PI / 2;
+                    ground.position.y = -2;
+                    ground.receiveShadow = true;
+                    scene.add(ground);
                     
                     // 모델 크기 조정 및 중앙 정렬
                     const box = new THREE.Box3().setFromObject(object);
@@ -754,14 +764,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     textEl.className = isDark ? 'loading-text loading-text-dark' : 'loading-text';
                 }}
                 
-                // 아웃라인 색상 적응 (배경에 따라 대비되는 색상 선택)
+                // 바닥 그림자 플레인 색상 업데이트
                 if (scene) {{
                     scene.traverse((child) => {{
-                        if (child.material && child.material.color && child.material.side === THREE.BackSide) {{
-                            // 아웃라인 메쉬 감지 (BackSide 렌더링)
-                            const outlineColor = isDark ? 0xffffff : 0x000000; // 어두운 배경엔 흰색, 밝은 배경엔 검정색
-                            child.material.color.setHex(outlineColor);
-                            console.log('Outline color updated:', isDark ? 'white' : 'black');
+                        if (child.isMesh && child.material && child.geometry && child.geometry.type === 'PlaneGeometry') {{
+                            // 바닥 플레인 감지 및 색상 변경
+                            child.material.color.setHex(colors[color]);
                         }}
                     }});
                 }}
