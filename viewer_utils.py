@@ -608,7 +608,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 const feedbackData = {{
                     ...pendingFeedback,
                     comment: comment,
-                    model_id: '{get_model_id()}', // 템플릿에서 실제 model_id로 대체
+                    model_id: '{model_id or ""}', // 실제 model_id 사용
                     feedback_type: 'point'
                 }};
                 
