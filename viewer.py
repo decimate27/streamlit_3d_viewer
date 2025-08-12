@@ -10,6 +10,43 @@ def show_viewer_page(model_data):
         initial_sidebar_state="collapsed"
     )
     
+    # URL 파라미터 확인 및 annotation 처리
+    query_params = st.query_params
+    action = query_params.get("action", "")
+    
+    if action:
+        db = ModelDatabase()
+        
+        if action == "add_annotation":
+            # 새 수정점 추가
+            token = query_params.get("token", "")
+            x = float(query_params.get("x", "0"))
+            y = float(query_params.get("y", "0"))
+            z = float(query_params.get("z", "0"))
+            text = query_params.get("text", "")
+            
+            if token and text:
+                db.add_annotation(token, {"x": x, "y": y, "z": z}, text)
+                # 파라미터 제거하고 리다이렉트
+                st.query_params.clear()
+                st.rerun()
+        
+        elif action == "complete_annotation":
+            # 수정점 완료 처리
+            annotation_id = query_params.get("annotation_id", "")
+            if annotation_id:
+                db.update_annotation_status(int(annotation_id), True)
+                st.query_params.clear()
+                st.rerun()
+        
+        elif action == "delete_annotation":
+            # 수정점 삭제
+            annotation_id = query_params.get("annotation_id", "")
+            if annotation_id:
+                db.delete_annotation(int(annotation_id))
+                st.query_params.clear()
+                st.rerun()
+    
     # Streamlit UI 완전히 숨기기
     hide_streamlit_style = """
     <style>
@@ -107,9 +144,20 @@ def show_viewer_page(model_data):
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)
         
-        # 3D 뷰어 HTML 생성 (배경색 포함)
+        # 데이터베이스에서 annotations 로드
+        db = ModelDatabase()
+        annotations = db.get_annotations(model_data['share_token'])
+        
+        # 3D 뷰어 HTML 생성 (배경색 및 annotations 포함)
         from viewer_utils import create_3d_viewer_html
-        viewer_html = create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color)
+        viewer_html = create_3d_viewer_html(
+            obj_content, 
+            mtl_content, 
+            texture_data, 
+            background_color,
+            model_token=model_data['share_token'],
+            annotations=annotations
+        )
         
         # 전체 화면 뷰어 표시
         st.components.v1.html(viewer_html, width=None, height=None, scrolling=False)

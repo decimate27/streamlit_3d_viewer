@@ -156,6 +156,21 @@ class ModelDatabase:
                 st.write("📝 author 컬럼 추가")
                 conn.commit()
         
+        # annotations 테이블 생성 (존재하지 않을 경우)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS annotations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_token TEXT NOT NULL,
+                position_x REAL NOT NULL,
+                position_y REAL NOT NULL,
+                position_z REAL NOT NULL,
+                text TEXT NOT NULL,
+                completed BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_token) REFERENCES models(share_token) ON DELETE CASCADE
+            )
+        ''')
+        
         conn.commit()
         conn.close()
     
@@ -334,15 +349,16 @@ class ModelDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # 모델 정보 조회
+        # 모델 정보 조회 (share_token 포함)
         cursor.execute('''
-            SELECT storage_type, backup_paths FROM models WHERE id = ?
+            SELECT storage_type, backup_paths, share_token FROM models WHERE id = ?
         ''', (model_id,))
         row = cursor.fetchone()
         
         if row:
             storage_type = row[0] if row[0] else 'local'
             backup_paths = row[1] if len(row) > 1 else None
+            share_token = row[2] if len(row) > 2 else None
             
             # 웹서버에서 삭제
             if storage_type == 'web':
@@ -354,7 +370,11 @@ class ModelDatabase:
             elif storage_type == 'local':
                 self.local_backup.delete_model_backup(model_id)
             
-            # 데이터베이스에서 삭제
+            # 해당 모델의 모든 annotations 삭제
+            if share_token:
+                cursor.execute('DELETE FROM annotations WHERE model_token = ?', (share_token,))
+            
+            # 데이터베이스에서 모델 삭제
             cursor.execute('DELETE FROM models WHERE id = ?', (model_id,))
             conn.commit()
             conn.close()
@@ -373,6 +393,81 @@ class ModelDatabase:
         
         conn.close()
         return count
+    
+    # ============ Annotations 관련 메서드 ============
+    def add_annotation(self, model_token, position, text):
+        """수정점 추가"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO annotations (model_token, position_x, position_y, position_z, text, completed)
+            VALUES (?, ?, ?, ?, ?, 0)
+        ''', (model_token, position['x'], position['y'], position['z'], text))
+        
+        annotation_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return annotation_id
+    
+    def get_annotations(self, model_token):
+        """특정 모델의 모든 수정점 가져오기"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, position_x, position_y, position_z, text, completed
+            FROM annotations
+            WHERE model_token = ?
+            ORDER BY created_at
+        ''', (model_token,))
+        
+        annotations = []
+        for row in cursor.fetchall():
+            annotations.append({
+                'id': row[0],
+                'position': {'x': row[1], 'y': row[2], 'z': row[3]},
+                'text': row[4],
+                'completed': bool(row[5])
+            })
+        
+        conn.close()
+        return annotations
+    
+    def update_annotation_status(self, annotation_id, completed):
+        """수정점 상태 업데이트 (완료/미완료)"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE annotations
+            SET completed = ?
+            WHERE id = ?
+        ''', (1 if completed else 0, annotation_id))
+        
+        conn.commit()
+        conn.close()
+    
+    def delete_annotation(self, annotation_id):
+        """수정점 삭제"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM annotations WHERE id = ?', (annotation_id,))
+        
+        conn.commit()
+        conn.close()
+    
+    def delete_model_annotations(self, model_token):
+        """모델의 모든 수정점 삭제"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM annotations WHERE model_token = ?', (model_token,))
+        
+        conn.commit()
+        conn.close()
 
 def load_model_files(model_data):
     """저장된 모델 파일들 로드"""

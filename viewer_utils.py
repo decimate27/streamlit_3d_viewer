@@ -1,7 +1,8 @@
 import base64
+import json
 from pathlib import Path
 
-def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white"):
+def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_token=None, annotations=None):
     """Three.js 기반 3D 뷰어 HTML 생성"""
     
     # 배경색 설정
@@ -313,6 +314,144 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     font-size: 16px;
                 }}
             }}
+            
+            /* 수정점 표시 버튼 스타일 */
+            .annotation-btn {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 10px 15px;
+                background: #ff4444;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                z-index: 10000;
+            }}
+            
+            .annotation-btn.active {{
+                background: #cc0000;
+            }}
+            
+            .annotation-btn:hover {{
+                background: #ff6666;
+            }}
+            
+            /* 수정점 입력 모달 */
+            .annotation-modal {{
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                z-index: 10001;
+                min-width: 300px;
+            }}
+            
+            .annotation-modal.show {{
+                display: block;
+            }}
+            
+            .modal-overlay {{
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 10000;
+            }}
+            
+            .modal-overlay.show {{
+                display: block;
+            }}
+            
+            .annotation-input {{
+                width: 100%;
+                padding: 8px;
+                margin: 10px 0;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+            }}
+            
+            .modal-buttons {{
+                display: flex;
+                justify-content: space-between;
+                margin-top: 15px;
+            }}
+            
+            .modal-btn {{
+                padding: 8px 15px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }}
+            
+            .modal-btn.confirm {{
+                background: #4CAF50;
+                color: white;
+            }}
+            
+            .modal-btn.cancel {{
+                background: #f44336;
+                color: white;
+            }}
+            
+            /* 수정점 정보 팝업 */
+            .annotation-popup {{
+                display: none;
+                position: fixed;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+                z-index: 10002;
+                min-width: 200px;
+                max-width: 300px;
+            }}
+            
+            .annotation-popup.show {{
+                display: block;
+            }}
+            
+            .popup-text {{
+                margin-bottom: 10px;
+                font-size: 14px;
+                color: #333;
+            }}
+            
+            .popup-buttons {{
+                display: flex;
+                gap: 10px;
+            }}
+            
+            .popup-btn {{
+                padding: 6px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }}
+            
+            .popup-btn.complete {{
+                background: #2196F3;
+                color: white;
+            }}
+            
+            .popup-btn.delete {{
+                background: #f44336;
+                color: white;
+            }}
         </style>
     </head>
     <body>
@@ -348,6 +487,28 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     <span class="btn-text-mobile">⚫</span>
                 </button>
             </div>
+            
+            <!-- 수정점 표시 버튼 -->
+            <button class="annotation-btn" id="annotationBtn" onclick="toggleAnnotationMode()">
+                수정점표시
+            </button>
+            
+            <!-- 수정점 입력 모달 -->
+            <div class="modal-overlay" id="modalOverlay"></div>
+            <div class="annotation-modal" id="annotationModal">
+                <h3 style="margin-top: 0;">수정사항 입력</h3>
+                <textarea class="annotation-input" id="annotationInput" rows="3" placeholder="수정할 사항을 입력하세요..."></textarea>
+                <div class="modal-buttons">
+                    <button class="modal-btn cancel" onclick="closeAnnotationModal()">취소</button>
+                    <button class="modal-btn confirm" onclick="confirmAnnotation()">확인</button>
+                </div>
+            </div>
+            
+            <!-- 수정점 정보 팝업 -->
+            <div class="annotation-popup" id="annotationPopup">
+                <div class="popup-text" id="popupText"></div>
+                <div class="popup-buttons" id="popupButtons"></div>
+            </div>
         </div>
         
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -358,6 +519,276 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <script>
             let scene, camera, renderer, controls;
             let model;
+            let raycaster, mouse;
+            let isAnnotationMode = false;
+            let annotations = [];
+            let currentAnnotation = null;
+            let annotationIdCounter = 0;
+            const modelToken = '{model_token if model_token else ""}';
+            
+            // 초기 annotations 데이터 로드
+            const initialAnnotations = {json.dumps(annotations if annotations else [])};
+            
+            // Raycaster와 마우스 초기화
+            function initInteraction() {{
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
+                
+                // 마우스 클릭 이벤트
+                renderer.domElement.addEventListener('click', onMouseClick, false);
+                renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+                
+                // 기존 annotations 로드
+                loadExistingAnnotations();
+            }}
+            
+            // 기존 수정점 로드
+            function loadExistingAnnotations() {{
+                if (initialAnnotations && initialAnnotations.length > 0) {{
+                    initialAnnotations.forEach(ann => {{
+                        const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+                        const material = new THREE.MeshBasicMaterial({{ 
+                            color: ann.completed ? 0x0000ff : 0xff0000 
+                        }});
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(ann.position.x, ann.position.y, ann.position.z);
+                        
+                        scene.add(mesh);
+                        
+                        annotations.push({{
+                            id: ann.id,
+                            mesh: mesh,
+                            point: new THREE.Vector3(ann.position.x, ann.position.y, ann.position.z),
+                            text: ann.text,
+                            completed: ann.completed
+                        }});
+                    }});
+                }}
+            }}
+            
+            // 마우스 클릭 처리
+            function onMouseClick(event) {{
+                if (!model) return;
+                
+                // 마우스 좌표 계산
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                
+                // 수정점 클릭 확인
+                const annotationMeshes = annotations.map(a => a.mesh);
+                const annotationIntersects = raycaster.intersectObjects(annotationMeshes);
+                
+                if (annotationIntersects.length > 0) {{
+                    const clickedMesh = annotationIntersects[0].object;
+                    const annotation = annotations.find(a => a.mesh === clickedMesh);
+                    if (annotation) {{
+                        showAnnotationPopup(annotation, event);
+                        return;
+                    }}
+                }}
+                
+                // 수정점 표시 모드일 때만 새 수정점 추가
+                if (isAnnotationMode) {{
+                    const intersects = raycaster.intersectObject(model, true);
+                    
+                    if (intersects.length > 0) {{
+                        const point = intersects[0].point;
+                        openAnnotationModal(point);
+                    }}
+                }}
+            }}
+            
+            // 마우스 이동 처리 (커서 변경)
+            function onMouseMove(event) {{
+                if (!model) return;
+                
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                
+                // 수정점에 호버 시 커서 변경
+                const annotationMeshes = annotations.map(a => a.mesh);
+                const intersects = raycaster.intersectObjects(annotationMeshes);
+                
+                if (intersects.length > 0) {{
+                    renderer.domElement.style.cursor = 'pointer';
+                }} else if (isAnnotationMode) {{
+                    const modelIntersects = raycaster.intersectObject(model, true);
+                    renderer.domElement.style.cursor = modelIntersects.length > 0 ? 'crosshair' : 'default';
+                }} else {{
+                    renderer.domElement.style.cursor = 'default';
+                }}
+            }}
+            
+            // 수정점 표시 모드 토글
+            function toggleAnnotationMode() {{
+                isAnnotationMode = !isAnnotationMode;
+                const btn = document.getElementById('annotationBtn');
+                if (isAnnotationMode) {{
+                    btn.classList.add('active');
+                    btn.textContent = '수정점표시 ON';
+                }} else {{
+                    btn.classList.remove('active');
+                    btn.textContent = '수정점표시';
+                }}
+            }}
+            
+            // 수정점 입력 모달 열기
+            function openAnnotationModal(point) {{
+                currentAnnotation = {{ point: point.clone() }};
+                document.getElementById('annotationInput').value = '';
+                document.getElementById('annotationModal').classList.add('show');
+                document.getElementById('modalOverlay').classList.add('show');
+                document.getElementById('annotationInput').focus();
+            }}
+            
+            // 수정점 입력 모달 닫기
+            function closeAnnotationModal() {{
+                document.getElementById('annotationModal').classList.remove('show');
+                document.getElementById('modalOverlay').classList.remove('show');
+                currentAnnotation = null;
+            }}
+            
+            // 수정점 확인
+            function confirmAnnotation() {{
+                const text = document.getElementById('annotationInput').value.trim();
+                if (text && currentAnnotation) {{
+                    // 서버에 저장
+                    saveAnnotationToServer(currentAnnotation.point, text);
+                    closeAnnotationModal();
+                }}
+            }}
+            
+            // 서버에 수정점 저장
+            function saveAnnotationToServer(point, text) {{
+                if (!modelToken) {{
+                    console.error('Model token is missing');
+                    return;
+                }}
+                
+                const data = {{
+                    model_token: modelToken,
+                    position: {{ x: point.x, y: point.y, z: point.z }},
+                    text: text
+                }};
+                
+                // 임시로 로컬에 표시 (서버 응답 전)
+                createAnnotation(point, text, null);
+                
+                // 서버에 저장 요청 (AJAX 대신 페이지 리로드 방식)
+                // Streamlit과 통신하기 위해 hidden form 사용
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = window.location.href;
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'annotation_data';
+                input.value = JSON.stringify(data);
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                
+                // 실제 서버 통신은 Streamlit 백엔드에서 처리
+                console.log('Annotation saved locally:', data);
+            }}
+            
+            // 수정점 생성
+            function createAnnotation(point, text, id) {{
+                const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+                const material = new THREE.MeshBasicMaterial({{ color: 0xff0000 }});
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(point);
+                
+                scene.add(mesh);
+                
+                const annotation = {{
+                    id: id || 'temp_' + annotationIdCounter++,
+                    mesh: mesh,
+                    point: point.clone(),
+                    text: text,
+                    completed: false
+                }};
+                
+                annotations.push(annotation);
+            }}
+            
+            // 수정점 팝업 표시
+            function showAnnotationPopup(annotation, event) {{
+                const popup = document.getElementById('annotationPopup');
+                const popupText = document.getElementById('popupText');
+                const popupButtons = document.getElementById('popupButtons');
+                
+                popupText.textContent = annotation.text;
+                
+                if (annotation.completed) {{
+                    popupButtons.innerHTML = `
+                        <button class="popup-btn delete" onclick="deleteAnnotation('${{annotation.id}}')">삭제</button>
+                    `;
+                }} else {{
+                    popupButtons.innerHTML = `
+                        <button class="popup-btn complete" onclick="completeAnnotation('${{annotation.id}}')">수정완료</button>
+                    `;
+                }}
+                
+                popup.style.left = event.clientX + 10 + 'px';
+                popup.style.top = event.clientY + 10 + 'px';
+                popup.classList.add('show');
+                
+                // 클릭 외부 영역 클릭 시 팝업 닫기
+                setTimeout(() => {{
+                    document.addEventListener('click', hidePopupOnClickOutside);
+                }}, 100);
+            }}
+            
+            // 팝업 외부 클릭 시 숨기기
+            function hidePopupOnClickOutside(event) {{
+                const popup = document.getElementById('annotationPopup');
+                if (!popup.contains(event.target)) {{
+                    popup.classList.remove('show');
+                    document.removeEventListener('click', hidePopupOnClickOutside);
+                }}
+            }}
+            
+            // 수정 완료 처리
+            function completeAnnotation(id) {{
+                const annotation = annotations.find(a => a.id == id);
+                if (annotation) {{
+                    annotation.completed = true;
+                    annotation.mesh.material.color.setHex(0x0000ff);
+                    
+                    // 서버에 상태 업데이트 (실제 구현 시 AJAX 필요)
+                    console.log('Annotation completed:', id);
+                }}
+                document.getElementById('annotationPopup').classList.remove('show');
+            }}
+            
+            // 수정점 삭제
+            function deleteAnnotation(id) {{
+                const index = annotations.findIndex(a => a.id == id);
+                if (index !== -1) {{
+                    const annotation = annotations[index];
+                    scene.remove(annotation.mesh);
+                    annotations.splice(index, 1);
+                    
+                    // 서버에서 삭제 (실제 구현 시 AJAX 필요)
+                    console.log('Annotation deleted:', id);
+                }}
+                document.getElementById('annotationPopup').classList.remove('show');
+            }}
+            
+            // 모든 수정점 제거 (모델 삭제 시 호출용)
+            function clearAllAnnotations() {{
+                annotations.forEach(annotation => {{
+                    scene.remove(annotation.mesh);
+                }});
+                annotations = [];
+            }}
             
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
@@ -458,6 +889,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.zoomSpeed = 0.8;
                     controls.minDistance = 2;
                     controls.maxDistance = 10;
+                    
+                    // 상호작용 초기화
+                    initInteraction();
                     
                     // 조명 없음 - MeshBasicMaterial 사용으로 텍스처 색상 100% 유지
                     
