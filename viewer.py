@@ -1,5 +1,6 @@
 import streamlit as st
 from database import ModelDatabase, load_model_files, generate_share_url
+from web_database import WebServerDatabase
 import json
 
 def show_viewer_page(model_data):
@@ -27,17 +28,32 @@ def show_viewer_page(model_data):
                 print(f"📋 파싱된 피드백 데이터: {feedback_data}")  # 디버깅 로그
                 
                 # 데이터베이스에 피드백 저장
-                db = ModelDatabase()
-                feedback_id = db.add_feedback(
-                    model_id=feedback_data['model_id'],
-                    x=feedback_data['x'],
-                    y=feedback_data['y'], 
-                    z=feedback_data['z'],
-                    screen_x=feedback_data['screen_x'],
-                    screen_y=feedback_data['screen_y'],
-                    comment=feedback_data['comment'],
-                    feedback_type=feedback_data.get('feedback_type', 'point')
-                )
+                if model_data.get('storage_type') == 'web':
+                    # 웹서버 모델인 경우 웹서버에 저장
+                    web_db = WebServerDatabase()
+                    feedback_id = web_db.add_feedback(
+                        model_id=feedback_data['model_id'],
+                        x=feedback_data['x'],
+                        y=feedback_data['y'], 
+                        z=feedback_data['z'],
+                        screen_x=feedback_data['screen_x'],
+                        screen_y=feedback_data['screen_y'],
+                        comment=feedback_data['comment'],
+                        feedback_type=feedback_data.get('feedback_type', 'point')
+                    )
+                else:
+                    # 로컬 모델인 경우 로컬 DB에 저장
+                    db = ModelDatabase()
+                    feedback_id = db.add_feedback(
+                        model_id=feedback_data['model_id'],
+                        x=feedback_data['x'],
+                        y=feedback_data['y'], 
+                        z=feedback_data['z'],
+                        screen_x=feedback_data['screen_x'],
+                        screen_y=feedback_data['screen_y'],
+                        comment=feedback_data['comment'],
+                        feedback_type=feedback_data.get('feedback_type', 'point')
+                    )
                 
                 print(f"💾 저장된 피드백 ID: {feedback_id}")  # 디버깅 로그
                 
@@ -58,8 +74,14 @@ def show_viewer_page(model_data):
                 st.stop()
     
     # 기존 피드백 조회
-    db = ModelDatabase()
-    existing_feedbacks = db.get_feedbacks(model_data['id'])
+    if model_data.get('storage_type') == 'web':
+        # 웹서버 모델인 경우 웹서버에서 피드백 조회
+        web_db = WebServerDatabase()
+        existing_feedbacks = web_db.get_feedbacks(model_data['id'])
+    else:
+        # 로컬 모델인 경우 로컬 DB에서 조회
+        db = ModelDatabase()
+        existing_feedbacks = db.get_feedbacks(model_data['id'])
     print(f"📊 기존 피드백 수: {len(existing_feedbacks)}")  # 디버깅 로그
     
     # Streamlit UI 완전히 숨기기
@@ -157,7 +179,14 @@ def show_viewer_page(model_data):
         background_color = query_params.get("bg", "white")
         
         # 모델 파일 로드
-        obj_content, mtl_content, texture_data = load_model_files(model_data)
+        # 웹서버에서 가져온 데이터인 경우 이미 내용이 있음
+        if 'obj_content' in model_data and 'mtl_content' in model_data:
+            obj_content = model_data['obj_content']
+            mtl_content = model_data['mtl_content']
+            texture_data = model_data.get('texture_data', {})
+        else:
+            # 로컬 DB에서 가져온 경우 파일을 로드
+            obj_content, mtl_content, texture_data = load_model_files(model_data)
         
         # 3D 뷰어 HTML 생성 (배경색 및 피드백 데이터 포함)
         from viewer_utils import create_3d_viewer_html
@@ -187,9 +216,30 @@ def show_shared_model():
         st.info("올바른 공유 링크를 사용해주세요.")
         return
     
-    # 토큰으로 모델 조회
+    # 토큰으로 모델 조회 - 로컬 DB 먼저 확인
     db = ModelDatabase()
     model_data = db.get_model_by_token(token)
+    
+    # 로컬에서 못 찾으면 웹서버에서 조회
+    if not model_data:
+        web_db = WebServerDatabase()
+        # 웹서버에서 모델 로드 (load_model 메서드 사용)
+        obj_content, mtl_content, texture_data, model_info, feedbacks = web_db.load_model(token)
+        
+        if obj_content and model_info:
+            # 웹서버에서 찾은 모델 데이터를 형식에 맞게 변환
+            model_data = {
+                'id': model_info.get('id', token),
+                'name': model_info.get('name', 'Unknown Model'),
+                'author': model_info.get('author', 'Unknown'),
+                'description': model_info.get('description', ''),
+                'share_token': token,
+                'storage_type': 'web',
+                # 파일 내용을 직접 전달
+                'obj_content': obj_content,
+                'mtl_content': mtl_content,
+                'texture_data': texture_data
+            }
     
     if not model_data:
         st.error("모델을 찾을 수 없습니다.")
