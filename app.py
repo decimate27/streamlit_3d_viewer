@@ -8,7 +8,6 @@ from PIL import Image
 import zipfile
 import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
-from web_database import WebServerDatabase
 from mtl_generator import auto_generate_mtl
 from viewer_utils import create_3d_viewer_html
 from texture_optimizer import auto_optimize_textures
@@ -376,47 +375,26 @@ def show_upload_section():
     """파일 업로드 섹션"""
     st.header("📤 새 모델 업로드")
     
-    # 웹서버 DB와 로컬 DB 모두에서 개수 확인
-    web_db = WebServerDatabase()
-    local_db = ModelDatabase()
-    
-    # 웹서버에서 모델 가져오기 (에러 처리 포함)
-    try:
-        web_models = web_db.get_all_models()
-        web_count = len(web_models)
-        print(f"웹서버 모델: {web_count}개")  # 디버깅
-    except Exception as e:
-        print(f"웹서버 연결 에러: {e}")
-        web_models = []
-        web_count = 0
-    
-    # 로컬 DB에서 모델 가져오기  
-    try:
-        local_models = local_db.get_all_models()
-        local_count = len(local_models)
-        print(f"로컬 모델: {local_count}개")  # 디버깅
-    except Exception as e:
-        print(f"로컬 DB 에러: {e}")
-        local_models = []
-        local_count = 0
-    
-    # 전체 모델 수
-    current_count = web_count + local_count
-    
-    if web_count > 0 or local_count > 0:
-        st.info(f"📊 데이터베이스 상태: 웹서버 {web_count}개, 로컬 {local_count}개")
+    # 데이터베이스 연결
+    db = ModelDatabase()
+    current_count = db.get_model_count()
     
     if current_count >= 20:
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
+    # 저장된 모델들의 storage_type 확인
+    models = db.get_all_models()
+    web_count = sum(1 for model in models if model.get('storage_type') == 'web')
+    local_count = sum(1 for model in models if model.get('storage_type') == 'local')
+    
     # 상태 메시지 생성
     if web_count > 0 and local_count > 0:
         storage_status = f"웹서버: {web_count}개, 로컬: {local_count}개"
     elif web_count > 0:
-        storage_status = f"웹서버: {web_count}개"
+        storage_status = "웹서버 저장"
     elif local_count > 0:
-        storage_status = f"로컬: {local_count}개"
+        storage_status = "로컬 임시 저장"
     else:
         storage_status = "저장소 준비됨"
     
@@ -523,39 +501,15 @@ def show_upload_section():
                                 with open(texture_path, 'rb') as f:
                                     texture_data[texture_name] = f.read()
                             
-                            # 데이터베이스에 저장 (웹서버 우선, 실패시 로컬)
-                            model_id = None
-                            share_token = None
-                            
-                            # 먼저 웹서버에 저장 시도
-                            try:
-                                model_id, share_token = web_db.save_model(
-                                    model_name, 
-                                    author_name,
-                                    model_description,
-                                    obj_content, 
-                                    mtl_content, 
-                                    texture_data
-                                )
-                                if model_id:
-                                    st.success("✅ 웹서버에 모델 저장 완료!")
-                            except Exception as web_error:
-                                st.warning(f"⚠️ 웹서버 저장 실패: {str(web_error)}")
-                                # 웹서버 실패시 로컬 DB에 저장
-                                try:
-                                    model_id, share_token = local_db.save_model(
-                                        model_name, 
-                                        author_name,
-                                        model_description,
-                                        obj_content, 
-                                        mtl_content, 
-                                        texture_data
-                                    )
-                                    if model_id:
-                                        st.info("📁 로컬 데이터베이스에 모델 저장 완료!")
-                                except Exception as local_error:
-                                    st.error(f"❌ 로컬 저장도 실패: {str(local_error)}")
-                                    raise local_error
+                            # 데이터베이스에 저장
+                            model_id, share_token = db.save_model(
+                                model_name, 
+                                author_name,
+                                model_description,
+                                obj_content, 
+                                mtl_content, 
+                                texture_data
+                            )
                             
                             # 성공 메시지 및 공유 링크
                             st.success("✅ 모델이 성공적으로 저장되었습니다!")
@@ -577,52 +531,12 @@ def show_model_management():
     """모델 관리 섹션"""
     st.header("📋 저장된 모델 관리")
     
-    # 웹서버와 로컬 DB 모두에서 모델 가져오기
-    web_db = WebServerDatabase()
-    local_db = ModelDatabase()
+    db = ModelDatabase()
+    models = db.get_all_models()
     
-    # 웹서버 모델
-    web_models = web_db.get_all_models()
-    print(f"웹서버에서 가져온 모델 수: {len(web_models)}")  # 디버깅
-    
-    # 로컬 모델  
-    local_models = local_db.get_all_models()
-    print(f"로컬에서 가져온 모델 수: {len(local_models)}")  # 디버깅
-    
-    # 모든 모델 합치기
-    all_models = []
-    
-    # 웹서버 모델에 storage_type 추가하고 필수 필드 확인
-    for model in web_models:
-        model['storage_type'] = 'web'
-        # 필수 필드가 없으면 기본값 추가
-        if 'access_count' not in model:
-            model['access_count'] = 0
-        if 'created_at' not in model:
-            model['created_at'] = 'Unknown'
-        if 'share_token' not in model:
-            model['share_token'] = ''
-        all_models.append(model)
-    
-    # 로컬 모델 추가 (이미 storage_type이 있을 수 있음)
-    for model in local_models:
-        if 'storage_type' not in model:
-            model['storage_type'] = 'local'
-        # 필수 필드가 없으면 기본값 추가
-        if 'access_count' not in model:
-            model['access_count'] = 0
-        if 'created_at' not in model:
-            model['created_at'] = 'Unknown'
-        if 'share_token' not in model:
-            model['share_token'] = ''
-        all_models.append(model)
-    
-    if not all_models:
+    if not models:
         st.info("저장된 모델이 없습니다.")
         return
-    
-    # 이후 코드에서 models 대신 all_models 사용
-    models = all_models
     
     for model in models:
         # 저장 타입에 따른 아이콘과 설명
@@ -664,106 +578,11 @@ def show_model_management():
                 st.write("")  # 여백
                 st.write("")  # 여백
                 if st.button("🗑️ 삭제", key=f"delete_{model['id']}", type="secondary", use_container_width=True):
-                    # storage_type에 따라 다른 DB 사용
-                    if model.get('storage_type') == 'web':
-                        if web_db.delete_model(model['id']):
-                            st.success("웹서버에서 모델이 삭제되었습니다.")
-                            st.rerun()
-                        else:
-                            st.error("웹서버 삭제 중 오류가 발생했습니다.")
+                    if db.delete_model(model['id']):
+                        st.success("모델이 삭제되었습니다.")
+                        st.rerun()
                     else:
-                        if local_db.delete_model(model['id']):
-                            st.success("로컬에서 모델이 삭제되었습니다.")
-                            st.rerun()
-                        else:
-                            st.error("로컬 삭제 중 오류가 발생했습니다.")
-
-def show_feedback_management():
-    """피드백 관리 섹션"""
-    st.header("💬 피드백 관리")
-    
-    db = ModelDatabase()
-    models = db.get_all_models()
-    
-    if not models:
-        st.info("📋 업로드된 모델이 없습니다.")
-        return
-    
-    # 모델 선택
-    model_options = [f"{model['name']} (ID: {model['id'][:8]}...)" for model in models]
-    selected_idx = st.selectbox("모델 선택", range(len(models)), format_func=lambda x: model_options[x])
-    
-    if selected_idx is not None:
-        selected_model = models[selected_idx]
-        
-        st.subheader(f"📋 {selected_model['name']} - 피드백 목록")
-        
-        # 선택된 모델의 피드백 조회
-        feedbacks = db.get_feedbacks(selected_model['id'])
-        
-        if not feedbacks:
-            st.info("💬 등록된 피드백이 없습니다.")
-        else:
-            st.write(f"**총 {len(feedbacks)}개의 피드백**")
-            
-            # 피드백 목록 표시
-            for i, feedback in enumerate(feedbacks):
-                with st.expander(f"📍 피드백 #{feedback['id']} - {feedback['comment'][:30]}...", expanded=False):
-                    col1, col2 = st.columns([2, 1])
-                    
-                    with col1:
-                        st.write(f"**내용:** {feedback['comment']}")
-                        st.write(f"**위치:** X={feedback['x']:.3f}, Y={feedback['y']:.3f}, Z={feedback['z']:.3f}")
-                        st.write(f"**등록일:** {feedback['created_at']}")
-                    
-                    with col2:
-                        # 상태 변경
-                        current_status = feedback['status']
-                        status_options = ['pending', 'reviewed', 'resolved']
-                        status_labels = {'pending': '🔴 대기중', 'reviewed': '🟡 검토중', 'resolved': '🟢 완료'}
-                        
-                        current_idx = status_options.index(current_status) if current_status in status_options else 0
-                        new_status_idx = st.selectbox(
-                            "상태", 
-                            range(len(status_options)),
-                            index=current_idx,
-                            format_func=lambda x: status_labels[status_options[x]],
-                            key=f"status_{feedback['id']}"
-                        )
-                        
-                        new_status = status_options[new_status_idx]
-                        
-                        # 상태 변경 버튼
-                        if new_status != current_status:
-                            if st.button(f"상태 변경", key=f"update_{feedback['id']}"):
-                                if db.update_feedback_status(feedback['id'], new_status):
-                                    st.success(f"상태가 '{status_labels[new_status]}'로 변경되었습니다!")
-                                    st.rerun()
-                                else:
-                                    st.error("상태 변경에 실패했습니다.")
-                        
-                        # 삭제 버튼
-                        if st.button(f"🗑️ 삭제", key=f"delete_{feedback['id']}", type="secondary"):
-                            if db.delete_feedback(feedback['id']):
-                                st.success("피드백이 삭제되었습니다!")
-                                st.rerun()
-                            else:
-                                st.error("삭제에 실패했습니다.")
-            
-            # 통계 정보
-            st.subheader("📊 피드백 통계")
-            col1, col2, col3 = st.columns(3)
-            
-            pending_count = len([f for f in feedbacks if f['status'] == 'pending'])
-            reviewed_count = len([f for f in feedbacks if f['status'] == 'reviewed'])
-            resolved_count = len([f for f in feedbacks if f['status'] == 'resolved'])
-            
-            with col1:
-                st.metric("🔴 대기중", pending_count)
-            with col2:
-                st.metric("🟡 검토중", reviewed_count)
-            with col3:
-                st.metric("🟢 완료", resolved_count)
+                        st.error("삭제 중 오류가 발생했습니다.")
 
 def main():
     # 타이틀은 이미 상단에 표시됨
@@ -773,7 +592,7 @@ def main():
     update_activity_time()
     
     # 탭 생성
-    tab1, tab2, tab3, tab4 = st.tabs(["📤 업로드", "📋 관리", "💬 피드백", "ℹ️ 사용법"])
+    tab1, tab2, tab3 = st.tabs(["📤 업로드", "📋 관리", "ℹ️ 사용법"])
     
     with tab1:
         show_upload_section()
@@ -782,9 +601,6 @@ def main():
         show_model_management()
     
     with tab3:
-        show_feedback_management()
-    
-    with tab4:
         st.markdown("""
         ### 🎯 사용법
         

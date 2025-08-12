@@ -1,8 +1,7 @@
 import base64
-import json
 from pathlib import Path
 
-def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_id=None, existing_feedbacks=None):
+def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white"):
     """Three.js 기반 3D 뷰어 HTML 생성"""
     
     # 배경색 설정
@@ -191,163 +190,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 border-color: #333;
             }}
             
-            /* 피드백 모드 버튼 */
-            .feedback-mode-btn {{
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 10px 16px;
-                background: #007bff;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: bold;
-                font-family: Arial, sans-serif;
-                z-index: 9999;
-                transition: all 0.3s ease;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            }}
-            
-            .feedback-mode-btn:hover {{
-                background: #0056b3;
-                transform: translateY(-1px);
-                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-            }}
-            
-            .feedback-mode-btn.active {{
-                background: #dc3545;
-            }}
-            
-            .feedback-mode-btn.active:hover {{
-                background: #a71e2a;
-            }}
-            
-            /* 피드백 핀 스타일 */
-            .feedback-pin {{
-                position: absolute;
-                width: 30px;
-                height: 30px;
-                z-index: 1000;
-                pointer-events: auto;
-                cursor: pointer;
-            }}
-            
-            .pin-icon {{
-                width: 100%;
-                height: 100%;
-                background: #dc3545;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 16px;
-                font-weight: bold;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                animation: pinPulse 2s infinite;
-            }}
-            
-            @keyframes pinPulse {{
-                0% {{ transform: scale(1); }}
-                50% {{ transform: scale(1.1); }}
-                100% {{ transform: scale(1); }}
-            }}
-            
-            .pin-tooltip {{
-                position: absolute;
-                bottom: 35px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0,0,0,0.8);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 4px;
-                font-size: 12px;
-                white-space: nowrap;
-                max-width: 200px;
-                word-wrap: break-word;
-                display: none;
-            }}
-            
-            .feedback-pin:hover .pin-tooltip {{
-                display: block;
-            }}
-            
-            /* 피드백 입력 모달 */
-            .feedback-modal {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-            }}
-            
-            .feedback-modal-content {{
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                max-width: 400px;
-                width: 90%;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }}
-            
-            .feedback-modal h3 {{
-                margin: 0 0 15px 0;
-                color: #333;
-            }}
-            
-            .feedback-modal textarea {{
-                width: 100%;
-                height: 100px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 10px;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-                resize: vertical;
-                margin-bottom: 15px;
-            }}
-            
-            .feedback-modal-buttons {{
-                display: flex;
-                gap: 10px;
-                justify-content: flex-end;
-            }}
-            
-            .feedback-modal button {{
-                padding: 8px 16px;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: bold;
-            }}
-            
-            .btn-primary {{
-                background: #007bff;
-                color: white;
-            }}
-            
-            .btn-secondary {{
-                background: #6c757d;
-                color: white;
-            }}
-            
-            .btn-primary:hover {{
-                background: #0056b3;
-            }}
-            
-            .btn-secondary:hover {{
-                background: #545b62;
-            }}
-            
             /* 텍스트 표시 제어 */
             .btn-text-mobile {{
                 display: none;
@@ -506,59 +348,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     <span class="btn-text-mobile">⚫</span>
                 </button>
             </div>
-            
-            <!-- 피드백 모드 버튼 -->
-            <button class="feedback-mode-btn" id="feedbackModeBtn" onclick="toggleFeedbackMode()">
-                📝 피드백 모드
-            </button>
-            
-            <!-- 피드백 동기화 버튼 -->
-            <button class="feedback-mode-btn" id="syncFeedbackBtn" onclick="syncFeedbacksToServer()" 
-                    style="top: 80px; background: #28a745;">
-                💾 서버 동기화
-            </button>
-            
-            <!-- 피드백 핀들 컨테이너 -->
-            <div id="feedbackPins"></div>
-            
-            <!-- Mixed Content 안내 모달 -->
-            <div class="feedback-modal" id="mixedContentModal" style="display: none;">
-                <div class="feedback-modal-content" style="max-width: 500px;">
-                    <h3>🔒 보안 설정 필요</h3>
-                    <p>HTTPS 페이지에서 HTTP API 호출이 차단되었습니다.</p>
-                    
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-                        <h4>✅ 해결 방법 (Chrome):</h4>
-                        <ol style="margin: 10px 0; padding-left: 20px;">
-                            <li>주소창 오른쪽의 <strong>방패🛡️ 아이콘</strong> 클릭</li>
-                            <li><strong>"안전하지 않은 콘텐츠 허용"</strong> 클릭</li>
-                            <li>페이지 자동 새로고침 후 다시 시도</li>
-                        </ol>
-                        
-                        <h4>🔧 또는 설정에서:</h4>
-                        <ol style="margin: 10px 0; padding-left: 20px;">
-                            <li>주소창 왼쪽 <strong>자물쇠🔒 아이콘</strong> 클릭</li>
-                            <li><strong>"Site settings"</strong> 클릭</li>
-                            <li><strong>"Insecure content"</strong> → <strong>"Allow"</strong> 변경</li>
-                        </ol>
-                    </div>
-                    
-                    <div class="feedback-modal-buttons">
-                        <button class="btn-primary" onclick="closeMixedContentModal()">확인</button>
-                        <button class="btn-secondary" onclick="location.reload()">페이지 새로고침</button>
-                    </div>
-                </div>
-            </div>
-            <div class="feedback-modal" id="feedbackModal" style="display: none;">
-                <div class="feedback-modal-content">
-                    <h3>피드백 등록</h3>
-                    <textarea id="feedbackComment" placeholder="이 부분에 대한 피드백을 입력해주세요..."></textarea>
-                    <div class="feedback-modal-buttons">
-                        <button class="btn-secondary" onclick="closeFeedbackModal()">취소</button>
-                        <button class="btn-primary" onclick="saveFeedback()">등록</button>
-                    </div>
-                </div>
-            </div>
         </div>
         
         <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -569,407 +358,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <script>
             let scene, camera, renderer, controls;
             let model;
-            let feedbackMode = false;
-            let pendingFeedback = null; // 저장 대기 중인 피드백 데이터
-            let raycaster = new THREE.Raycaster();
-            let mouse = new THREE.Vector2();
-            let feedbackPins = []; // 3D 피드백 핀들을 추적하는 배열
-            
-            // 피드백 모드 토글
-            function toggleFeedbackMode() {{
-                feedbackMode = !feedbackMode;
-                const btn = document.getElementById('feedbackModeBtn');
-                
-                if (feedbackMode) {{
-                    btn.textContent = '❌ 피드백 종료';
-                    btn.classList.add('active');
-                    document.body.style.cursor = 'crosshair';
-                }} else {{
-                    btn.textContent = '📝 피드백 모드';
-                    btn.classList.remove('active');
-                    document.body.style.cursor = 'default';
-                }}
-                
-                console.log('피드백 모드:', feedbackMode ? '활성화' : '비활성화');
-            }}
-            
-            // 3D 좌표를 화면 좌표로 변환
-            function toScreenPosition(point) {{
-                const vector = point.clone();
-                vector.project(camera);
-                
-                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (vector.y * -0.5 + 0.5) * window.innerHeight;
-                
-                return {{ x: x, y: y }};
-            }}
-            
-            // 피드백 모달 열기
-            function openFeedbackModal(point3d, point2d) {{
-                pendingFeedback = {{
-                    x: point3d.x,
-                    y: point3d.y,
-                    z: point3d.z,
-                    screen_x: point2d.x,
-                    screen_y: point2d.y
-                }};
-                
-                document.getElementById('feedbackModal').style.display = 'flex';
-                document.getElementById('feedbackComment').focus();
-            }}
-            
-            // Mixed Content 모달 관련 함수들
-            function showMixedContentModal() {{
-                document.getElementById('mixedContentModal').style.display = 'flex';
-            }}
-            
-            function closeMixedContentModal() {{
-                document.getElementById('mixedContentModal').style.display = 'none';
-            }}
-            
-            // 피드백 모달 닫기
-            function closeFeedbackModal() {{
-                document.getElementById('feedbackModal').style.display = 'none';
-                document.getElementById('feedbackComment').value = '';
-                pendingFeedback = null;
-            }}
-            
-            // 피드백 저장 (Streamlit로 전송)
-            function saveFeedback() {{
-                const comment = document.getElementById('feedbackComment').value.trim();
-                
-                if (!comment) {{
-                    alert('피드백 내용을 입력해주세요.');
-                    return;
-                }}
-                
-                if (!pendingFeedback) {{
-                    alert('피드백 위치 정보가 없습니다.');
-                    return;
-                }}
-                
-                // Streamlit으로 피드백 데이터 전송
-                const feedbackData = {{
-                    ...pendingFeedback,
-                    comment: comment,
-                    model_id: '{model_id or ""}', // 실제 model_id 사용
-                    feedback_type: 'point'
-                }};
-                
-                console.log('피드백 저장:', feedbackData);
-                
-                // TODO: Streamlit으로 데이터 전송하는 로직 추가
-                // 지금은 임시로 핀만 표시
-                addFeedbackPin(feedbackData);
-                
-                closeFeedbackModal();
-                toggleFeedbackMode(); // 피드백 모드 종료
-            }}
-            
-            // 피드백 핀 표시 (3D 좌표 추적)
-            function addFeedbackPin(feedback) {{
-                const pinElement = document.createElement('div');
-                pinElement.className = 'feedback-pin';
-                
-                // 상태에 따른 핀 색상 변경
-                let pinColor = '#dc3545'; // 기본 빨간색
-                let statusIcon = '📍';
-                
-                switch(feedback.status) {{
-                    case 'pending':
-                        pinColor = '#dc3545'; // 빨간색
-                        statusIcon = '📍';
-                        break;
-                    case 'reviewed':
-                        pinColor = '#ffc107'; // 노란색
-                        statusIcon = '👁️';
-                        break;
-                    case 'resolved':
-                        pinColor = '#28a745'; // 초록색
-                        statusIcon = '✅';
-                        break;
-                }}
-                
-                pinElement.innerHTML = `
-                    <div class="pin-icon" style="background: ${{pinColor}};">${{statusIcon}}</div>
-                    <div class="pin-tooltip">${{feedback.comment}}</div>
-                `;
-                
-                // 3D 좌표 저장
-                const point3d = new THREE.Vector3(feedback.x, feedback.y, feedback.z);
-                
-                // 핀 객체 생성 (3D 좌표와 DOM 요소 연결)
-                const pinObject = {{
-                    id: feedback.id || Date.now(),
-                    element: pinElement,
-                    position3d: point3d,
-                    feedback: feedback
-                }};
-                
-                // 핀 배열에 추가
-                feedbackPins.push(pinObject);
-                
-                // DOM에 추가
-                document.getElementById('feedbackPins').appendChild(pinElement);
-                
-                // 초기 위치 설정
-                updatePinPosition(pinObject);
-                
-                console.log('3D 피드백 핀 추가:', pinObject.id, 'at', point3d);
-            }}
-            
-            // 개별 핀 위치 업데이트
-            function updatePinPosition(pinObject) {{
-                if (!camera || !pinObject.element) return;
-                
-                // 3D 좌표를 현재 카메라 기준 2D 화면 좌표로 변환
-                const screenPos = toScreenPosition(pinObject.position3d);
-                
-                // 화면 밖으로 나가면 숨기기
-                if (screenPos.x < 0 || screenPos.x > window.innerWidth || 
-                    screenPos.y < 0 || screenPos.y > window.innerHeight) {{
-                    pinObject.element.style.display = 'none';
-                }} else {{
-                    pinObject.element.style.display = 'block';
-                    pinObject.element.style.left = (screenPos.x - 15) + 'px';
-                    pinObject.element.style.top = (screenPos.y - 15) + 'px';
-                }}
-            }}
-            
-            // 모든 핀 위치 업데이트 (카메라 움직임에 따라)
-            function updateAllPinPositions() {{
-                feedbackPins.forEach(pinObject => {{
-                    updatePinPosition(pinObject);
-                }});
-            }}
-            
-            // 수동으로 로컬 피드백을 서버로 동기화 (간단한 버전)
-            function syncFeedbacksToServer() {{
-                try {{
-                    const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                    const unsyncedFeedbacks = localFeedbacks.filter(f => !f.server_saved);
-                    
-                    if (unsyncedFeedbacks.length === 0) {{
-                        alert('동기화할 피드백이 없습니다.');
-                        return;
-                    }}
-                    
-                    console.log('동기화할 피드백 수:', unsyncedFeedbacks.length);
-                    
-                    // 첫 번째 피드백만 동기화 (버튼을 여러 번 클릭하여 순차 처리)
-                    const feedback = unsyncedFeedbacks[0];
-                    console.log('동기화 중:', feedback);
-                    
-                    fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
-                        method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
-                        body: JSON.stringify(feedback)
-                    }})
-                    .then(response => response.json())
-                    .then(data => {{
-                        if (data.success) {{
-                            console.log('서버 저장 성공 - ID:', data.feedback_id);
-                            
-                            // 로컬 스토리지에서 동기화 완료 표시
-                            let allFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                            const idx = allFeedbacks.findIndex(f => f.id === feedback.id);
-                            if (idx >= 0) {{
-                                allFeedbacks[idx].server_saved = true;
-                                allFeedbacks[idx].server_id = data.feedback_id;
-                                localStorage.setItem('temp_feedbacks', JSON.stringify(allFeedbacks));
-                            }}
-                            
-                            // 동기화 버튼 상태 업데이트
-                            updateSyncButton();
-                            
-                            const remaining = unsyncedFeedbacks.length - 1;
-                            if (remaining > 0) {{
-                                alert(`✅ 1개 피드백 동기화 완료! 남은 개수: ${{remaining}}개`);
-                            }} else {{
-                                alert('🎉 모든 피드백이 동기화되었습니다!');
-                            }}
-                        }} else {{
-                            console.error('서버 저장 실패:', data.error);
-                            alert(`❌ 피드백 동기화 실패: ${{data.error || '알 수 없는 오류'}}`);
-                        }}
-                    }})
-                    .catch(error => {{
-                        console.error('네트워크 오류:', error);
-                        
-                        // Mixed Content 오류인지 확인
-                        if (error.message.includes('Failed to fetch') && window.location.protocol === 'https:') {{
-                            showMixedContentModal();
-                        }} else {{
-                            alert(`❌ 네트워크 오류: ${{error.message}}`);
-                        }}
-                    }});
-                    
-                }} catch (error) {{
-                    console.error('동기화 오류:', error);
-                    alert('동기화 중 오류가 발생했습니다.');
-                }}
-            }}
-            
-            // 동기화 버튼 상태 업데이트
-            function updateSyncButton() {{
-                try {{
-                    const localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                    const unsyncedCount = localFeedbacks.filter(f => !f.server_saved).length;
-                    
-                    const syncBtn = document.getElementById('syncFeedbackBtn');
-                    if (syncBtn) {{
-                        if (unsyncedCount > 0) {{
-                            syncBtn.textContent = `💾 서버 동기화 (${{unsyncedCount}})`;
-                            syncBtn.style.backgroundColor = '#dc3545'; // 빨간색 (동기화 필요)
-                        }} else {{
-                            syncBtn.textContent = '💾 서버 동기화';
-                            syncBtn.style.backgroundColor = '#28a745'; // 초록색 (동기화 완료)
-                        }}
-                    }}
-                }} catch (error) {{
-                    console.error('동기화 버튼 업데이트 오류:', error);
-                }}
-            }}
-            
-            // 마우스 클릭 이벤트 핸들러
-            function onMouseClick(event) {{
-                if (!feedbackMode) return;
-                
-                // 마우스 좌표 정규화
-                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-                
-                // Raycasting으로 3D 교점 찾기
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(scene.children, true);
-                
-                if (intersects.length > 0) {{
-                    const point3d = intersects[0].point;
-                    const point2d = toScreenPosition(point3d);
-                    
-                    console.log('3D 클릭 위치:', point3d);
-                    console.log('2D 화면 위치:', point2d);
-                    
-                    openFeedbackModal(point3d, point2d);
-                }}
-            }}
-            
-            // 기존 피드백들 로드 및 표시
-            function loadExistingFeedbacks() {{
-                // 서버에서 전달된 피드백 (데이터베이스에서)
-                const serverFeedbacks = {json.dumps(existing_feedbacks or [])};
-                
-                // 로컬 스토리지에서 임시 피드백 (테스트용)
-                let localFeedbacks = [];
-                try {{
-                    localFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                }} catch (error) {{
-                    console.error('로컬 피드백 로드 오류:', error);
-                }}
-                
-                // 두 피드백 목록 병합
-                const allFeedbacks = [...serverFeedbacks, ...localFeedbacks];
-                
-                console.log('서버 피드백:', serverFeedbacks.length, '개');
-                console.log('로컬 피드백:', localFeedbacks.length, '개');
-                console.log('전체 피드백:', allFeedbacks.length, '개');
-                
-                // 동기화 버튼 상태 업데이트
-                updateSyncButton();
-                
-                allFeedbacks.forEach(feedback => {{
-                    // 3D 좌표를 사용하여 핀 생성 (screen_x, screen_y 무시)
-                    addFeedbackPin(feedback);
-                }});
-            }}
-            
-            // 피드백 저장 (서버로 전송)
-            function saveFeedback() {{
-                const comment = document.getElementById('feedbackComment').value.trim();
-                
-                if (!comment) {{
-                    alert('피드백 내용을 입력해주세요.');
-                    return;
-                }}
-                
-                if (!pendingFeedback) {{
-                    alert('피드백 위치 정보가 없습니다.');
-                    return;
-                }}
-                
-                // 피드백 데이터 생성
-                const feedbackData = {{
-                    ...pendingFeedback,
-                    comment: comment,
-                    model_id: '{model_id or ""}',
-                    feedback_type: 'point'
-                }};
-                
-                console.log('서버로 피드백 전송:', feedbackData);
-                
-                // 서버로 피드백 전송
-                sendFeedbackToServer(feedbackData);
-                
-                closeFeedbackModal();
-                toggleFeedbackMode(); // 피드백 모드 종료
-            }}
-            
-            // 서버로 피드백 전송 (HTTPS)
-            function sendFeedbackToServer(feedbackData) {{
-                // 1. 로컬에 저장하고 핀 표시
-                try {{
-                    let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                    feedbackData.id = Date.now();
-                    feedbackData.status = 'pending';
-                    feedbackData.created_at = new Date().toISOString();
-                    savedFeedbacks.push(feedbackData);
-                    localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
-                    
-                    // 즉시 핀 표시
-                    addFeedbackPin(feedbackData);
-                    
-                    console.log('✅ 피드백이 임시 저장되었습니다.');
-                }} catch (error) {{
-                    console.error('피드백 저장 오류:', error);
-                    alert('피드백 저장에 실패했습니다.');
-                    return;
-                }}
-                
-                // 2. 서버로 전송 (HTTPS)
-                console.log('📡 서버로 피드백 전송 시도');
-                
-                fetch('http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php?action=save', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify(feedbackData)
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    console.log('✅ 서버 응답:', data);
-                    if (data.success) {{
-                        console.log('서버 저장 성공 - ID:', data.feedback_id);
-                        // 로컬 스토리지에서 서버 저장 완료로 표시
-                        let savedFeedbacks = JSON.parse(localStorage.getItem('temp_feedbacks') || '[]');
-                        const idx = savedFeedbacks.findIndex(f => f.id === feedbackData.id);
-                        if (idx >= 0) {{
-                            savedFeedbacks[idx].server_saved = true;
-                            savedFeedbacks[idx].server_id = data.feedback_id;
-                            localStorage.setItem('temp_feedbacks', JSON.stringify(savedFeedbacks));
-                        }}
-                    }} else {{
-                        console.error('서버 저장 실패:', data.error);
-                    }}
-                }})
-                .catch(error => {{
-                    console.error('네트워크 오류:', error);
-                    alert(`❌ 서버 연결 실패: ${{error.message}}`);
-                    console.log('서버가 실행 중인지 확인하세요: http://decimate27.dothome.co.kr/streamlit_data/feedback_api.php');
-                }});
-            }}
             
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
@@ -1075,15 +463,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Scene setup complete');
                     
-                    // 전체 로딩 타임아웃 (10초)
-                    setTimeout(() => {{
-                        if (!model) {{
-                            console.warn('🕐 전체 로딩 타임아웃, 강제 시작');
-                            hideLoadingSpinner();
-                            loadMTLAndOBJ();
-                        }}
-                    }}, 10000);
-                    
                     // 모델 로드
                     loadModel();
                     
@@ -1091,9 +470,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     if (!isMobile) {{
                         animate();
                     }}
-                    
-                    // 마우스 클릭 이벤트 등록 (피드백용)
-                    renderer.domElement.addEventListener('click', onMouseClick, false);
                     
                     // 창 크기 변경 이벤트
                     window.addEventListener('resize', onWindowResize);
@@ -1117,40 +493,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // 텍스처 로딩
                     {create_texture_loading_code(texture_base64)}
-                    
-                    // 모든 텍스처 로딩 완료까지 대기
-                    const textureNames = Object.keys(textures);
-                    let loadedCount = 0;
-                    const totalCount = {len(texture_base64)};
-                    
-                    // 텍스처 로딩 대기 시간 제한 추가
-                    let textureCheckCount = 0;
-                    const maxChecks = 50; // 5초 제한
-                    
-                    function checkTexturesLoaded() {{
-                        textureCheckCount++;
-                        
-                        if (Object.keys(textures).length >= totalCount) {{
-                            console.log('✅ All textures loaded:', Object.keys(textures));
-                            loadMTLAndOBJ();
-                        }} else if (textureCheckCount >= maxChecks) {{
-                            console.warn('⚠️ Texture loading timeout, proceeding with available textures');
-                            console.log('Loaded textures:', Object.keys(textures));
-                            loadMTLAndOBJ();
-                        }} else {{
-                            setTimeout(checkTexturesLoaded, 100);
-                        }}
-                    }}
-                    
-                    if (totalCount > 0) {{
-                        console.log(`🎨 텍스처 ${{totalCount}}개 로딩 대기 중...`);
-                        checkTexturesLoaded();
-                    }} else {{
-                        console.log('📦 텍스처가 없음, 직접 모델 로딩 시작');
-                        loadMTLAndOBJ();
-                    }}
-                    
-                    function loadMTLAndOBJ() {{
                     
                     console.log('Textures loaded:', Object.keys(textures));
                     
@@ -1343,25 +685,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             renderer.domElement.style.opacity = '1';
                             renderer.render(scene, camera);
                             animate();
-                            
-                            // 모바일에서도 마우스 클릭 이벤트 등록
-                            renderer.domElement.addEventListener('click', onMouseClick, false);
-                            
-                            // 기존 피드백들 로드
-                            loadExistingFeedbacks();
-                            
                             console.log('Mobile optimization complete');
                         }}, delay);
                     }} else {{
                         setTimeout(() => {{
                             hideLoadingSpinner();
-                            
-                            // 기존 피드백들 로드
-                            loadExistingFeedbacks();
                         }}, 500);
                     }}
-                    
-                    }} // loadMTLAndOBJ 함수 종료
                 }} catch (error) {{
                     console.error('Model loading error:', error);
                     document.getElementById('loading').innerHTML = 'Model loading failed: ' + error.message;
@@ -1371,10 +701,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function animate() {{
                 requestAnimationFrame(animate);
                 controls.update();
-                
-                // 모든 피드백 핀 위치 업데이트 (카메라 움직임 추적)
-                updateAllPinPositions();
-                
                 renderer.render(scene, camera);
             }}
             
@@ -1383,9 +709,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
-                
-                // 창 크기 변경 시 모든 핀 위치 업데이트
-                updateAllPinPositions();
             }}
             
             // 배경색 변경 함수
@@ -1579,59 +902,38 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     return html_content
 
 def create_texture_loading_code(texture_base64):
-    """텍스처 로딩 JavaScript 코드 생성 - 안전한 오류 처리 포함"""
+    """텍스처 로딩 JavaScript 코드 생성"""
     if not texture_base64:
-        return "console.log('📦 No textures to load');"
+        return "// No textures available"
     
     code_lines = []
     for name, data in texture_base64.items():
-        safe_name = name.replace('.', '_').replace('-', '_').replace(' ', '_')
+        safe_name = name.replace('.', '_').replace('-', '_')
         ext = Path(name).suffix.lower()
         mime_type = 'image/jpeg' if ext in ['.jpg', '.jpeg'] else 'image/png'
         code_lines.append(f"""
-                // {name} 텍스처 로딩 (안전한 오류 처리 포함)
-                (function() {{
-                    try {{
-                        const img = new Image();
-                        const dataUrl = 'data:{mime_type};base64,{data[:100]}...'; // 로그용 축약
-                        
-                        img.onload = function() {{
-                            try {{
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                ctx.drawImage(img, 0, 0);
-                                
-                                const texture = new THREE.CanvasTexture(canvas);
-                                texture.encoding = THREE.LinearEncoding;
-                                texture.flipY = true;
-                                texture.generateMipmaps = false;
-                                texture.minFilter = THREE.LinearFilter;
-                                texture.magFilter = THREE.LinearFilter;
-                                texture.anisotropy = 1;
-                                texture.wrapS = THREE.ClampToEdgeWrapping;
-                                texture.wrapT = THREE.ClampToEdgeWrapping;
-                                texture.format = THREE.RGBFormat;
-                                texture.type = THREE.UnsignedByteType;
-                                texture.needsUpdate = true;
-                                
-                                textures['{name}'] = texture;
-                                console.log('✅ Texture loaded:', '{name}');
-                            }} catch (e) {{
-                                console.error('❌ Texture processing error for {name}:', e);
-                            }}
-                        }};
-                        
-                        img.onerror = function() {{
-                            console.error('❌ Failed to load texture image: {name}');
-                        }};
-                        
-                        img.src = 'data:{mime_type};base64,{data}';
-                    }} catch (e) {{
-                        console.error('❌ Texture loading setup error for {name}:', e);
-                    }}
-                }})();
+                // {name} 텍스처 로딩
+                const img_{safe_name} = new Image();
+                img_{safe_name}.src = 'data:{mime_type};base64,{data}';
+                const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
+                
+                // 원본 색상 100% 유지
+                tex_{safe_name}.encoding = THREE.LinearEncoding;
+                tex_{safe_name}.flipY = true;
+                
+                // UV Seam 방지 + 색상 정확도
+                tex_{safe_name}.generateMipmaps = false;
+                tex_{safe_name}.minFilter = THREE.LinearFilter;
+                tex_{safe_name}.magFilter = THREE.LinearFilter;
+                tex_{safe_name}.anisotropy = 1;
+                tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
+                tex_{safe_name}.type = THREE.UnsignedByteType;
+                tex_{safe_name}.needsUpdate = true;
+                
+                textures['{name}'] = tex_{safe_name};
+                console.log('Texture loaded with original colors: {name}');
         """)
     
     return '\n'.join(code_lines)
