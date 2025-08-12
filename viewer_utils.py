@@ -243,6 +243,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 try {{
                     console.log('Three.js version:', THREE.REVISION);
                     
+                    // 모바일 감지
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    
+                    if (isMobile) {{
+                        console.log('Mobile device detected:', isAndroid ? 'Android' : 'iOS');
+                    }}
+                    
                     // Scene 생성
                     scene = new THREE.Scene();
                     scene.background = new THREE.Color(0x{bg_color[1:]});
@@ -256,15 +265,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const container = document.getElementById('container');
                     renderer = new THREE.WebGLRenderer({{ 
                         antialias: true,
-                        powerPreference: "high-performance" // 고성능 GPU 사용
+                        powerPreference: "high-performance", // 고성능 GPU 사용
+                        preserveDrawingBuffer: true // 모바일 호환성
                     }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
                     renderer.setClearColor(0x{bg_color[1:]}, 1); // 초기 배경색 설정
                     
-                    // 이방성 필터링 최대값 확인
-                    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
-                    console.log('Maximum anisotropy supported: ' + maxAnisotropy);
+                    // 이방성 필터링 최대값 확인 (모바일은 제한)
+                    const maxAnisotropy = isMobile ? 1 : renderer.capabilities.getMaxAnisotropy();
+                    console.log('Anisotropy setting:', maxAnisotropy);
+                    
+                    // 모바일에서는 초기에 캔버스 숨기기
+                    if (isMobile) {{
+                        renderer.domElement.style.opacity = '0';
+                        renderer.domElement.style.transition = 'opacity 0.3s';
+                    }}
                     
                     container.appendChild(renderer.domElement);
                     
@@ -300,8 +316,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 모델 로드
                     loadModel();
                     
-                    // 렌더링 시작
-                    animate();
+                    // 모바일이 아닌 경우에만 즉시 애니메이션 시작
+                    if (!isMobile) {{
+                        animate();
+                    }}
+                    // 모바일은 loadModel 내부의 setTimeout 후에 animate 시작
                     
                     // 창 크기 변경 이벤트
                     window.addEventListener('resize', onWindowResize);
@@ -314,6 +333,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function loadModel() {{
                 try {{
                     console.log('Starting model load...');
+                    
+                    // 모바일 감지 (loadModel 스코프용)
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
                     
                     // 텍스처 로더
                     const textureLoader = new THREE.TextureLoader();
@@ -398,18 +422,24 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         
                         // 텍스처가 성공적으로 적용된 경우 필터 설정
                         if (material.map && material.map.image) {{
-                            // 이방성 필터링 적용 - UV 시음 부드럽게
-                            material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                            console.log('  Anisotropic filtering: ' + material.map.anisotropy + 'x');
+                            if (isMobile) {{
+                                // 모바일: 간단한 설정으로 UV 시음 최소화
+                                material.map.minFilter = THREE.LinearFilter;
+                                material.map.magFilter = THREE.LinearFilter;
+                                material.map.generateMipmaps = false;
+                                material.map.anisotropy = 1;
+                            }} else {{
+                                // 데스크톱: 고품질 설정
+                                material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                                material.map.minFilter = THREE.LinearMipmapLinearFilter;
+                                material.map.magFilter = THREE.LinearFilter;
+                                material.map.generateMipmaps = true;
+                            }}
                             
-                            // 밉맵 필터링 사용 (거리에 따른 텍스처 품질 개선)
-                            material.map.minFilter = THREE.LinearMipmapLinearFilter;
-                            material.map.magFilter = THREE.LinearFilter;
-                            material.map.generateMipmaps = true;
-                            
-                            // 텍스처 래핑 설정 (가장자리 처리)
+                            // 공통: 텍스처 래핑
                             material.map.wrapS = THREE.ClampToEdgeWrapping;
                             material.map.wrapT = THREE.ClampToEdgeWrapping;
+                            material.map.needsUpdate = true;
                         }}
                     }}
                     
@@ -467,7 +497,49 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     console.log('Camera distance: ' + distance.toFixed(2));
                     
                     console.log('Model loaded successfully');
-                    document.getElementById('loading').style.display = 'none';
+                    
+                    // 모바일 GPU 워밍업 및 지연 표시
+                    if (isMobile) {{
+                        console.log('Mobile optimization: GPU warmup starting...');
+                        
+                        // GPU 워밍업: 보이지 않는 상태에서 여러 프레임 렌더링
+                        const warmupFrames = isAndroid ? 5 : 3;
+                        for (let i = 0; i < warmupFrames; i++) {{
+                            renderer.render(scene, camera);
+                        }}
+                        console.log('GPU warmup complete (' + warmupFrames + ' frames)');
+                        
+                        // 지연 시간 설정 (Android는 더 길게)
+                        const delay = isAndroid ? 500 : 300;
+                        
+                        // 로딩 메시지 업데이트
+                        const loadingEl = document.getElementById('loading');
+                        if (loadingEl) {{
+                            loadingEl.innerHTML = '렌더링 최적화 중...';
+                        }}
+                        
+                        // 지연 후 표시
+                        setTimeout(() => {{
+                            // 로딩 숨기기
+                            if (loadingEl) {{
+                                loadingEl.style.display = 'none';
+                            }}
+                            
+                            // 캔버스 페이드인
+                            renderer.domElement.style.opacity = '1';
+                            
+                            // 최종 렌더링
+                            renderer.render(scene, camera);
+                            
+                            // 모바일에서 애니메이션 시작
+                            animate();
+                            
+                            console.log('Mobile optimization complete, displaying model');
+                        }}, delay);
+                    }} else {{
+                        // 데스크톱: 즉시 표시
+                        document.getElementById('loading').style.display = 'none';
+                    }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
                     document.getElementById('loading').innerHTML = 'Model loading failed: ' + error.message;
@@ -689,11 +761,25 @@ def create_texture_loading_code(texture_base64):
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 이방성 필터링 사전 설정
-                tex_{safe_name}.anisotropy = 16; // 최대값은 렌더러에서 조정됨
-                tex_{safe_name}.generateMipmaps = true;
+                // 모바일 최적화 설정
+                if (typeof isMobile !== 'undefined' && isMobile) {{
+                    // 모바일: 밉맵 OFF, 단순 필터
+                    tex_{safe_name}.generateMipmaps = false;
+                    tex_{safe_name}.minFilter = THREE.LinearFilter;
+                    tex_{safe_name}.magFilter = THREE.LinearFilter;
+                    tex_{safe_name}.anisotropy = 1;
+                }} else {{
+                    // 데스크톱: 고품질 설정
+                    tex_{safe_name}.anisotropy = 16;
+                    tex_{safe_name}.generateMipmaps = true;
+                    tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
+                    tex_{safe_name}.magFilter = THREE.LinearFilter;
+                }}
+                
+                // 공통 설정
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
+                tex_{safe_name}.needsUpdate = true;
                 
                 textures['{name}'] = tex_{safe_name};
         """)
