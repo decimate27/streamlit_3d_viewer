@@ -642,26 +642,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            /* 팝업 닫기 도움말 */
-            .popup-close-help {{
-                position: absolute;
-                bottom: -25px;
-                right: 0;
-                font-size: 11px;
-                color: #666;
-                background: rgba(255,255,255,0.9);
-                padding: 2px 6px;
-                border-radius: 3px;
-                white-space: nowrap;
-            }}
-            
-            @media (max-width: 768px) {{
-                .popup-close-help {{
-                    bottom: -30px;
-                    font-size: 12px;
-                    padding: 3px 8px;
-                }}
-            }}
+
         </style>
     </head>
     <body>
@@ -1252,21 +1233,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}, {{ once: true }});
                 }}
                 
-                // 모바일에서 도움말 표시
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                if (isMobile && !popup.querySelector('.popup-close-help')) {{
-                    const helpText = document.createElement('div');
-                    helpText.className = 'popup-close-help';
-                    helpText.textContent = '팝업 바깥 터치로도 닫기 가능';
-                    popup.appendChild(helpText);
-                    
-                    // 3초 후 도움말 제거
-                    setTimeout(() => {{
-                        if (helpText.parentNode) {{
-                            helpText.parentNode.removeChild(helpText);
-                        }}
-                    }}, 3000);
-                }}
+
                 
                 // 클릭 외부 영역 클릭 시 팝업 닫기
                 setTimeout(() => {{
@@ -1301,11 +1268,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     popup.classList.remove('show');
                     popup.style.display = 'none'; // 강제로 숨기기
                     
-                    // 도움말 텍스트 제거
-                    const helpText = popup.querySelector('.popup-close-help');
-                    if (helpText) {{
-                        helpText.remove();
-                    }}
+
                     
                     document.removeEventListener('click', hidePopupOnClickOutside);
                     
