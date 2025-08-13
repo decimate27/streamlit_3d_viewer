@@ -524,6 +524,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 margin-left: 5px;
                 position: relative;
                 transition: all 0.2s ease;
+                z-index: 10003;
+                pointer-events: auto;
             }}
             
             .popup-close-btn:hover {{
@@ -726,7 +728,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             <div class="annotation-popup" id="annotationPopup">
                 <div class="popup-header">
                     <div class="popup-text" id="popupText"></div>
-                    <button class="popup-close-btn" onclick="closeAnnotationPopup()" 
+                    <button class="popup-close-btn" 
+                            onclick="closeAnnotationPopup(); return false;" 
+                            onmousedown="closeAnnotationPopup(); return false;"
+                            ontouchstart="closeAnnotationPopup(); return false;"
                             title="팝업 닫기" 
                             aria-label="팝업 닫기">×</button>
                 </div>
@@ -1226,7 +1231,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 popup.style.left = position.x + 'px';
                 popup.style.top = position.y + 'px';
                 popup.style.visibility = 'visible';
+                popup.style.display = 'block';
                 popup.classList.add('show');
+                
+                // X 버튼에 추가 이벤트 리스너 등록
+                const closeBtn = popup.querySelector('.popup-close-btn');
+                if (closeBtn) {{
+                    closeBtn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('X 버튼 클릭됨 (이벤트 리스너)');
+                        closeAnnotationPopup();
+                    }}, {{ once: true }});
+                    
+                    closeBtn.addEventListener('touchend', function(e) {{
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('X 버튼 터치됨 (이벤트 리스너)');
+                        closeAnnotationPopup();
+                    }}, {{ once: true }});
+                }}
                 
                 // 모바일에서 도움말 표시
                 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1248,6 +1272,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 setTimeout(() => {{
                     document.addEventListener('click', hidePopupOnClickOutside);
                 }}, 100);
+                
+                // ESC 키로 팝업 닫기
+                const escKeyHandler = function(e) {{
+                    if (e.key === 'Escape') {{
+                        closeAnnotationPopup();
+                        document.removeEventListener('keydown', escKeyHandler);
+                    }}
+                }};
+                document.addEventListener('keydown', escKeyHandler);
             }}
             
             // 팝업 외부 클릭 시 숨기기
@@ -1261,9 +1294,28 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 수정점 팝업 닫기 함수
             function closeAnnotationPopup() {{
+                console.log('closeAnnotationPopup 호출됨'); // 디버그 로그
+                
                 const popup = document.getElementById('annotationPopup');
-                popup.classList.remove('show');
-                document.removeEventListener('click', hidePopupOnClickOutside);
+                if (popup) {{
+                    popup.classList.remove('show');
+                    popup.style.display = 'none'; // 강제로 숨기기
+                    
+                    // 도움말 텍스트 제거
+                    const helpText = popup.querySelector('.popup-close-help');
+                    if (helpText) {{
+                        helpText.remove();
+                    }}
+                    
+                    document.removeEventListener('click', hidePopupOnClickOutside);
+                    
+                    // ESC 키 이벤트도 제거
+                    document.removeEventListener('keydown', function() {{}});
+                    
+                    console.log('팝업 닫기 완료'); // 디버그 로그
+                }} else {{
+                    console.error('팝업 요소를 찾을 수 없습니다');
+                }}
             }}
             
             // 수정 완료 처리
