@@ -484,6 +484,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 z-index: 10002;
                 min-width: 200px;
                 max-width: 300px;
+                border: 2px solid #ddd;
             }}
             
             .annotation-popup.show {{
@@ -503,6 +504,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 color: #333;
                 flex: 1;
                 margin-right: 10px;
+                word-break: break-word;
             }}
             
             .popup-close-btn {{
@@ -519,10 +521,30 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
+                margin-left: 5px;
+                position: relative;
+                transition: all 0.2s ease;
             }}
             
             .popup-close-btn:hover {{
                 background: #cc0000;
+                transform: scale(1.1);
+            }}
+            
+            .popup-close-btn:active {{
+                transform: scale(0.95);
+            }}
+            
+            /* 터치 영역 확장 (가상 요소로) */
+            .popup-close-btn::before {{
+                content: '';
+                position: absolute;
+                top: -8px;
+                left: -8px;
+                right: -8px;
+                bottom: -8px;
+                border-radius: 50%;
+                background: transparent;
             }}
             
             .popup-buttons {{
@@ -553,20 +575,89 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             /* 모바일에서 팝업 최적화 */
             @media (max-width: 768px) {{
                 .annotation-popup {{
-                    max-width: 280px;
-                    padding: 12px;
+                    max-width: calc(100vw - 40px);
+                    min-width: 250px;
+                    padding: 15px;
+                    border-radius: 12px;
+                    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+                }}
+                
+                .popup-header {{
+                    margin-bottom: 12px;
+                }}
+                
+                .popup-text {{
+                    font-size: 16px;
+                    line-height: 1.4;
+                    margin-right: 8px;
                 }}
                 
                 .popup-btn {{
-                    padding: 10px 8px;
-                    font-size: 14px;
+                    padding: 12px 8px;
+                    font-size: 16px;
                     font-weight: bold;
+                    min-height: 44px;
                 }}
                 
                 .popup-close-btn {{
-                    width: 28px;
-                    height: 28px;
+                    width: 32px;
+                    height: 32px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-left: 8px;
+                }}
+                
+                /* 모바일에서 터치 영역 더 크게 */
+                .popup-close-btn::before {{
+                    top: -12px;
+                    left: -12px;
+                    right: -12px;
+                    bottom: -12px;
+                }}
+            }}
+            
+            /* 아주 작은 화면에서 팝업 추가 최적화 */
+            @media (max-width: 480px) {{
+                .annotation-popup {{
+                    max-width: calc(100vw - 20px);
+                    min-width: 200px;
+                    padding: 12px;
+                }}
+                
+                .popup-text {{
+                    font-size: 15px;
+                }}
+                
+                .popup-btn {{
+                    font-size: 15px;
+                    padding: 10px 6px;
+                }}
+                
+                .popup-close-btn {{
+                    width: 30px;
+                    height: 30px;
                     font-size: 16px;
+                }}
+            }}
+            
+            /* 팝업 닫기 도움말 */
+            .popup-close-help {{
+                position: absolute;
+                bottom: -25px;
+                right: 0;
+                font-size: 11px;
+                color: #666;
+                background: rgba(255,255,255,0.9);
+                padding: 2px 6px;
+                border-radius: 3px;
+                white-space: nowrap;
+            }}
+            
+            @media (max-width: 768px) {{
+                .popup-close-help {{
+                    bottom: -30px;
+                    font-size: 12px;
+                    padding: 3px 8px;
                 }}
             }}
         </style>
@@ -635,7 +726,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             <div class="annotation-popup" id="annotationPopup">
                 <div class="popup-header">
                     <div class="popup-text" id="popupText"></div>
-                    <button class="popup-close-btn" onclick="closeAnnotationPopup()" title="닫기">×</button>
+                    <button class="popup-close-btn" onclick="closeAnnotationPopup()" 
+                            title="팝업 닫기" 
+                            aria-label="팝업 닫기">×</button>
                 </div>
                 <div class="popup-buttons" id="popupButtons"></div>
             </div>
@@ -1068,6 +1161,42 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 annotations.push(annotation);
             }}
             
+            // 안전한 팝업 위치 계산
+            function calculateSafePopupPosition(event, popup) {{
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const popupRect = popup.getBoundingClientRect();
+                const popupWidth = popup.offsetWidth || 300; // 기본값 사용
+                const popupHeight = popup.offsetHeight || 150; // 기본값 사용
+                
+                let x = event.clientX + 10;
+                let y = event.clientY + 10;
+                
+                // 오른쪽 경계 확인
+                if (x + popupWidth > viewportWidth - 20) {{
+                    x = event.clientX - popupWidth - 10;
+                    // 왼쪽으로도 안 들어가면 중앙 정렬
+                    if (x < 20) {{
+                        x = (viewportWidth - popupWidth) / 2;
+                    }}
+                }}
+                
+                // 하단 경계 확인
+                if (y + popupHeight > viewportHeight - 20) {{
+                    y = event.clientY - popupHeight - 10;
+                    // 위로도 안 들어가면 중앙 정렬
+                    if (y < 20) {{
+                        y = (viewportHeight - popupHeight) / 2;
+                    }}
+                }}
+                
+                // 최소 여백 보장
+                x = Math.max(10, Math.min(x, viewportWidth - popupWidth - 10));
+                y = Math.max(10, Math.min(y, viewportHeight - popupHeight - 10));
+                
+                return {{ x, y }};
+            }}
+            
             // 수정점 팝업 표시
             function showAnnotationPopup(annotation, event) {{
                 const popup = document.getElementById('annotationPopup');
@@ -1086,9 +1215,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     `;
                 }}
                 
-                popup.style.left = event.clientX + 10 + 'px';
-                popup.style.top = event.clientY + 10 + 'px';
+                // 팝업을 일시적으로 표시하여 크기 계산
+                popup.style.visibility = 'hidden';
+                popup.style.display = 'block';
+                
+                // 안전한 위치 계산
+                const position = calculateSafePopupPosition(event, popup);
+                
+                // 위치 설정 및 표시
+                popup.style.left = position.x + 'px';
+                popup.style.top = position.y + 'px';
+                popup.style.visibility = 'visible';
                 popup.classList.add('show');
+                
+                // 모바일에서 도움말 표시
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile && !popup.querySelector('.popup-close-help')) {{
+                    const helpText = document.createElement('div');
+                    helpText.className = 'popup-close-help';
+                    helpText.textContent = '팝업 바깥 터치로도 닫기 가능';
+                    popup.appendChild(helpText);
+                    
+                    // 3초 후 도움말 제거
+                    setTimeout(() => {{
+                        if (helpText.parentNode) {{
+                            helpText.parentNode.removeChild(helpText);
+                        }}
+                    }}, 3000);
+                }}
                 
                 // 클릭 외부 영역 클릭 시 팝업 닫기
                 setTimeout(() => {{
