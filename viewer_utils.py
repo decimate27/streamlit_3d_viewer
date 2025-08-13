@@ -323,87 +323,131 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 transform: translateX(-50%) !important;
                 background: rgba(255, 255, 255, 0.95) !important;
                 color: #333 !important;
-                padding: 5px 15px !important;
+                padding: 6px 16px !important;
                 border-radius: 20px !important;
-                font-size: 12px !important;
-                font-weight: normal !important;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
                 z-index: 99998 !important;
                 white-space: nowrap !important;
+                max-width: calc(100vw - 40px) !important;
+                text-align: center !important;
+                letter-spacing: 0.2px !important;
             }}
             
-            /* 수정점 표시 버튼 스타일 */
-            .annotation-btn {{
-                position: fixed !important;
-                top: 20px !important;
-                right: 20px !important;
-                padding: 10px 15px !important;
-                background: #ff4444 !important;
-                color: white !important;
-                border: none !important;
-                border-radius: 5px !important;
-                cursor: pointer !important;
-                font-size: 14px !important;
-                font-weight: bold !important;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
-                z-index: 99999 !important;
-                display: block !important;
-                visibility: visible !important;
-            }}
-            
-            .annotation-btn.active {{
-                background: #cc0000;
-            }}
-            
-            .annotation-btn:hover {{
-                background: #ff6666 !important;
-            }}
-            
-            /* 모바일 반응형 수정점 버튼 */
+            /* 모바일에서 안내 텍스트 최적화 */
             @media (max-width: 768px) {{
-                .annotation-btn {{
-                    top: 10px !important;
-                    right: 10px !important;
-                    padding: 8px 10px !important;
-                    font-size: 12px !important;
+                .top-notice {{
+                    font-size: 11px !important;
+                    padding: 4px 12px !important;
+                    max-width: calc(100vw - 30px) !important;
+                    border-radius: 15px !important;
                 }}
             }}
             
             @media (max-width: 480px) {{
-                .annotation-btn {{
-                    top: 5px !important;
-                    right: 5px !important;
-                    padding: 6px 8px !important;
-                    font-size: 11px !important;
+                .top-notice {{
+                    font-size: 10px !important;
+                    padding: 3px 10px !important;
+                    max-width: calc(100vw - 20px) !important;
+                    border-radius: 12px !important;
+                    white-space: normal !important;
+                    line-height: 1.3 !important;
                 }}
             }}
             
-            /* 제출완료 버튼 스타일 */
-            .db-save-btn {{
+            /* 수정점 표시 및 제출완료 버튼 통일 스타일 */
+            .annotation-btn, .db-save-btn {{
                 position: fixed !important;
-                top: 70px !important;
                 right: 20px !important;
-                padding: 10px 15px !important;
-                background: #2196F3 !important;
+                padding: 12px 16px !important;
                 color: white !important;
                 border: none !important;
-                border-radius: 5px !important;
+                border-radius: 6px !important;
                 cursor: pointer !important;
                 font-size: 14px !important;
                 font-weight: bold !important;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.25) !important;
                 z-index: 99999 !important;
                 display: block !important;
                 visibility: visible !important;
+                min-width: 120px !important;
+                text-align: center !important;
+                transition: all 0.2s ease !important;
+                letter-spacing: 0.3px !important;
+            }}
+            
+            /* 수정점 표시 버튼 */
+            .annotation-btn {{
+                top: 20px !important;
+                background: #ff4444 !important;
+            }}
+            
+            .annotation-btn.active {{
+                background: #cc0000 !important;
+                box-shadow: 0 4px 12px rgba(204, 0, 0, 0.4) !important;
+            }}
+            
+            .annotation-btn:hover {{
+                background: #ff6666 !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4) !important;
+            }}
+            
+            /* 제출완료 버튼 */
+            .db-save-btn {{
+                top: 80px !important;
+                background: #2196F3 !important;
             }}
             
             .db-save-btn:hover {{
                 background: #1976D2 !important;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4) !important;
             }}
             
             .db-save-btn:disabled {{
                 background: #ccc !important;
                 cursor: not-allowed !important;
+                transform: none !important;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.15) !important;
+            }}
+            
+            /* 모바일 반응형 - 태블릿 크기 */
+            @media (max-width: 768px) {{
+                .annotation-btn, .db-save-btn {{
+                    right: 15px !important;
+                    padding: 10px 14px !important;
+                    font-size: 13px !important;
+                    min-width: 100px !important;
+                }}
+                
+                .annotation-btn {{
+                    top: 15px !important;
+                }}
+                
+                .db-save-btn {{
+                    top: 70px !important;
+                }}
+            }}
+            
+            /* 모바일 반응형 - 스마트폰 크기 */
+            @media (max-width: 480px) {{
+                .annotation-btn, .db-save-btn {{
+                    right: 10px !important;
+                    padding: 8px 12px !important;
+                    font-size: 12px !important;
+                    min-width: 90px !important;
+                    border-radius: 4px !important;
+                }}
+                
+                .annotation-btn {{
+                    top: 10px !important;
+                }}
+                
+                .db-save-btn {{
+                    top: 60px !important;
+                }}
             }}
             
             /* 수정점 입력 모달 */
@@ -648,7 +692,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     <body>
         <!-- 상단 안내 텍스트 -->
         <div class="top-notice">
-            수정점 표시 다 하신후 반드시 제출완료 꼭 눌러주세요.
+            수정점표시 → 3D표면 클릭 → 텍스트 입력 → 확인 → 제출완료 눌러주세요
         </div>
         
         <!-- 수정점 표시 버튼을 최상단에 배치 -->
@@ -905,16 +949,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 touchStartPos = null;
             }}
             
-            // 수정점 표시 모드 토글
+            // 수정점 표시 모드 토글 (1회 제한)
             function toggleAnnotationMode() {{
                 isAnnotationMode = !isAnnotationMode;
                 const btn = document.getElementById('annotationBtn');
                 if (isAnnotationMode) {{
                     btn.classList.add('active');
                     btn.textContent = '수정점표시 ON';
+                    console.log('수정점 표시 모드 활성화');
                 }} else {{
                     btn.classList.remove('active');
                     btn.textContent = '수정점표시';
+                    console.log('수정점 표시 모드 비활성화');
                 }}
             }}
             
@@ -934,13 +980,22 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 currentAnnotation = null;
             }}
             
-            // 수정점 확인
+            // 수정점 확인 (1회 제한 적용)
             function confirmAnnotation() {{
                 const text = document.getElementById('annotationInput').value.trim();
                 if (text && currentAnnotation) {{
                     // 서버에 저장
                     saveAnnotationToServer(currentAnnotation.point, text);
                     closeAnnotationModal();
+                    
+                    // 수정점 추가 후 자동으로 모드 해제
+                    isAnnotationMode = false;
+                    const btn = document.getElementById('annotationBtn');
+                    btn.classList.remove('active');
+                    btn.textContent = '수정점표시';
+                    
+                    console.log('수정점 추가 완료 - 모드 자동 해제');
+                    showMessage('✅ 수정점이 추가되었습니다. 다시 표시하려면 "수정점표시" 버튼을 눌러주세요.', 'success');
                 }}
             }}
             
@@ -1103,7 +1158,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
-            // 메시지 표시 함수
+            // 메시지 표시 함수 (개선된 버전)
             function showMessage(text, type) {{
                 const message = document.createElement('div');
                 message.style.cssText = `
@@ -1111,20 +1166,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background: ${{type === 'success' ? '#4CAF50' : '#f44336'}};
+                    background: ${{type === 'success' ? '#4CAF50' : type === 'info' ? '#2196F3' : '#f44336'}};
                     color: white;
-                    padding: 20px;
+                    padding: 20px 30px;
                     border-radius: 10px;
                     font-size: 16px;
+                    font-weight: bold;
                     z-index: 100000;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    max-width: 80vw;
+                    text-align: center;
+                    line-height: 1.4;
+                    animation: fadeInOut 0.3s ease-in;
                 `;
                 message.textContent = text;
                 document.body.appendChild(message);
                 
+                // 긴 메시지의 경우 더 오래 표시
+                const displayTime = text.length > 50 ? 4000 : 3000;
+                
                 setTimeout(() => {{
-                    message.remove();
-                }}, 2000);
+                    message.style.opacity = '0';
+                    message.style.transition = 'opacity 0.3s ease-out';
+                    setTimeout(() => {{
+                        if (message.parentNode) {{
+                            message.remove();
+                        }}
+                    }}, 300);
+                }}, displayTime);
             }}
             
             // 수정점 생성
