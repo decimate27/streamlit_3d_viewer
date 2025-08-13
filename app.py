@@ -9,11 +9,16 @@ import zipfile
 import shutil
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
 from mtl_generator import auto_generate_mtl
-from viewer_utils import create_3d_viewer_html
 from texture_optimizer import auto_optimize_textures
 from viewer import show_shared_model
-from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 from auth import check_password, show_logout_button, update_activity_time, show_session_info
+
+# viewer_utils 모듈 강제 리로드 (변경사항 즉시 반영)
+import importlib
+import sys
+if 'viewer_utils' in sys.modules:
+    importlib.reload(sys.modules['viewer_utils'])
+from viewer_utils import create_3d_viewer_html, create_texture_loading_code
 
 # 페이지 설정 (항상 먼저 실행)
 st.set_page_config(

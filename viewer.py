@@ -1,5 +1,11 @@
 import streamlit as st
+import importlib
+import sys
 from database import ModelDatabase, load_model_files, generate_share_url
+
+# viewer_utils 모듈 강제 리로드
+if 'viewer_utils' in sys.modules:
+    importlib.reload(sys.modules['viewer_utils'])
 
 def show_viewer_page(model_data):
     """공유 링크로 접근한 뷰어 페이지"""
