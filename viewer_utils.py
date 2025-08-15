@@ -1568,17 +1568,23 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     // 기존 material 저장
                                     originalMaterials.set(child, child.material);
                                     
+                                    // Normal 벡터 재계산 (검은색 렌더링 방지)
+                                    if (child.geometry && !child.geometry.attributes.normal) {{
+                                        child.geometry.computeVertexNormals();
+                                    }}
+                                    
                                     // Phong material 생성 (무광 효과)
                                     const phongMat = new THREE.MeshPhongMaterial({{
                                         map: child.material.map || null,
                                         color: child.material.color || new THREE.Color(0xffffff), // 원본 색상 복사
-                                        side: THREE.FrontSide,
+                                        side: child.material.side || THREE.DoubleSide, // 원본 side 속성 복사, 기본값 DoubleSide
                                         transparent: child.material.transparent || false,
                                         opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                         shininess: 0, // 광택 없음 (무광)
                                         specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
                                         emissive: new THREE.Color(0x000000), // 자체 발광 없음
-                                        vertexColors: child.material.vertexColors || false
+                                        vertexColors: child.material.vertexColors || false,
+                                        flatShading: false // Smooth shading 사용
                                     }});
                                     
                                     // 텍스처 설정 유지
