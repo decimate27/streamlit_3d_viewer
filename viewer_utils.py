@@ -1569,78 +1569,119 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                         // 기존 material 저장
                                         originalMaterials.set(child, child.material);
                                         
-                                        // Normal 벡터 재계산 (검은색 렌더링 방지)
-                                        // 1번 수정: 기존 normal 제거 후 재계산
-                                        if (child.geometry) {{
-                                            // 기존 normal이 잘못되었을 수 있으므로 제거 후 재계산
-                                            if (child.geometry.attributes.normal) {{
-                                                child.geometry.deleteAttribute('normal');
-                                                console.log('Deleted existing normals for:', child.name || 'unnamed mesh');
+                                        // Material이 배열인 경우 처리 (멀티 텍스처)
+                                        if (Array.isArray(child.material)) {{
+                                            const phongMats = [];
+                                            child.material.forEach((mat, idx) => {{
+                                                // 각 material에 대해 개별적으로 처리
+                                                let materialColor = new THREE.Color(0xffffff);
+                                                if (mat.color) {{
+                                                    materialColor = mat.color.clone();
+                                                }} else if (!mat.map) {{
+                                                    materialColor = new THREE.Color(0xcccccc);
+                                                }}
+                                                
+                                                const phongMat = new THREE.MeshPhongMaterial({{
+                                                    map: mat.map || null,
+                                                    color: materialColor,
+                                                    side: THREE.DoubleSide,
+                                                    transparent: mat.transparent || false,
+                                                    opacity: mat.opacity !== undefined ? mat.opacity : 1,
+                                                    shininess: 0,
+                                                    specular: new THREE.Color(0x000000),
+                                                    emissive: new THREE.Color(0x0a0a0a),
+                                                    vertexColors: mat.vertexColors || false,
+                                                    flatShading: false
+                                                }});
+                                                
+                                                // 텍스처 설정
+                                                if (phongMat.map) {{
+                                                    phongMat.map.encoding = THREE.LinearEncoding;
+                                                    phongMat.map.minFilter = THREE.LinearFilter;
+                                                    phongMat.map.magFilter = THREE.LinearFilter;
+                                                    phongMat.map.generateMipmaps = false;
+                                                    phongMat.map.anisotropy = 1;
+                                                    phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
+                                                    phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
+                                                }}
+                                                
+                                                phongMats.push(phongMat);
+                                                console.log(`✅ Phong material [${{idx}}] created for multi-texture mesh`);
+                                            }});
+                                            phongMaterials.set(child, phongMats);
+                                        }} else {{
+                                            // 단일 material 처리
+                                            // Normal 벡터 재계산 (검은색 렌더링 방지)
+                                            if (child.geometry) {{
+                                                if (child.geometry.attributes.normal) {{
+                                                    child.geometry.deleteAttribute('normal');
+                                                    console.log('Deleted existing normals for:', child.name || 'unnamed mesh');
+                                                }}
+                                                child.geometry.computeVertexNormals();
+                                                console.log('Computed new vertex normals for:', child.name || 'unnamed mesh');
                                             }}
-                                            child.geometry.computeVertexNormals();
-                                            console.log('Computed new vertex normals for:', child.name || 'unnamed mesh');
+                                            
+                                            // 5번 수정: 디버깅 로그 추가
+                                            console.log('🔍 Phong Shading Debug - Original material:', {{
+                                                meshName: child.name || 'unnamed',
+                                                materialType: child.material.type,
+                                                hasMap: !!child.material.map,
+                                                mapName: child.material.map ? child.material.map.name : 'none',
+                                                color: child.material.color ? child.material.color.getHexString() : 'none',
+                                                side: child.material.side,
+                                                transparent: child.material.transparent,
+                                                opacity: child.material.opacity,
+                                                vertexColors: child.material.vertexColors,
+                                                geometryHasNormals: child.geometry ? !!child.geometry.attributes.normal : false,
+                                                geometryHasUV: child.geometry ? !!child.geometry.attributes.uv : false,
+                                                geometryHasColors: child.geometry ? !!child.geometry.attributes.color : false
+                                            }});
+                                            
+                                            // 색상 결정 로직 개선
+                                            let materialColor = new THREE.Color(0xffffff); // 기본 흰색
+                                            if (child.material.color) {{
+                                                materialColor = child.material.color.clone();
+                                            }} else if (!child.material.map) {{
+                                                // 텍스처도 없고 색상도 없으면 밝은 회색 사용
+                                                materialColor = new THREE.Color(0xcccccc);
+                                            }}
+                                            
+                                            // Phong material 생성 (무광 효과)
+                                            const phongMat = new THREE.MeshPhongMaterial({{
+                                                map: child.material.map || null,
+                                                color: materialColor,
+                                                side: THREE.DoubleSide, // 4번 수정: 모든 면 렌더링 보장
+                                                transparent: child.material.transparent || false,
+                                                opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
+                                                shininess: 0, // 광택 없음 (무광)
+                                                specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
+                                                emissive: new THREE.Color(0x0a0a0a), // 약간의 자체 발광 (완전 검은색 방지)
+                                                vertexColors: child.material.vertexColors || false,
+                                                flatShading: false // Smooth shading 사용
+                                            }});
+                                            
+                                            // 텍스처 설정 유지
+                                            if (phongMat.map) {{
+                                                phongMat.map.encoding = THREE.LinearEncoding;
+                                                phongMat.map.minFilter = THREE.LinearFilter;
+                                                phongMat.map.magFilter = THREE.LinearFilter;
+                                                phongMat.map.generateMipmaps = false;
+                                                phongMat.map.anisotropy = 1;
+                                                phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
+                                                phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
+                                            }}
+                                            
+                                            phongMaterials.set(child, phongMat);
+                                            
+                                            // 5번 추가: Phong material 생성 로그
+                                            console.log('✅ Phong material created:', {{
+                                                meshName: child.name || 'unnamed',
+                                                materialColor: phongMat.color.getHexString(),
+                                                hasTexture: !!phongMat.map,
+                                                emissive: phongMat.emissive.getHexString(),
+                                                side: phongMat.side === THREE.DoubleSide ? 'DoubleSide' : 'Other'
+                                            }});
                                         }}
-                                        
-                                        // 5번 수정: 디버깅 로그 추가
-                                        console.log('🔍 Phong Shading Debug - Original material:', {{
-                                            meshName: child.name || 'unnamed',
-                                            materialType: child.material.type,
-                                            hasMap: !!child.material.map,
-                                            mapName: child.material.map ? child.material.map.name : 'none',
-                                            color: child.material.color ? child.material.color.getHexString() : 'none',
-                                            side: child.material.side,
-                                            transparent: child.material.transparent,
-                                            opacity: child.material.opacity,
-                                            vertexColors: child.material.vertexColors,
-                                            geometryHasNormals: child.geometry ? !!child.geometry.attributes.normal : false,
-                                            geometryHasUV: child.geometry ? !!child.geometry.attributes.uv : false,
-                                            geometryHasColors: child.geometry ? !!child.geometry.attributes.color : false
-                                        }});
-                                        
-                                        // 색상 결정 로직 개선
-                                        let materialColor = new THREE.Color(0xffffff); // 기본 흰색
-                                        if (child.material.color) {{
-                                            materialColor = child.material.color.clone();
-                                        }} else if (!child.material.map) {{
-                                            // 텍스처도 없고 색상도 없으면 밝은 회색 사용
-                                            materialColor = new THREE.Color(0xcccccc);
-                                        }}
-                                        
-                                        // Phong material 생성 (무광 효과)
-                                        const phongMat = new THREE.MeshPhongMaterial({{
-                                            map: child.material.map || null,
-                                            color: materialColor,
-                                            side: THREE.DoubleSide, // 4번 수정: 모든 면 렌더링 보장
-                                            transparent: child.material.transparent || false,
-                                            opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                                            shininess: 0, // 광택 없음 (무광)
-                                            specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
-                                            emissive: new THREE.Color(0x0a0a0a), // 약간의 자체 발광 (완전 검은색 방지)
-                                            vertexColors: child.material.vertexColors || false,
-                                            flatShading: false // Smooth shading 사용
-                                        }});
-                                        
-                                        // 텍스처 설정 유지
-                                        if (phongMat.map) {{
-                                            phongMat.map.encoding = THREE.LinearEncoding;
-                                            phongMat.map.minFilter = THREE.LinearFilter;
-                                            phongMat.map.magFilter = THREE.LinearFilter;
-                                            phongMat.map.generateMipmaps = false;
-                                            phongMat.map.anisotropy = 1;
-                                            phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
-                                            phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
-                                        }}
-                                        
-                                        phongMaterials.set(child, phongMat);
-                                        
-                                        // 5번 추가: Phong material 생성 로그
-                                        console.log('✅ Phong material created:', {{
-                                            meshName: child.name || 'unnamed',
-                                            materialColor: phongMat.color.getHexString(),
-                                            hasTexture: !!phongMat.map,
-                                            emissive: phongMat.emissive.getHexString(),
-                                            side: phongMat.side === THREE.DoubleSide ? 'DoubleSide' : 'Other'
-                                        }});
                                     }}
                                     
                                     // Material 교체 전 geometry 업데이트 (멀티 텍스처 깜빡임 방지)
