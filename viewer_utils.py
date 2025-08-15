@@ -1620,14 +1620,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                             flatShading: false // Smooth shading 사용
                                         }});
                                         
-                                        // Matrix 초기화 (멀티 텍스처 깜빡임 방지)
-                                        if (child.material.matrix) {{
-                                            phongMat.matrix = child.material.matrix.clone();
-                                        }}
-                                        if (child.material.normalMatrix) {{
-                                            phongMat.normalMatrix = child.material.normalMatrix.clone();
-                                        }}
-                                        
                                         // 텍스처 설정 유지
                                         if (phongMat.map) {{
                                             phongMat.map.encoding = THREE.LinearEncoding;
