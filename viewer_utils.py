@@ -191,6 +191,76 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 border-color: #333;
             }}
             
+            /* 퐁 쉐이딩 체크박스 스타일 */
+            .phong-control {{
+                position: fixed;
+                top: 20px;
+                left: 150px;
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 8px 12px;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                cursor: pointer;
+                font-family: Arial, sans-serif;
+                font-size: 13px;
+                font-weight: 500;
+                color: #333;
+                user-select: none;
+                transition: all 0.3s ease;
+            }}
+            
+            .phong-control:hover {{
+                background: rgba(255, 255, 255, 0.95);
+                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            }}
+            
+            .phong-control input[type="checkbox"] {{
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+                margin: 0;
+            }}
+            
+            .phong-control label {{
+                cursor: pointer;
+                margin: 0;
+                white-space: nowrap;
+            }}
+            
+            /* 모바일 최적화 */
+            @media (max-width: 768px) {{
+                .phong-control {{
+                    top: 190px;
+                    left: 10px;
+                    font-size: 12px;
+                    padding: 6px 10px;
+                }}
+                
+                .phong-control input[type="checkbox"] {{
+                    width: 16px;
+                    height: 16px;
+                }}
+            }}
+            
+            @media (max-width: 480px) {{
+                .phong-control {{
+                    top: 150px;
+                    left: 5px;
+                    font-size: 11px;
+                    padding: 5px 8px;
+                    gap: 6px;
+                }}
+                
+                .phong-control input[type="checkbox"] {{
+                    width: 14px;
+                    height: 14px;
+                }}
+            }}
+            
             /* 텍스트 표시 제어 */
             .btn-text-mobile {{
                 display: none;
@@ -738,6 +808,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 </button>
             </div>
             
+            <!-- 퐁 쉐이딩 체크박스 -->
+            <div class="phong-control" onclick="togglePhongShading(event)">
+                <input type="checkbox" id="phongCheckbox" onchange="applyPhongShading()">
+                <label for="phongCheckbox">퐁쉐이딩 효과 적용</label>
+            </div>
+            
             <!-- 수정점 입력 모달 -->
             <div class="modal-overlay" id="modalOverlay"></div>
             <div class="annotation-modal" id="annotationModal">
@@ -783,6 +859,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             let touchStartTime = 0;
             let touchStartPos = null;
             let isTouchDevice = false;
+            
+            // Phong shading 관련 변수들
+            let isPhongEnabled = false;
+            let lights = [];
+            let originalMaterials = new Map();
+            let phongMaterials = new Map();
             
             // 초기 annotations 데이터 로드
             const initialAnnotations = {json.dumps(annotations if annotations else [])};
@@ -1429,6 +1511,107 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 annotations = [];
             }}
             
+            // 조명 설정 함수
+            function setupLights() {{
+                // Ambient Light - 전체적인 밝기
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                ambientLight.visible = false; // 초기에는 비활성화
+                scene.add(ambientLight);
+                lights.push(ambientLight);
+                
+                // Directional Light - 메인 광원 (태양광)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 10, 5);
+                directionalLight.visible = false; // 초기에는 비활성화
+                scene.add(directionalLight);
+                lights.push(directionalLight);
+                
+                // Point Light - 보조 광원 (카메라 근처)
+                const pointLight = new THREE.PointLight(0xffffff, 0.3);
+                pointLight.position.set(-5, 5, 10);
+                pointLight.visible = false; // 초기에는 비활성화
+                scene.add(pointLight);
+                lights.push(pointLight);
+                
+                console.log('Lights setup complete (initially disabled)');
+            }}
+            
+            // Phong shading 토글 함수
+            function togglePhongShading(event) {{
+                if (event && event.target.type === 'checkbox') {{
+                    return; // 체크박스 직접 클릭은 무시
+                }}
+                
+                const checkbox = document.getElementById('phongCheckbox');
+                checkbox.checked = !checkbox.checked;
+                applyPhongShading();
+            }}
+            
+            // Phong shading 적용/해제 함수
+            function applyPhongShading() {{
+                const checkbox = document.getElementById('phongCheckbox');
+                isPhongEnabled = checkbox.checked;
+                
+                console.log('Phong shading:', isPhongEnabled ? 'enabled' : 'disabled');
+                
+                // 조명 활성화/비활성화
+                lights.forEach(light => {{
+                    light.visible = isPhongEnabled;
+                }});
+                
+                if (model) {{
+                    model.traverse((child) => {{
+                        if (child.isMesh && child.material) {{
+                            if (isPhongEnabled) {{
+                                // Phong Material 적용
+                                if (!phongMaterials.has(child)) {{
+                                    // 기존 material 저장
+                                    originalMaterials.set(child, child.material);
+                                    
+                                    // Phong material 생성
+                                    const phongMat = new THREE.MeshPhongMaterial({{
+                                        map: child.material.map,
+                                        side: THREE.FrontSide,
+                                        transparent: false,
+                                        shininess: 30, // 광택 정도
+                                        specular: new THREE.Color(0x222222), // 반사광 색상
+                                        emissive: new THREE.Color(0x000000), // 자체 발광 없음
+                                        vertexColors: child.material.vertexColors || false
+                                    }});
+                                    
+                                    // 텍스처 설정 유지
+                                    if (phongMat.map) {{
+                                        phongMat.map.encoding = THREE.LinearEncoding;
+                                        phongMat.map.minFilter = THREE.LinearFilter;
+                                        phongMat.map.magFilter = THREE.LinearFilter;
+                                        phongMat.map.generateMipmaps = false;
+                                        phongMat.map.anisotropy = 1;
+                                        phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
+                                        phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
+                                    }}
+                                    
+                                    phongMaterials.set(child, phongMat);
+                                }}
+                                
+                                child.material = phongMaterials.get(child);
+                            }} else {{
+                                // 원본 BasicMaterial 복원
+                                if (originalMaterials.has(child)) {{
+                                    child.material = originalMaterials.get(child);
+                                }}
+                            }}
+                            
+                            child.material.needsUpdate = true;
+                        }}
+                    }});
+                    
+                    // 즉시 렌더링
+                    if (renderer && scene && camera) {{
+                        renderer.render(scene, camera);
+                    }}
+                }}
+            }}
+            
             // 로딩 상태 업데이트 함수
             function updateLoadingProgress(message) {{
                 // 로고 색상 업데이트
@@ -1532,7 +1715,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     // 상호작용 초기화
                     initInteraction();
                     
-                    // 조명 없음 - MeshBasicMaterial 사용으로 텍스처 색상 100% 유지
+                    // 조명 설정 (초기에는 비활성화)
+                    setupLights();
                     
                     console.log('Scene setup complete');
                     
