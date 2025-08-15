@@ -1570,9 +1570,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     
                                     // Phong material 생성 (무광 효과)
                                     const phongMat = new THREE.MeshPhongMaterial({{
-                                        map: child.material.map,
+                                        map: child.material.map || null,
+                                        color: child.material.color || new THREE.Color(0xffffff), // 원본 색상 복사
                                         side: THREE.FrontSide,
-                                        transparent: false,
+                                        transparent: child.material.transparent || false,
+                                        opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                         shininess: 0, // 광택 없음 (무광)
                                         specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
                                         emissive: new THREE.Color(0x000000), // 자체 발광 없음
@@ -1594,14 +1596,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 }}
                                 
                                 child.material = phongMaterials.get(child);
+                                child.material.needsUpdate = true; // material 변경 시에만 업데이트
                             }} else {{
                                 // 원본 BasicMaterial 복원
                                 if (originalMaterials.has(child)) {{
                                     child.material = originalMaterials.get(child);
+                                    child.material.needsUpdate = true; // material 변경 시에만 업데이트
                                 }}
                             }}
-                            
-                            child.material.needsUpdate = true;
                         }}
                     }});
                     
