@@ -1587,11 +1587,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                     side: THREE.DoubleSide,
                                                     transparent: mat.transparent || false,
                                                     opacity: mat.opacity !== undefined ? mat.opacity : 1,
-                                                    shininess: 5, // 약간의 광택 추가 (스무스한 표현)
-                                                    specular: new THREE.Color(0x111111), // 매우 약한 반사광
+                                                    shininess: 0, // 광택 없음 (무광)
+                                                    specular: new THREE.Color(0x000000), // 반사광 없음
                                                     emissive: new THREE.Color(0x0a0a0a),
                                                     vertexColors: mat.vertexColors || false,
-                                                    flatShading: false // Smooth shading 명시적 설정
+                                                    flatShading: false // Smooth shading
                                                 }});
                                                 
                                                 // 텍스처 설정
@@ -1611,25 +1611,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                             phongMaterials.set(child, phongMats);
                                         }} else {{
                                             // 단일 material 처리
-                                            // Geometry 스무스 처리를 위한 준비
+                                            // Geometry 스무스 처리 - Normal을 삭제하지 말고 유지
                                             if (child.geometry) {{
-                                                // Geometry가 BufferGeometry인지 확인
-                                                if (child.geometry.isBufferGeometry) {{
-                                                    // 기존 normal을 제거하고 재계산
-                                                    if (child.geometry.attributes.normal) {{
-                                                        child.geometry.deleteAttribute('normal');
-                                                    }}
-                                                    
-                                                    // Vertex Normals 재계산 (스무스 셰이딩용)
+                                                // 기존 normal이 없는 경우에만 생성
+                                                if (!child.geometry.attributes.normal) {{
                                                     child.geometry.computeVertexNormals();
-                                                    
-                                                    // Normal 속성이 제대로 생성되었는지 확인
-                                                    if (child.geometry.attributes.normal) {{
-                                                        // Normal 속성을 수정 가능하게 설정
-                                                        child.geometry.attributes.normal.needsUpdate = true;
-                                                    }}
-                                                    
-                                                    console.log('Smooth normals computed for:', child.name || 'unnamed mesh');
+                                                    console.log('Computed vertex normals for:', child.name || 'unnamed mesh');
+                                                }} else {{
+                                                    // 기존 normal이 있으면 그대로 사용
+                                                    console.log('Using existing normals for:', child.name || 'unnamed mesh');
                                                 }}
                                             }}
                                             
@@ -1658,18 +1648,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 materialColor = new THREE.Color(0xcccccc);
                                             }}
                                             
-                                            // Phong material 생성 (스무스 셰이딩 강화)
+                                            // Phong material 생성 (무광 효과)
                                             const phongMat = new THREE.MeshPhongMaterial({{
                                                 map: child.material.map || null,
                                                 color: materialColor,
                                                 side: THREE.DoubleSide,
                                                 transparent: child.material.transparent || false,
                                                 opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                                                shininess: 5, // 약간의 광택 (스무스한 표현 향상)
-                                                specular: new THREE.Color(0x111111), // 매우 약한 반사광
+                                                shininess: 0, // 광택 없음 (무광)
+                                                specular: new THREE.Color(0x000000), // 반사광 없음
                                                 emissive: new THREE.Color(0x0a0a0a),
                                                 vertexColors: child.material.vertexColors || false,
-                                                flatShading: false // Smooth shading 명시적 설정
+                                                flatShading: false // Smooth shading
                                             }});
                                             
                                             // 텍스처 설정 유지
