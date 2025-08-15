@@ -1513,21 +1513,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 조명 설정 함수
             function setupLights() {{
-                // Ambient Light - 전체적인 밝기
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                // Ambient Light - 전체적인 밝기 (높여서 그림자 완화)
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
                 ambientLight.visible = false; // 초기에는 비활성화
                 scene.add(ambientLight);
                 lights.push(ambientLight);
                 
-                // Directional Light - 메인 광원 (태양광)
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                // Directional Light - 메인 광원 (약하게)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
                 directionalLight.position.set(5, 10, 5);
                 directionalLight.visible = false; // 초기에는 비활성화
                 scene.add(directionalLight);
                 lights.push(directionalLight);
                 
-                // Point Light - 보조 광원 (카메라 근처)
-                const pointLight = new THREE.PointLight(0xffffff, 0.3);
+                // Point Light - 보조 광원 (더 약하게)
+                const pointLight = new THREE.PointLight(0xffffff, 0.15);
                 pointLight.position.set(-5, 5, 10);
                 pointLight.visible = false; // 초기에는 비활성화
                 scene.add(pointLight);
@@ -1568,13 +1568,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     // 기존 material 저장
                                     originalMaterials.set(child, child.material);
                                     
-                                    // Phong material 생성
+                                    // Phong material 생성 (무광 효과)
                                     const phongMat = new THREE.MeshPhongMaterial({{
                                         map: child.material.map,
                                         side: THREE.FrontSide,
                                         transparent: false,
-                                        shininess: 30, // 광택 정도
-                                        specular: new THREE.Color(0x222222), // 반사광 색상
+                                        shininess: 0, // 광택 없음 (무광)
+                                        specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
                                         emissive: new THREE.Color(0x000000), // 자체 발광 없음
                                         vertexColors: child.material.vertexColors || false
                                     }});
