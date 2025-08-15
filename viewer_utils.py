@@ -1549,6 +1549,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // Phong shading 적용/해제 함수
             function applyPhongShading() {{
+                try {{
                 const checkbox = document.getElementById('phongCheckbox');
                 isPhongEnabled = checkbox.checked;
                 
@@ -1619,6 +1620,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                         flatShading: false // Smooth shading 사용
                                     }});
                                     
+                                    // Matrix 초기화 (멀티 텍스처 깜빡임 방지)
+                                    if (child.material.matrix) {{
+                                        phongMat.matrix = child.material.matrix.clone();
+                                    }}
+                                    if (child.material.normalMatrix) {{
+                                        phongMat.normalMatrix = child.material.normalMatrix.clone();
+                                    }}
+                                    
                                     // 텍스처 설정 유지
                                     if (phongMat.map) {{
                                         phongMat.map.encoding = THREE.LinearEncoding;
@@ -1642,13 +1651,33 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     }});
                                 }}
                                 
+                                // Material 교체 전 geometry 업데이트 (멀티 텍스처 깜빡임 방지)
+                                if (child.geometry) {{
+                                    child.geometry.computeBoundingSphere();
+                                    child.geometry.computeBoundingBox();
+                                }}
+                                
                                 child.material = phongMaterials.get(child);
                                 child.material.needsUpdate = true; // material 변경 시에만 업데이트
+                                
+                                // Mesh matrix 업데이트
+                                child.updateMatrix();
+                                child.updateMatrixWorld(true);
                             }} else {{
                                 // 원본 BasicMaterial 복원
                                 if (originalMaterials.has(child)) {{
+                                    // Material 교체 전 geometry 업데이트
+                                    if (child.geometry) {{
+                                        child.geometry.computeBoundingSphere();
+                                        child.geometry.computeBoundingBox();
+                                    }}
+                                    
                                     child.material = originalMaterials.get(child);
                                     child.material.needsUpdate = true; // material 변경 시에만 업데이트
+                                    
+                                    // Mesh matrix 업데이트
+                                    child.updateMatrix();
+                                    child.updateMatrixWorld(true);
                                 }}
                             }}
                         }}
@@ -1658,6 +1687,33 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     if (renderer && scene && camera) {{
                         renderer.render(scene, camera);
                     }}
+                }} catch (error) {{
+                    console.error('Phong shading 적용 중 오류:', error);
+                    console.error('오류 스택:', error.stack);
+                    
+                    // 오류 발생 시 원본 material로 복원
+                    if (model && originalMaterials.size > 0) {{
+                        model.traverse((child) => {{
+                            if (child.isMesh && originalMaterials.has(child)) {{
+                                child.material = originalMaterials.get(child);
+                                child.material.needsUpdate = true;
+                            }}
+                        }});
+                    }}
+                    
+                    // 체크박스 상태 초기화
+                    const checkbox = document.getElementById('phongCheckbox');
+                    if (checkbox) {{
+                        checkbox.checked = false;
+                        isPhongEnabled = false;
+                    }}
+                    
+                    // 조명 비활성화
+                    lights.forEach(light => {{
+                        light.visible = false;
+                    }});
+                    
+                    alert('퐁 셰이딩 적용 중 문제가 발생했습니다. 원본 상태로 복원되었습니다.');
                 }}
             }}
             
