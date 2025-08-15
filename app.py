@@ -461,7 +461,7 @@ def show_upload_section():
         """)
     
     uploaded_files = st.file_uploader(
-        "완성된 모델 파일들을 선택하세요 (OBJ + MTL + 텍스처들)",
+        "완성된 모델 파일들을 선택하세요 (OBJ + MTL + 텍스처들) / 몇몇 모델링의 경우 퐁쉐이딩효과가 적용되지 않을 수 있습니다.",
         type=['obj', 'mtl', 'png', 'jpg', 'jpeg'],
         accept_multiple_files=True,
         help="담당자가 준비한 OBJ, MTL, 텍스처 파일들을 모두 선택해서 업로드하세요."
