@@ -1573,16 +1573,33 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                         child.geometry.computeVertexNormals();
                                     }}
                                     
+                                    // 디버깅: 원본 material 정보 출력
+                                    console.log('Original material:', {{
+                                        name: child.name,
+                                        hasMap: !!child.material.map,
+                                        color: child.material.color ? child.material.color.getHexString() : 'none',
+                                        type: child.material.type
+                                    }});
+                                    
+                                    // 색상 결정 로직 개선
+                                    let materialColor = new THREE.Color(0xffffff); // 기본 흰색
+                                    if (child.material.color) {{
+                                        materialColor = child.material.color.clone();
+                                    }} else if (!child.material.map) {{
+                                        // 텍스처도 없고 색상도 없으면 밝은 회색 사용
+                                        materialColor = new THREE.Color(0xcccccc);
+                                    }}
+                                    
                                     // Phong material 생성 (무광 효과)
                                     const phongMat = new THREE.MeshPhongMaterial({{
                                         map: child.material.map || null,
-                                        color: child.material.color || new THREE.Color(0xffffff), // 원본 색상 복사
+                                        color: materialColor,
                                         side: child.material.side || THREE.DoubleSide, // 원본 side 속성 복사, 기본값 DoubleSide
                                         transparent: child.material.transparent || false,
                                         opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                         shininess: 0, // 광택 없음 (무광)
                                         specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
-                                        emissive: new THREE.Color(0x000000), // 자체 발광 없음
+                                        emissive: new THREE.Color(0x0a0a0a), // 약간의 자체 발광 (완전 검은색 방지)
                                         vertexColors: child.material.vertexColors || false,
                                         flatShading: false // Smooth shading 사용
                                     }});
