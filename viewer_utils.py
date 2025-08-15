@@ -1587,11 +1587,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                     side: THREE.DoubleSide,
                                                     transparent: mat.transparent || false,
                                                     opacity: mat.opacity !== undefined ? mat.opacity : 1,
-                                                    shininess: 0,
-                                                    specular: new THREE.Color(0x000000),
+                                                    shininess: 5, // 약간의 광택 추가 (스무스한 표현)
+                                                    specular: new THREE.Color(0x111111), // 매우 약한 반사광
                                                     emissive: new THREE.Color(0x0a0a0a),
                                                     vertexColors: mat.vertexColors || false,
-                                                    flatShading: false
+                                                    flatShading: false // Smooth shading 명시적 설정
                                                 }});
                                                 
                                                 // 텍스처 설정
@@ -1611,14 +1611,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                             phongMaterials.set(child, phongMats);
                                         }} else {{
                                             // 단일 material 처리
-                                            // Normal 벡터 재계산 (검은색 렌더링 방지)
+                                            // Geometry 스무스 처리를 위한 준비
                                             if (child.geometry) {{
-                                                if (child.geometry.attributes.normal) {{
-                                                    child.geometry.deleteAttribute('normal');
-                                                    console.log('Deleted existing normals for:', child.name || 'unnamed mesh');
+                                                // Geometry가 BufferGeometry인지 확인
+                                                if (child.geometry.isBufferGeometry) {{
+                                                    // 기존 normal을 제거하고 재계산
+                                                    if (child.geometry.attributes.normal) {{
+                                                        child.geometry.deleteAttribute('normal');
+                                                    }}
+                                                    
+                                                    // Vertex Normals 재계산 (스무스 셰이딩용)
+                                                    child.geometry.computeVertexNormals();
+                                                    
+                                                    // Normal 속성이 제대로 생성되었는지 확인
+                                                    if (child.geometry.attributes.normal) {{
+                                                        // Normal 속성을 수정 가능하게 설정
+                                                        child.geometry.attributes.normal.needsUpdate = true;
+                                                    }}
+                                                    
+                                                    console.log('Smooth normals computed for:', child.name || 'unnamed mesh');
                                                 }}
-                                                child.geometry.computeVertexNormals();
-                                                console.log('Computed new vertex normals for:', child.name || 'unnamed mesh');
                                             }}
                                             
                                             // 5번 수정: 디버깅 로그 추가
@@ -1646,18 +1658,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 materialColor = new THREE.Color(0xcccccc);
                                             }}
                                             
-                                            // Phong material 생성 (무광 효과)
+                                            // Phong material 생성 (스무스 셰이딩 강화)
                                             const phongMat = new THREE.MeshPhongMaterial({{
                                                 map: child.material.map || null,
                                                 color: materialColor,
-                                                side: THREE.DoubleSide, // 4번 수정: 모든 면 렌더링 보장
+                                                side: THREE.DoubleSide,
                                                 transparent: child.material.transparent || false,
                                                 opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                                                shininess: 0, // 광택 없음 (무광)
-                                                specular: new THREE.Color(0x000000), // 반사광 없음 (완전 무광)
-                                                emissive: new THREE.Color(0x0a0a0a), // 약간의 자체 발광 (완전 검은색 방지)
+                                                shininess: 5, // 약간의 광택 (스무스한 표현 향상)
+                                                specular: new THREE.Color(0x111111), // 매우 약한 반사광
+                                                emissive: new THREE.Color(0x0a0a0a),
                                                 vertexColors: child.material.vertexColors || false,
-                                                flatShading: false // Smooth shading 사용
+                                                flatShading: false // Smooth shading 명시적 설정
                                             }});
                                             
                                             // 텍스처 설정 유지
@@ -1684,18 +1696,36 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                         }}
                                     }}
                                     
-                                    // Material 교체 전 geometry 업데이트 (멀티 텍스처 깜빡임 방지)
-                                    if (child.geometry) {{
-                                        child.geometry.computeBoundingSphere();
-                                        child.geometry.computeBoundingBox();
+                                    // Material 교체 전 추가 처리
+                                    const phongMaterial = phongMaterials.get(child);
+                                    if (phongMaterial) {{
+                                        // Material 교체
+                                        child.material = phongMaterial;
+                                        
+                                        // Geometry와 Material 업데이트 플래그 설정
+                                        if (child.geometry) {{
+                                            child.geometry.computeBoundingSphere();
+                                            child.geometry.computeBoundingBox();
+                                            
+                                            // Normal 속성 업데이트 확인
+                                            if (child.geometry.attributes.normal) {{
+                                                child.geometry.attributes.normal.needsUpdate = true;
+                                            }}
+                                        }}
+                                        
+                                        // Material 업데이트
+                                        if (Array.isArray(child.material)) {{
+                                            child.material.forEach(mat => {{
+                                                mat.needsUpdate = true;
+                                            }});
+                                        }} else {{
+                                            child.material.needsUpdate = true;
+                                        }}
+                                        
+                                        // Mesh 업데이트
+                                        child.updateMatrix();
+                                        child.updateMatrixWorld(true);
                                     }}
-                                    
-                                    child.material = phongMaterials.get(child);
-                                    child.material.needsUpdate = true; // material 변경 시에만 업데이트
-                                    
-                                    // Mesh matrix 업데이트
-                                    child.updateMatrix();
-                                    child.updateMatrixWorld(true);
                                 }} else {{
                                     // 원본 BasicMaterial 복원
                                     if (originalMaterials.has(child)) {{
