@@ -1569,16 +1569,31 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     originalMaterials.set(child, child.material);
                                     
                                     // Normal 벡터 재계산 (검은색 렌더링 방지)
-                                    if (child.geometry && !child.geometry.attributes.normal) {{
+                                    // 1번 수정: 기존 normal 제거 후 재계산
+                                    if (child.geometry) {{
+                                        // 기존 normal이 잘못되었을 수 있으므로 제거 후 재계산
+                                        if (child.geometry.attributes.normal) {{
+                                            child.geometry.deleteAttribute('normal');
+                                            console.log('Deleted existing normals for:', child.name || 'unnamed mesh');
+                                        }}
                                         child.geometry.computeVertexNormals();
+                                        console.log('Computed new vertex normals for:', child.name || 'unnamed mesh');
                                     }}
                                     
-                                    // 디버깅: 원본 material 정보 출력
-                                    console.log('Original material:', {{
-                                        name: child.name,
+                                    // 5번 수정: 디버깅 로그 추가
+                                    console.log('🔍 Phong Shading Debug - Original material:', {{
+                                        meshName: child.name || 'unnamed',
+                                        materialType: child.material.type,
                                         hasMap: !!child.material.map,
+                                        mapName: child.material.map ? child.material.map.name : 'none',
                                         color: child.material.color ? child.material.color.getHexString() : 'none',
-                                        type: child.material.type
+                                        side: child.material.side,
+                                        transparent: child.material.transparent,
+                                        opacity: child.material.opacity,
+                                        vertexColors: child.material.vertexColors,
+                                        geometryHasNormals: child.geometry ? !!child.geometry.attributes.normal : false,
+                                        geometryHasUV: child.geometry ? !!child.geometry.attributes.uv : false,
+                                        geometryHasColors: child.geometry ? !!child.geometry.attributes.color : false
                                     }});
                                     
                                     // 색상 결정 로직 개선
@@ -1594,7 +1609,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     const phongMat = new THREE.MeshPhongMaterial({{
                                         map: child.material.map || null,
                                         color: materialColor,
-                                        side: child.material.side || THREE.DoubleSide, // 원본 side 속성 복사, 기본값 DoubleSide
+                                        side: THREE.DoubleSide, // 4번 수정: 모든 면 렌더링 보장
                                         transparent: child.material.transparent || false,
                                         opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                         shininess: 0, // 광택 없음 (무광)
@@ -1616,6 +1631,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                     }}
                                     
                                     phongMaterials.set(child, phongMat);
+                                    
+                                    // 5번 추가: Phong material 생성 로그
+                                    console.log('✅ Phong material created:', {{
+                                        meshName: child.name || 'unnamed',
+                                        materialColor: phongMat.color.getHexString(),
+                                        hasTexture: !!phongMat.map,
+                                        emissive: phongMat.emissive.getHexString(),
+                                        side: phongMat.side === THREE.DoubleSide ? 'DoubleSide' : 'Other'
+                                    }});
                                 }}
                                 
                                 child.material = phongMaterials.get(child);
