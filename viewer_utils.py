@@ -1939,7 +1939,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const mtlLoader = new THREE.MTLLoader();
                     mtlLoader.setMaterialOptions({{
                         ignoreZeroRGBs: true,
-                        invertTrProperty: false
+                        invertTrProperty: false,
+                        side: THREE.DoubleSide
                     }});
                     
                     const materials = mtlLoader.parse(`{mtl_content}`, '');
@@ -1963,14 +1964,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     materials.preload();
                     
-                    // 모든 재질 처리
+                    // 모든 재질 처리 - 항상 BasicMaterial로 강제 변환
                     for (let materialName in materials.materials) {{
                         const material = materials.materials[materialName];
                         
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
                         
-                        // MeshBasicMaterial로 변환하여 조명 영향 제거 (색상 100% 정확)
+                        // 무조건 MeshBasicMaterial로 변환 (Phong은 토글 시 적용)
                         if (textureFileName && textures[textureFileName]) {{
                             // 기존 material 대신 새로운 BasicMaterial 생성
                             const basicMaterial = new THREE.MeshBasicMaterial({{
@@ -1997,14 +1998,20 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             
                             console.log('✅ BasicMaterial applied: ' + textureFileName);
                         }} else {{
-                            // 텍스처가 없는 경우 기존 설정 유지
-                            material.side = THREE.FrontSide;
-                            material.transparent = false;
-                            material.alphaTest = 0;
-                            material.depthWrite = true;
-                            material.depthTest = true;
-                            material.shininess = 0;
-                            material.specular.setRGB(0, 0, 0);
+                            // 텍스처가 없는 경우도 BasicMaterial로 변환
+                            const basicMaterial = new THREE.MeshBasicMaterial({{
+                                color: material.color || new THREE.Color(0xcccccc),
+                                side: THREE.FrontSide,
+                                transparent: false,
+                                alphaTest: 0,
+                                depthWrite: true,
+                                depthTest: true
+                            }});
+                            
+                            // 기존 material을 basicMaterial로 교체
+                            materials.materials[materialName] = basicMaterial;
+                            
+                            console.log('✅ BasicMaterial applied (no texture): ' + materialName);
                         }}
                     }}
                     
