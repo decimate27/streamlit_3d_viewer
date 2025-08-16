@@ -1618,7 +1618,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 
                                                 // 텍스처 설정
                                                 if (phongMat.map) {{
-                                                    phongMat.map.encoding = THREE.LinearEncoding;
+                                                    phongMat.map.encoding = THREE.sRGBEncoding;
                                                     phongMat.map.minFilter = THREE.LinearFilter;
                                                     phongMat.map.magFilter = THREE.LinearFilter;
                                                     phongMat.map.generateMipmaps = false;
@@ -1686,7 +1686,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                             
                                             // 텍스처 설정 유지
                                             if (phongMat.map) {{
-                                                phongMat.map.encoding = THREE.LinearEncoding;
+                                                phongMat.map.encoding = THREE.sRGBEncoding;
                                                 phongMat.map.minFilter = THREE.LinearFilter;
                                                 phongMat.map.magFilter = THREE.LinearFilter;
                                                 phongMat.map.generateMipmaps = false;
@@ -1864,8 +1864,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // 색상 보정 완전 비활성화
-                    renderer.outputEncoding = THREE.LinearEncoding;
+                    // sRGB 색상 공간 사용 (웹 표준)
+                    renderer.outputEncoding = THREE.sRGBEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
                     renderer.shadowMap.enabled = false; // 그림자 비활성화
                     renderer.gammaFactor = 1.0;
@@ -2000,6 +2000,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             // 기존 material 대신 새로운 BasicMaterial 생성
                             const basicMaterial = new THREE.MeshBasicMaterial({{
                                 map: matchedTexture,
+                                color: 0xffffff,  // 흰색으로 설정하여 텍스처 색상 100% 표현
                                 side: THREE.FrontSide,
                                 transparent: false,
                                 alphaTest: 0,
@@ -2007,8 +2008,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 depthTest: true
                             }});
                             
-                            // 텍스처 설정
-                            basicMaterial.map.encoding = THREE.LinearEncoding;
+                            // 텍스처 설정 - sRGB 인코딩 사용
+                            basicMaterial.map.encoding = THREE.sRGBEncoding;
                             basicMaterial.map.minFilter = THREE.LinearFilter;
                             basicMaterial.map.magFilter = THREE.LinearFilter;
                             basicMaterial.map.generateMipmaps = false;
@@ -2413,8 +2414,8 @@ def create_texture_loading_code(texture_base64):
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // 원본 색상 100% 유지
-                tex_{safe_name}.encoding = THREE.LinearEncoding;
+                // sRGB 색상 공간 사용 (원본 색상 정확히 표현)
+                tex_{safe_name}.encoding = THREE.sRGBEncoding;
                 tex_{safe_name}.flipY = true;
                 
                 // UV Seam 방지 + 색상 정확도
