@@ -1564,6 +1564,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         model.traverse((child) => {{
                             if (child.isMesh && child.material) {{
                                 if (isPhongEnabled) {{
+                                    // 이미 PhongMaterial인 경우는 조명만 활성화하고 건너뛰기
+                                    if (child.material.type === 'MeshPhongMaterial' || 
+                                        (Array.isArray(child.material) && child.material[0]?.type === 'MeshPhongMaterial')) {{
+                                        console.log('Already PhongMaterial, skipping:', child.name || 'unnamed');
+                                        return;
+                                    }}
+                                    
                                     // Phong Material 적용
                                     if (!phongMaterials.has(child)) {{
                                         // 기존 material 저장
