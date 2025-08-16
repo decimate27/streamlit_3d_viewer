@@ -2108,9 +2108,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     scene.add(object);
                     model = object;
                     
-                    // 카메라 위치 조정
-                    const distance = maxDim * scale * 3;
-                    camera.position.set(distance, distance * 0.7, distance);
+                    // 카메라 위치 조정 - 더 가까이 배치하여 UV 경계선 문제 완화
+                    const distance = maxDim * scale * 2.2; // 3 -> 2.2로 더 가까이
+                    camera.position.set(distance * 0.9, distance * 0.6, distance * 0.9); // 약간 더 정면에서 보기
                     camera.lookAt(0, 0, 0);
                     
                     console.log('Model loaded successfully');
