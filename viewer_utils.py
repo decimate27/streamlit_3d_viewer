@@ -1896,8 +1896,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.enableRotate = true;
                     controls.rotateSpeed = 0.5;
                     controls.zoomSpeed = 0.8;
-                    controls.minDistance = 2;
-                    controls.maxDistance = 10;
+                    controls.minDistance = 1.5;  // 약간 더 가까이 갈 수 있도록
+                    controls.maxDistance = 5;   // 10 -> 5로 줄여서 멀리 못가도록 제한
                     
                     // 상호작용 초기화
                     initInteraction();
