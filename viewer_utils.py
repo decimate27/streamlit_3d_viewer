@@ -1514,27 +1514,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 조명 설정 함수
             function setupLights() {{
-                // 기본 조명 - 항상 활성화 (Phong shading 없이도 모델이 보이도록)
-                // MeshBasicMaterial은 조명의 영향을 받지 않으므로 이 조명은 Phong 전용
-                basicLight = new THREE.AmbientLight(0xffffff, 0.5);
-                basicLight.visible = false; // 초기에는 비활성화 (BasicMaterial에는 불필요)
-                scene.add(basicLight);
-                
-                // Ambient Light - 전체적인 밝기 (Phong shading용)
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                // Ambient Light - 전체적인 밝기 (Phong shading용) - 강도 감소
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 0.7 -> 0.4로 감소
                 ambientLight.visible = false; // 초기에는 비활성화
                 scene.add(ambientLight);
                 lights.push(ambientLight);
                 
-                // Directional Light - 메인 광원 (약하게)
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                // Directional Light - 메인 광원 (더 약하게)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.2); // 0.3 -> 0.2로 감소
                 directionalLight.position.set(5, 10, 5);
                 directionalLight.visible = false; // 초기에는 비활성화
                 scene.add(directionalLight);
                 lights.push(directionalLight);
                 
-                // Point Light - 보조 광원 (더 약하게)
-                const pointLight = new THREE.PointLight(0xffffff, 0.15);
+                // Point Light - 보조 광원 (매우 약하게)
+                const pointLight = new THREE.PointLight(0xffffff, 0.1); // 0.15 -> 0.1로 감소
                 pointLight.position.set(-5, 5, 10);
                 pointLight.visible = false; // 초기에는 비활성화
                 scene.add(pointLight);
@@ -1566,12 +1560,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     lights.forEach(light => {{
                         light.visible = isPhongEnabled;
                     }});
-                    
-                    // 기본 조명도 Phong 상태에 따라 조정
-                    if (typeof basicLight !== 'undefined' && basicLight) {{
-                        basicLight.visible = isPhongEnabled;
-                        basicLight.intensity = isPhongEnabled ? 0.3 : 0.0; // BasicMaterial은 조명 불필요
-                    }}
                     
                     if (model) {{
                         model.traverse((child) => {{
@@ -1624,18 +1612,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                     opacity: mat.opacity !== undefined ? mat.opacity : 1,
                                                     shininess: 0, // 광택 없음 (무광)
                                                     specular: new THREE.Color(0x000000), // 반사광 없음
-                                                    emissive: new THREE.Color(0x0a0a0a),
+                                                    emissive: new THREE.Color(0x050505), // 더 어두운 emissive
                                                     vertexColors: mat.vertexColors || false,
                                                     flatShading: false // Smooth shading
                                                 }});
                                                 
-                                                // 텍스처 설정
+                                                // 텍스처 설정 - 원본과 동일한 인코딩 유지
                                                 if (phongMat.map) {{
-                                                    phongMat.map.encoding = THREE.sRGBEncoding;
-                                                    phongMat.map.minFilter = THREE.LinearFilter;
+                                                    phongMat.map.encoding = THREE.LinearEncoding; // Linear 유지
+                                                    phongMat.map.minFilter = THREE.LinearMipmapLinearFilter;
                                                     phongMat.map.magFilter = THREE.LinearFilter;
-                                                    phongMat.map.generateMipmaps = false;
-                                                    phongMat.map.anisotropy = 1;
+                                                    phongMat.map.generateMipmaps = true;
+                                                    phongMat.map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
                                                     phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
                                                     phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
                                                 }}
@@ -1692,18 +1680,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                                 shininess: 0, // 광택 없음 (무광)
                                                 specular: new THREE.Color(0x000000), // 반사광 없음
-                                                emissive: new THREE.Color(0x0a0a0a),
+                                                emissive: new THREE.Color(0x050505), // 더 어두운 emissive
                                                 vertexColors: child.material.vertexColors || false,
                                                 flatShading: false // Smooth shading
                                             }});
                                             
-                                            // 텍스처 설정 유지
+                                            // 텍스처 설정 - 원본과 동일한 인코딩 유지
                                             if (phongMat.map) {{
-                                                phongMat.map.encoding = THREE.sRGBEncoding;
-                                                phongMat.map.minFilter = THREE.LinearFilter;
+                                                phongMat.map.encoding = THREE.LinearEncoding; // Linear 유지
+                                                phongMat.map.minFilter = THREE.LinearMipmapLinearFilter;
                                                 phongMat.map.magFilter = THREE.LinearFilter;
-                                                phongMat.map.generateMipmaps = false;
-                                                phongMat.map.anisotropy = 1;
+                                                phongMat.map.generateMipmaps = true;
+                                                phongMat.map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
                                                 phongMat.map.wrapS = THREE.ClampToEdgeWrapping;
                                                 phongMat.map.wrapT = THREE.ClampToEdgeWrapping;
                                             }}
@@ -1760,7 +1748,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                             child.geometry.computeBoundingBox();
                                         }}
                                         
-                                        child.material = originalMaterials.get(child);
+                                        const originalMat = originalMaterials.get(child);
+                                        child.material = originalMat;
+                                        
+                                        // 원본 material의 텍스처 인코딩 복원
+                                        if (child.material.map) {{
+                                            child.material.map.encoding = THREE.LinearEncoding;
+                                            child.material.map.needsUpdate = true;
+                                        }}
+                                        
                                         child.material.needsUpdate = true; // material 변경 시에만 업데이트
                                         
                                         // Mesh matrix 업데이트
