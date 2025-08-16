@@ -1971,11 +1971,35 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         // 텍스처 참조 가져오기
                         const textureFileName = textureRefs[materialName];
                         
+                        // 텍스처 찾기 (확장자 무시하고 파일명으로 매칭)
+                        let matchedTexture = null;
+                        let matchedTextureName = null;
+                        
+                        if (textureFileName) {{
+                            // 정확한 이름으로 먼저 찾기
+                            if (textures[textureFileName]) {{
+                                matchedTexture = textures[textureFileName];
+                                matchedTextureName = textureFileName;
+                            }} else {{
+                                // 확장자를 제거한 파일명으로 찾기
+                                const baseFileName = textureFileName.replace(/\.[^/.]+$/, "");
+                                for (let texName in textures) {{
+                                    const texBaseName = texName.replace(/\.[^/.]+$/, "");
+                                    if (texBaseName === baseFileName) {{
+                                        matchedTexture = textures[texName];
+                                        matchedTextureName = texName;
+                                        console.log('Texture matched with different extension: ' + textureFileName + ' -> ' + texName);
+                                        break;
+                                    }}
+                                }}
+                            }}
+                        }}
+                        
                         // 무조건 MeshBasicMaterial로 변환 (Phong은 토글 시 적용)
-                        if (textureFileName && textures[textureFileName]) {{
+                        if (matchedTexture) {{
                             // 기존 material 대신 새로운 BasicMaterial 생성
                             const basicMaterial = new THREE.MeshBasicMaterial({{
-                                map: textures[textureFileName],
+                                map: matchedTexture,
                                 side: THREE.FrontSide,
                                 transparent: false,
                                 alphaTest: 0,
@@ -1996,7 +2020,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             // 기존 material을 basicMaterial로 교체
                             materials.materials[materialName] = basicMaterial;
                             
-                            console.log('✅ BasicMaterial applied: ' + textureFileName);
+                            console.log('✅ BasicMaterial applied: ' + matchedTextureName);
                         }} else {{
                             // 텍스처가 없는 경우도 BasicMaterial로 변환
                             const basicMaterial = new THREE.MeshBasicMaterial({{
