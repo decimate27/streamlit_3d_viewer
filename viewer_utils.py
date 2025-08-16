@@ -863,6 +863,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // Phong shading 관련 변수들
             let isPhongEnabled = false;
             let lights = [];
+            let basicLight = null; // 기본 조명 (항상 활성)
             let originalMaterials = new Map();
             let phongMaterials = new Map();
             
@@ -1513,7 +1514,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 조명 설정 함수
             function setupLights() {{
-                // Ambient Light - 전체적인 밝기 (높여서 그림자 완화)
+                // 기본 조명 - 항상 활성화 (Phong shading 없이도 모델이 보이도록)
+                // MeshBasicMaterial은 조명의 영향을 받지 않으므로 이 조명은 Phong 전용
+                basicLight = new THREE.AmbientLight(0xffffff, 0.5);
+                basicLight.visible = false; // 초기에는 비활성화 (BasicMaterial에는 불필요)
+                scene.add(basicLight);
+                
+                // Ambient Light - 전체적인 밝기 (Phong shading용)
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
                 ambientLight.visible = false; // 초기에는 비활성화
                 scene.add(ambientLight);
@@ -1559,6 +1566,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     lights.forEach(light => {{
                         light.visible = isPhongEnabled;
                     }});
+                    
+                    // 기본 조명도 Phong 상태에 따라 조정
+                    if (typeof basicLight !== 'undefined' && basicLight) {{
+                        basicLight.visible = isPhongEnabled;
+                        basicLight.intensity = isPhongEnabled ? 0.3 : 0.0; // BasicMaterial은 조명 불필요
+                    }}
                     
                     if (model) {{
                         model.traverse((child) => {{
@@ -2010,10 +2023,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             
                             // 텍스처 설정 - sRGB 인코딩 사용
                             basicMaterial.map.encoding = THREE.sRGBEncoding;
-                            basicMaterial.map.minFilter = THREE.LinearFilter;
+                            basicMaterial.map.minFilter = THREE.LinearMipmapLinearFilter;
                             basicMaterial.map.magFilter = THREE.LinearFilter;
-                            basicMaterial.map.generateMipmaps = false;
-                            basicMaterial.map.anisotropy = 1;
+                            basicMaterial.map.generateMipmaps = true;
+                            basicMaterial.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
                             basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
                             basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
                             basicMaterial.map.needsUpdate = true;
@@ -2071,50 +2084,20 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         }}
                     }});
                     
-                    // AO(Ambient Occlusion) 효과 추가 - 색상 변화 없이 형태만 강조
+                    // AO 효과 비활성화 - 텍스처 색상 100% 보존
+                    // Vertex colors 비활성화하여 텍스처 원본 색상 유지
                     object.traverse((child) => {{
-                        if (child.isMesh && child.geometry) {{
-                            const geometry = child.geometry;
+                        if (child.isMesh && child.material) {{
+                            // Vertex colors 완전히 비활성화
+                            child.material.vertexColors = false;
+                            child.material.needsUpdate = true;
                             
-                            // Normal 벡터가 있는지 확인하고 없으면 생성
-                            if (!geometry.attributes.normal) {{
-                                geometry.computeVertexNormals();
+                            // Normal 벡터는 유지 (Phong shading 시 필요)
+                            if (child.geometry && !child.geometry.attributes.normal) {{
+                                child.geometry.computeVertexNormals();
                             }}
                             
-                            // 간단한 AO 효과를 위한 vertex color 생성
-                            const positions = geometry.attributes.position;
-                            const normals = geometry.attributes.normal;
-                            const vertexCount = positions.count;
-                            
-                            // Vertex color 배열 생성
-                            const colors = new Float32Array(vertexCount * 3);
-                            
-                            for (let i = 0; i < vertexCount; i++) {{
-                                // Normal 벡터를 이용한 간단한 AO 계산
-                                const nx = normals.getX(i);
-                                const ny = normals.getY(i);
-                                const nz = normals.getZ(i);
-                                
-                                // Y축 기준으로 위쪽(밝음) vs 아래쪽(어두움) 계산
-                                // 색상은 변화시키지 않고 brightness만 살짝 조정
-                                let ao = 0.7 + (ny * 0.3); // 0.7~1.0 범위
-                                ao = Math.max(0.8, Math.min(1.0, ao)); // 0.8~1.0으로 제한 (very subtle)
-                                
-                                colors[i * 3] = ao;     // R
-                                colors[i * 3 + 1] = ao; // G  
-                                colors[i * 3 + 2] = ao; // B
-                            }}
-                            
-                            // Vertex color 속성 추가
-                            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                            
-                            // Material에 vertex color 사용 설정
-                            if (child.material) {{
-                                child.material.vertexColors = true;
-                                child.material.needsUpdate = true;
-                            }}
-                            
-                            console.log('AO effect applied to mesh:', child.name || 'unnamed');
+                            console.log('Vertex colors disabled for pure texture color:', child.name || 'unnamed');
                         }}
                     }});
                     
