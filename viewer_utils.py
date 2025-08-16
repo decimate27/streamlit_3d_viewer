@@ -1877,13 +1877,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
-                    // sRGB 색상 공간 사용 (웹 표준)
-                    renderer.outputEncoding = THREE.sRGBEncoding;
+                    // Linear 색상 공간 사용 (텍스처 원본 색상 보존)
+                    renderer.outputEncoding = THREE.LinearEncoding;
                     renderer.toneMapping = THREE.NoToneMapping;
                     renderer.shadowMap.enabled = false; // 그림자 비활성화
-                    renderer.gammaFactor = 1.0;
-                    renderer.gammaInput = false;
-                    renderer.gammaOutput = false;
                     renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
                     
                     // 모바일에서는 초기에 캔버스 숨기기
@@ -2021,12 +2018,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                 depthTest: true
                             }});
                             
-                            // 텍스처 설정 - sRGB 인코딩 사용
-                            basicMaterial.map.encoding = THREE.sRGBEncoding;
+                            // 텍스처 설정 - Linear 인코딩으로 원본 색상 보존
+                            basicMaterial.map.encoding = THREE.LinearEncoding;
                             basicMaterial.map.minFilter = THREE.LinearMipmapLinearFilter;
                             basicMaterial.map.magFilter = THREE.LinearFilter;
                             basicMaterial.map.generateMipmaps = true;
-                            basicMaterial.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                            basicMaterial.map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
                             basicMaterial.map.wrapS = THREE.ClampToEdgeWrapping;
                             basicMaterial.map.wrapT = THREE.ClampToEdgeWrapping;
                             basicMaterial.map.needsUpdate = true;
@@ -2397,8 +2394,8 @@ def create_texture_loading_code(texture_base64):
                 img_{safe_name}.src = 'data:{mime_type};base64,{data}';
                 const tex_{safe_name} = textureLoader.load(img_{safe_name}.src);
                 
-                // sRGB 색상 공간 사용 (원본 색상 정확히 표현)
-                tex_{safe_name}.encoding = THREE.sRGBEncoding;
+                // Linear 색상 공간 사용 (원본 색상 정확히 표현)
+                tex_{safe_name}.encoding = THREE.LinearEncoding;
                 tex_{safe_name}.flipY = true;
                 
                 // UV Seam 방지 + 색상 정확도
