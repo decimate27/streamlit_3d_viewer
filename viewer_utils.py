@@ -1564,10 +1564,25 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         model.traverse((child) => {{
                             if (child.isMesh && child.material) {{
                                 if (isPhongEnabled) {{
-                                    // 이미 PhongMaterial인 경우는 조명만 활성화하고 건너뛰기
+                                    // 이미 PhongMaterial인 경우는 조명 설정만 조정
                                     if (child.material.type === 'MeshPhongMaterial' || 
                                         (Array.isArray(child.material) && child.material[0]?.type === 'MeshPhongMaterial')) {{
-                                        console.log('Already PhongMaterial, skipping:', child.name || 'unnamed');
+                                        console.log('Already PhongMaterial, adjusting properties:', child.name || 'unnamed');
+                                        
+                                        // PhongMaterial의 속성 조정
+                                        if (Array.isArray(child.material)) {{
+                                            child.material.forEach(mat => {{
+                                                if (mat.type === 'MeshPhongMaterial') {{
+                                                    mat.emissive = new THREE.Color(0x0a0a0a);
+                                                    mat.shininess = 0;
+                                                    mat.specular = new THREE.Color(0x000000);
+                                                }}
+                                            }});
+                                        }} else {{
+                                            child.material.emissive = new THREE.Color(0x0a0a0a);
+                                            child.material.shininess = 0;
+                                            child.material.specular = new THREE.Color(0x000000);
+                                        }}
                                         return;
                                     }}
                                     
