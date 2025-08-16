@@ -863,7 +863,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             // Phong shading 관련 변수들
             let isPhongEnabled = false;
             let lights = [];
-            let basicLight = null;  // 기본 조명 (항상 활성화)
             let originalMaterials = new Map();
             let phongMaterials = new Map();
             
@@ -1514,11 +1513,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 조명 설정 함수
             function setupLights() {{
-                // 기본 조명 - 항상 활성화 (Phong shading 없이도 모델이 보이도록)
-                basicLight = new THREE.AmbientLight(0xffffff, 1.0);
-                scene.add(basicLight);
-                
-                // Phong shading용 조명들 (초기에는 비활성화)
                 // Ambient Light - 전체적인 밝기 (높여서 그림자 완화)
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
                 ambientLight.visible = false; // 초기에는 비활성화
@@ -1539,7 +1533,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 scene.add(pointLight);
                 lights.push(pointLight);
                 
-                console.log('Lights setup complete (basic light always on, Phong lights initially disabled)');
+                console.log('Lights setup complete (initially disabled)');
             }}
             
             // Phong shading 토글 함수
@@ -1561,26 +1555,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     console.log('Phong shading:', isPhongEnabled ? 'enabled' : 'disabled');
                     
-                    // 조명 활성화/비활성화 및 기본 조명 강도 조절
-                    if (isPhongEnabled) {{
-                        // Phong shading 활성화 시 기본 조명 약하게
-                        if (basicLight) {{
-                            basicLight.intensity = 0.3;
-                        }}
-                        // Phong용 조명들 활성화
-                        lights.forEach(light => {{
-                            light.visible = true;
-                        }});
-                    }} else {{
-                        // Phong shading 비활성화 시 기본 조명 밝게
-                        if (basicLight) {{
-                            basicLight.intensity = 1.0;
-                        }}
-                        // Phong용 조명들 비활성화
-                        lights.forEach(light => {{
-                            light.visible = false;
-                        }});
-                    }}
+                    // 조명 활성화/비활성화
+                    lights.forEach(light => {{
+                        light.visible = isPhongEnabled;
+                    }});
                     
                     if (model) {{
                         model.traverse((child) => {{
