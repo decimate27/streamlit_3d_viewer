@@ -1514,21 +1514,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // 조명 설정 함수
             function setupLights() {{
-                // Ambient Light - 전체적인 밝기 (Phong shading용) - 강도 감소
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 0.7 -> 0.4로 감소
+                // Ambient Light - 전체적인 밝기 (Phong shading용) - 적절한 밝기
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // 적절한 밝기로 조정
                 ambientLight.visible = false; // 초기에는 비활성화
                 scene.add(ambientLight);
                 lights.push(ambientLight);
                 
-                // Directional Light - 메인 광원 (더 약하게)
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.2); // 0.3 -> 0.2로 감소
+                // Directional Light - 메인 광원 (적절한 강도)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.25); // 적절한 강도로 조정
                 directionalLight.position.set(5, 10, 5);
                 directionalLight.visible = false; // 초기에는 비활성화
                 scene.add(directionalLight);
                 lights.push(directionalLight);
                 
-                // Point Light - 보조 광원 (매우 약하게)
-                const pointLight = new THREE.PointLight(0xffffff, 0.1); // 0.15 -> 0.1로 감소
+                // Point Light - 보조 광원 (적절한 강도)
+                const pointLight = new THREE.PointLight(0xffffff, 0.15); // 적절한 강도로 조정
                 pointLight.position.set(-5, 5, 10);
                 pointLight.visible = false; // 초기에는 비활성화
                 scene.add(pointLight);
@@ -1612,7 +1612,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                     opacity: mat.opacity !== undefined ? mat.opacity : 1,
                                                     shininess: 0, // 광택 없음 (무광)
                                                     specular: new THREE.Color(0x000000), // 반사광 없음
-                                                    emissive: new THREE.Color(0x050505), // 더 어두운 emissive
+                                                    emissive: new THREE.Color(0x080808), // 적절한 emissive
                                                     vertexColors: mat.vertexColors || false,
                                                     flatShading: false // Smooth shading
                                                 }});
@@ -1680,7 +1680,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
                                                 shininess: 0, // 광택 없음 (무광)
                                                 specular: new THREE.Color(0x000000), // 반사광 없음
-                                                emissive: new THREE.Color(0x050505), // 더 어두운 emissive
+                                                emissive: new THREE.Color(0x080808), // 적절한 emissive
                                                 vertexColors: child.material.vertexColors || false,
                                                 flatShading: false // Smooth shading
                                             }});
