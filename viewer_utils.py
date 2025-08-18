@@ -2096,7 +2096,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             const geometry = child.geometry;
                             if (geometry.attributes.uv) {{
                                 const uvArray = geometry.attributes.uv.array;
-                                const epsilon = 0.001; // UV 경계에서 0.1% 안쪽으로
+                                const epsilon = 0.003; // UV 경계에서 0.3% 안쪽으로
                                 
                                 for (let i = 0; i < uvArray.length; i++) {{
                                     // UV 좌표를 epsilon만큼 안쪽으로 조정
@@ -2433,7 +2433,7 @@ def create_texture_loading_code(texture_base64):
                 tex_{safe_name}.generateMipmaps = true;
                 tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
                 tex_{safe_name}.magFilter = THREE.LinearFilter;
-                tex_{safe_name}.anisotropy = 1;
+                tex_{safe_name}.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
