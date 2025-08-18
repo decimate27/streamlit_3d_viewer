@@ -2042,9 +2042,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             const basicMaterial = new THREE.MeshBasicMaterial({{
                                 map: matchedTexture,
                                 color: 0xffffff,  // 흰색으로 설정하여 텍스처 색상 100% 표현
-                                side: THREE.FrontSide,
+                                side: THREE.DoubleSide,
                                 transparent: false,
-                                alphaTest: 0,
+                                alphaTest: 0.01,
                                 depthWrite: true,
                                 depthTest: true
                             }});
@@ -2067,9 +2067,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             // 텍스처가 없는 경우도 BasicMaterial로 변환
                             const basicMaterial = new THREE.MeshBasicMaterial({{
                                 color: material.color || new THREE.Color(0xcccccc),
-                                side: THREE.FrontSide,
+                                side: THREE.DoubleSide,
                                 transparent: false,
-                                alphaTest: 0,
+                                alphaTest: 0.01,
                                 depthWrite: true,
                                 depthTest: true
                             }});
@@ -2090,20 +2090,26 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     const object = objLoader.parse(`{obj_content}`);
                     
-                    // UV 좌표 조정 - 경계에서 약간 안쪽으로
+                    // UV 좌표 조정 - 경계에서 약간 안쪽으로 + 부드러운 보간
                     object.traverse((child) => {{
                         if (child.isMesh && child.geometry) {{
                             const geometry = child.geometry;
                             if (geometry.attributes.uv) {{
                                 const uvArray = geometry.attributes.uv.array;
-                                const epsilon = 0.003; // UV 경계에서 0.3% 안쪽으로
+                                const epsilon = 0.005; // UV 경계에서 0.5% 안쪽으로
+                                const softEdge = 0.01; // 부드러운 가장자리 영역
                                 
                                 for (let i = 0; i < uvArray.length; i++) {{
-                                    // UV 좌표를 epsilon만큼 안쪽으로 조정
-                                    if (uvArray[i] < epsilon) {{
-                                        uvArray[i] = epsilon;
-                                    }} else if (uvArray[i] > 1 - epsilon) {{
-                                        uvArray[i] = 1 - epsilon;
+                                    const value = uvArray[i];
+                                    
+                                    // 경계 근처의 값을 부드럽게 조정
+                                    if (value < softEdge) {{
+                                        // 0에 가까운 값을 epsilon으로 부드럽게 이동
+                                        uvArray[i] = epsilon + (value / softEdge) * epsilon;
+                                    }} else if (value > 1 - softEdge) {{
+                                        // 1에 가까운 값을 1-epsilon으로 부드럽게 이동
+                                        const dist = 1 - value;
+                                        uvArray[i] = 1 - epsilon - (dist / softEdge) * epsilon;
                                     }}
                                 }}
                                 
@@ -2436,7 +2442,7 @@ def create_texture_loading_code(texture_base64):
                 tex_{safe_name}.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
                 tex_{safe_name}.wrapT = THREE.ClampToEdgeWrapping;
-                tex_{safe_name}.format = THREE.RGBFormat; // RGB 포맷 (알파 채널 제외)
+                tex_{safe_name}.format = THREE.RGBAFormat; // RGBA 포맷 (알파 채널 포함)
                 tex_{safe_name}.type = THREE.UnsignedByteType;
                 tex_{safe_name}.needsUpdate = true;
                 
