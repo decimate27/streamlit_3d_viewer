@@ -231,13 +231,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 white-space: nowrap;
             }}
             
-            /* 모바일 최적화 */
+            /* 모바일 최적화 - 제출완료 버튼 바로 아래 배치 */
             @media (max-width: 768px) {{
                 .phong-control {{
-                    top: 190px;
-                    left: 10px;
+                    top: 125px !important;  /* 제출완료 버튼(70px) + 간격 */
+                    left: auto !important;
+                    right: 15px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 12px;
-                    padding: 6px 10px;
+                    padding: 8px 12px;
+                    background: rgba(255, 255, 255, 0.95);
                 }}
                 
                 .phong-control input[type="checkbox"] {{
@@ -248,10 +250,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             @media (max-width: 480px) {{
                 .phong-control {{
-                    top: 150px;
-                    left: 5px;
+                    top: 110px !important;  /* 제출완료 버튼(60px) + 간격 */
+                    left: auto !important;
+                    right: 10px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 11px;
-                    padding: 5px 8px;
+                    padding: 6px 10px;
                     gap: 6px;
                 }}
                 
