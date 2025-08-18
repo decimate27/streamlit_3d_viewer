@@ -1989,14 +1989,46 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             }} else {{
                                 // 확장자를 제거한 파일명으로 찾기
                                 const baseFileName = textureFileName.replace(/\.[^/.]+$/, "");
+                                // 공백과 특수문자를 제거한 정규화된 이름으로 비교
+                                const normalizedBaseName = baseFileName.replace(/[\s_-]/g, '').toLowerCase();
+                                
                                 for (let texName in textures) {{
                                     const texBaseName = texName.replace(/\.[^/.]+$/, "");
-                                    if (texBaseName === baseFileName) {{
+                                    const normalizedTexBaseName = texBaseName.replace(/[\s_-]/g, '').toLowerCase();
+                                    
+                                    // 정규화된 이름으로 비교
+                                    if (normalizedTexBaseName === normalizedBaseName || 
+                                        texBaseName === baseFileName) {{
                                         matchedTexture = textures[texName];
                                         matchedTextureName = texName;
-                                        console.log('Texture matched with different extension: ' + textureFileName + ' -> ' + texName);
+                                        console.log('Texture matched: ' + textureFileName + ' -> ' + texName);
                                         break;
                                     }}
+                                }}
+                                
+                                // 여전히 못 찾았다면 부분 매칭 시도
+                                if (!matchedTexture) {{
+                                    for (let texName in textures) {{
+                                        // 텍스처 파일명에 material 이름이 포함되어 있는지 확인
+                                        const normalizedTexName = texName.replace(/[\s_-]/g, '').toLowerCase();
+                                        const normalizedMaterialName = materialName.replace(/[\s_-]/g, '').toLowerCase();
+                                        
+                                        if (normalizedTexName.includes(normalizedMaterialName) || 
+                                            normalizedMaterialName.includes('material')) {{
+                                            matchedTexture = textures[texName];
+                                            matchedTextureName = texName;
+                                            console.log('Texture partially matched: ' + materialName + ' -> ' + texName);
+                                            break;
+                                        }}
+                                    }}
+                                }}
+                                
+                                // 마지막으로 텍스처가 하나뿐이면 그것을 사용
+                                if (!matchedTexture && Object.keys(textures).length === 1) {{
+                                    const singleTexName = Object.keys(textures)[0];
+                                    matchedTexture = textures[singleTexName];
+                                    matchedTextureName = singleTexName;
+                                    console.log('Single texture auto-matched: ' + materialName + ' -> ' + singleTexName);
                                 }}
                             }}
                         }}
