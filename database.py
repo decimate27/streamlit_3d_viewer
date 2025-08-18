@@ -70,7 +70,8 @@ class ModelDatabase:
                     share_token TEXT UNIQUE NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_accessed TIMESTAMP,
-                    access_count INTEGER DEFAULT 0
+                    access_count INTEGER DEFAULT 0,
+                    real_height REAL DEFAULT 1.0
                 )
             ''')
             st.write("🆕 새 데이터베이스 테이블 생성")
@@ -155,6 +156,12 @@ class ModelDatabase:
                 cursor.execute('ALTER TABLE models ADD COLUMN author TEXT DEFAULT ""')
                 st.write("📝 author 컬럼 추가")
                 conn.commit()
+            
+            # real_height 컬럼 추가 (없는 경우)
+            if 'real_height' not in columns:
+                cursor.execute('ALTER TABLE models ADD COLUMN real_height REAL DEFAULT 1.0')
+                st.write("📝 real_height 컬럼 추가 (모델 실제 높이 - 미터)")
+                conn.commit()
         
         # annotations 테이블 생성 (존재하지 않을 경우)
         cursor.execute('''
@@ -174,7 +181,7 @@ class ModelDatabase:
         conn.commit()
         conn.close()
     
-    def save_model(self, name, author, description, obj_content, mtl_content, texture_data):
+    def save_model(self, name, author, description, obj_content, mtl_content, texture_data, real_height=1.0):
         """모델 저장 (웹서버 + 로컬 백업)"""
         model_id = str(uuid.uuid4()).replace('-', '')  # 하이픈 제거
         share_token = str(uuid.uuid4())
@@ -219,11 +226,11 @@ class ModelDatabase:
         
         cursor.execute('''
             INSERT INTO models (id, name, author, description, file_paths, backup_paths, 
-                              storage_type, share_token)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                              storage_type, share_token, real_height)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (model_id, name, author, description, json.dumps(file_paths), 
               json.dumps(backup_paths) if backup_paths else None, 
-              storage_type, share_token))
+              storage_type, share_token, real_height))
         
         conn.commit()
         conn.close()
@@ -294,7 +301,7 @@ class ModelDatabase:
         if 'file_paths' in columns:
             # 새 스키마
             cursor.execute('''
-                SELECT id, name, author, description, file_paths, backup_paths, storage_type, share_token
+                SELECT id, name, author, description, file_paths, backup_paths, storage_type, share_token, real_height
                 FROM models WHERE share_token = ?
             ''', (share_token,))
         else:
@@ -325,7 +332,8 @@ class ModelDatabase:
                     'file_paths': json.loads(row[4]) if len(row) > 4 and row[4] else {},
                     'backup_paths': json.loads(row[5]) if len(row) > 5 and row[5] else None,
                     'storage_type': row[6] if len(row) > 6 else 'local',
-                    'share_token': row[7] if len(row) > 7 else share_token
+                    'share_token': row[7] if len(row) > 7 else share_token,
+                    'real_height': row[8] if len(row) > 8 else 1.0
                 }
             else:
                 # 구 스키마 (호환성)

@@ -244,15 +244,17 @@ def show_viewer_page(model_data):
             db = ModelDatabase()
             annotations = db.get_annotations(share_token)
         
-        # 3D 뷰어 HTML 생성 (배경색 및 annotations 포함)
+        # 3D 뷰어 HTML 생성 (배경색, annotations 및 실제 높이 포함)
         from viewer_utils import create_3d_viewer_html
+        real_height = model_data.get('real_height', 1.0)  # 데이터베이스에서 실제 높이 가져오기
         viewer_html = create_3d_viewer_html(
             obj_content, 
             mtl_content, 
             texture_data, 
             background_color,
             model_token=share_token,
-            annotations=annotations
+            annotations=annotations,
+            real_height=real_height
         )
         
         # 전체 화면 뷰어 표시

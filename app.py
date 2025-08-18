@@ -407,12 +407,24 @@ def show_upload_section():
     st.info(f"현재 저장된 모델: {current_count}/20 ({storage_status})")
     
     # 모델 정보 입력
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         model_name = st.text_input("모델 이름", placeholder="예: 자동차 모델")
-        author_name = st.text_input("작성자", placeholder="작성자 이름을 입력하세요")
     with col2:
-        model_description = st.text_area("설명 (선택사항)", placeholder="모델에 대한 간단한 설명")
+        author_name = st.text_input("작성자", placeholder="작성자 이름을 입력하세요")
+    with col3:
+        # 새로 추가되는 높이 입력 필드
+        real_height = st.number_input(
+            "실제 높이 (미터)", 
+            min_value=0.1, 
+            max_value=100.0, 
+            value=1.0,
+            step=0.1,
+            format="%.1f",
+            help="모델의 실제 높이를 미터 단위로 입력하세요. 예: 1.8 (사람), 3.0 (차량), 10.0 (건물)"
+        )
+    
+    model_description = st.text_area("설명 (선택사항)", placeholder="모델에 대한 간단한 설명")
     
     # 파일 업로드
     st.markdown("### 📁 파일 업로드")
@@ -507,14 +519,15 @@ def show_upload_section():
                                 with open(texture_path, 'rb') as f:
                                     texture_data[texture_name] = f.read()
                             
-                            # 데이터베이스에 저장
+                            # 데이터베이스에 저장 (실제 높이 포함)
                             model_id, share_token = db.save_model(
                                 model_name, 
                                 author_name,
                                 model_description,
                                 obj_content, 
                                 mtl_content, 
-                                texture_data
+                                texture_data,
+                                real_height
                             )
                             
                             # 성공 메시지 및 공유 링크

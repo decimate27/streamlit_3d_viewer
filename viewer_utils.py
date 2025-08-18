@@ -2,8 +2,8 @@ import base64
 import json
 from pathlib import Path
 
-def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_token=None, annotations=None):
-    """Three.js 기반 3D 뷰어 HTML 생성"""
+def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_color="white", model_token=None, annotations=None, real_height=None):
+    """Three.js 기반 3D 뷰어 HTML 생성 - 치수선 기능 포함"""
     
     # 배경색 설정
     bg_colors = {
@@ -778,6 +778,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             제출완료
         </button>
         
+        <!-- 치수 표시 버튼 (실제 높이가 설정된 경우에만 표시) -->
+        {f'''<button class="dimension-btn" id="dimensionBtn" onclick="toggleDimensions()" style="position: fixed; top: 140px; right: 20px; z-index: 99999; padding: 12px 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 3px 8px rgba(0,0,0,0.25); min-width: 120px; text-align: center; transition: all 0.2s ease;">
+            📐 치수 OFF
+        </button>
+        <div id="dimensionInfo" style="position: fixed; top: 200px; right: 20px; z-index: 99999; min-width: 150px;"></div>''' if real_height and real_height > 0 else ''}
+        
         <div id="container">
             <div class="loading-container" id="loading">
                 <div class="logo-container">
@@ -869,6 +875,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             let basicLight = null; // 기본 조명 (항상 활성)
             let originalMaterials = new Map();
             let phongMaterials = new Map();
+            
+            // 치수선 관련 변수들
+            let dimensionGroup = null;
+            let isDimensionVisible = false;
+            const realHeight = {real_height if real_height else 1.0};  // 실제 높이 (미터)
+            let realDimensions = null;  // 계산된 실제 크기
             
             // 초기 annotations 데이터 로드
             const initialAnnotations = {json.dumps(annotations if annotations else [])};
@@ -1541,6 +1553,181 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             }}
             
             // Phong shading 토글 함수
+            // 실제 크기 계산 함수
+            function calculateRealDimensions(object) {{
+                if (!object) return null;
+                
+                const box = new THREE.Box3().setFromObject(object);
+                const modelSize = box.getSize(new THREE.Vector3());
+                
+                // 높이 기준 스케일 팩터 계산
+                const scaleFactor = realHeight / modelSize.y;
+                
+                // 실제 크기 계산 (미터 단위)
+                const dimensions = {{
+                    width: modelSize.x * scaleFactor,
+                    height: realHeight,
+                    depth: modelSize.z * scaleFactor
+                }};
+                
+                // 표시용 포맷팅 (1m 이상은 m, 미만은 cm)
+                const formatDimension = (meters) => {{
+                    if (meters >= 1.0) {{
+                        return `${{meters.toFixed(1)}}m`;
+                    }} else {{
+                        return `${{(meters * 100).toFixed(0)}}cm`;
+                    }}
+                }};
+                
+                return {{
+                    raw: dimensions,
+                    formatted: {{
+                        width: formatDimension(dimensions.width),
+                        height: formatDimension(dimensions.height),
+                        depth: formatDimension(dimensions.depth)
+                    }}
+                }};
+            }}
+            
+            // 치수선 생성 함수
+            function createDimensionLine(start, end, label, color = 0x0000ff) {{
+                const group = new THREE.Group();
+                
+                // 메인 라인
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+                const lineMaterial = new THREE.LineBasicMaterial({{ color: color, linewidth: 2 }});
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                group.add(line);
+                
+                // 화살표 (양끝)
+                const arrowLength = 0.05;
+                const arrowGeometry = new THREE.ConeGeometry(0.02, arrowLength, 8);
+                const arrowMaterial = new THREE.MeshBasicMaterial({{ color: color }});
+                
+                // 시작점 화살표
+                const arrow1 = new THREE.Mesh(arrowGeometry, arrowMaterial);
+                arrow1.position.copy(start);
+                const dir1 = new THREE.Vector3().subVectors(end, start).normalize();
+                arrow1.lookAt(start.clone().add(dir1));
+                arrow1.rotateX(Math.PI / 2);
+                group.add(arrow1);
+                
+                // 끝점 화살표
+                const arrow2 = new THREE.Mesh(arrowGeometry, arrowMaterial);
+                arrow2.position.copy(end);
+                const dir2 = new THREE.Vector3().subVectors(start, end).normalize();
+                arrow2.lookAt(end.clone().add(dir2));
+                arrow2.rotateX(Math.PI / 2);
+                group.add(arrow2);
+                
+                // 텍스트 라벨 (Sprite)
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 128;
+                const context = canvas.getContext('2d');
+                context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                context.fillRect(0, 0, 256, 128);
+                context.font = 'Bold 48px Arial';
+                context.fillStyle = 'rgba(0, 0, 255, 1.0)';
+                context.textAlign = 'center';
+                context.fillText(label, 128, 75);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({{ 
+                    map: texture,
+                    depthTest: false,
+                    depthWrite: false
+                }});
+                const sprite = new THREE.Sprite(spriteMaterial);
+                
+                const midPoint = new THREE.Vector3().lerpVectors(start, end, 0.5);
+                sprite.position.copy(midPoint);
+                sprite.scale.set(0.5, 0.25, 1);
+                group.add(sprite);
+                
+                return group;
+            }}
+            
+            // 모델에 치수선 추가
+            function addDimensionLines(object) {{
+                if (!object || dimensionGroup) return;
+                
+                const box = new THREE.Box3().setFromObject(object);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+                
+                // 실제 크기 계산
+                realDimensions = calculateRealDimensions(object);
+                if (!realDimensions) return;
+                
+                dimensionGroup = new THREE.Group();
+                dimensionGroup.name = 'dimensions';
+                
+                const offset = Math.max(size.x, size.y, size.z) * 0.15;  // 모델 크기의 15% 오프셋
+                
+                // X축 치수선 (너비)
+                const xStart = new THREE.Vector3(box.min.x, box.min.y - offset, center.z);
+                const xEnd = new THREE.Vector3(box.max.x, box.min.y - offset, center.z);
+                const xLine = createDimensionLine(xStart, xEnd, realDimensions.formatted.width, 0xff0000);
+                dimensionGroup.add(xLine);
+                
+                // Y축 치수선 (높이)
+                const yStart = new THREE.Vector3(box.min.x - offset, box.min.y, center.z);
+                const yEnd = new THREE.Vector3(box.min.x - offset, box.max.y, center.z);
+                const yLine = createDimensionLine(yStart, yEnd, realDimensions.formatted.height, 0x00ff00);
+                dimensionGroup.add(yLine);
+                
+                // Z축 치수선 (깊이)
+                const zStart = new THREE.Vector3(box.min.x - offset, center.y, box.min.z);
+                const zEnd = new THREE.Vector3(box.min.x - offset, center.y, box.max.z);
+                const zLine = createDimensionLine(zStart, zEnd, realDimensions.formatted.depth, 0x0000ff);
+                dimensionGroup.add(zLine);
+                
+                scene.add(dimensionGroup);
+                dimensionGroup.visible = false;  // 초기에는 숨김
+                
+                // 크기 정보 UI 업데이트
+                updateDimensionInfo();
+            }}
+            
+            // 치수 표시 토글
+            function toggleDimensions() {{
+                if (!dimensionGroup) return;
+                
+                isDimensionVisible = !isDimensionVisible;
+                dimensionGroup.visible = isDimensionVisible;
+                
+                const btn = document.getElementById('dimensionBtn');
+                if (btn) {{
+                    if (isDimensionVisible) {{
+                        btn.classList.add('active');
+                        btn.textContent = '📐 치수 ON';
+                    }} else {{
+                        btn.classList.remove('active');
+                        btn.textContent = '📐 치수 OFF';
+                    }}
+                }}
+                
+                render();
+            }}
+            
+            // 치수 정보 UI 업데이트
+            function updateDimensionInfo() {{
+                if (!realDimensions) return;
+                
+                const infoEl = document.getElementById('dimensionInfo');
+                if (infoEl) {{
+                    infoEl.innerHTML = `
+                        <div style="padding: 5px; background: rgba(255,255,255,0.9); border-radius: 5px;">
+                            <strong>실제 크기:</strong><br>
+                            너비: ${{realDimensions.formatted.width}}<br>
+                            높이: ${{realDimensions.formatted.height}}<br>
+                            깊이: ${{realDimensions.formatted.depth}}
+                        </div>
+                    `;
+                }}
+            }}
+            
             function togglePhongShading(event) {{
                 if (event && event.target.type === 'checkbox') {{
                     return; // 체크박스 직접 클릭은 무시
@@ -2138,6 +2325,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     scene.add(object);
                     model = object;
+                    
+                    // 치수선 추가 (실제 높이가 설정된 경우)
+                    if (realHeight && realHeight > 0) {{
+                        addDimensionLines(object);
+                        console.log('Dimension lines added with real height:', realHeight);
+                    }}
                     
                     // 카메라 위치 조정 - 더 가까이 배치하여 UV 경계선 문제 완화
                     const distance = maxDim * scale * 1.8; // 2.2 -> 1.8로 더욱 가까이
