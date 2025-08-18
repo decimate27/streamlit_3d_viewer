@@ -1665,21 +1665,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 const offset = Math.max(size.x, size.y, size.z) * 0.15;  // 모델 크기의 15% 오프셋
                 
-                // X축 치수선 (너비)
+                // X축 치수선 (너비) - 모델 아래쪽에 배치
                 const xStart = new THREE.Vector3(box.min.x, box.min.y - offset, center.z);
                 const xEnd = new THREE.Vector3(box.max.x, box.min.y - offset, center.z);
                 const xLine = createDimensionLine(xStart, xEnd, realDimensions.formatted.width, 0xff0000);
                 dimensionGroup.add(xLine);
                 
-                // Y축 치수선 (높이)
+                // Y축 치수선 (높이) - 모델 왼쪽에 배치
                 const yStart = new THREE.Vector3(box.min.x - offset, box.min.y, center.z);
                 const yEnd = new THREE.Vector3(box.min.x - offset, box.max.y, center.z);
                 const yLine = createDimensionLine(yStart, yEnd, realDimensions.formatted.height, 0x00ff00);
                 dimensionGroup.add(yLine);
                 
-                // Z축 치수선 (깊이)
-                const zStart = new THREE.Vector3(box.min.x - offset, center.y, box.min.z);
-                const zEnd = new THREE.Vector3(box.min.x - offset, center.y, box.max.z);
+                // Z축 치수선 (깊이) - 모델 오른쪽에 배치 (위치 변경)
+                const zStart = new THREE.Vector3(box.max.x + offset, center.y, box.min.z);
+                const zEnd = new THREE.Vector3(box.max.x + offset, center.y, box.max.z);
                 const zLine = createDimensionLine(zStart, zEnd, realDimensions.formatted.depth, 0x0000ff);
                 dimensionGroup.add(zLine);
                 
