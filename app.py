@@ -527,7 +527,7 @@ def show_upload_section():
                                 obj_content, 
                                 mtl_content, 
                                 texture_data,
-                                real_height
+                                real_height=real_height  # 키워드 인자로 전달
                             )
                             
                             # 성공 메시지 및 공유 링크
