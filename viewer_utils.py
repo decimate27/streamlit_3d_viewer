@@ -1859,7 +1859,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // Camera 생성 - 제품 전시용 FOV (45도)
                     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-                    camera.position.set(0, 0, 5);
+                    camera.position.set(0, 0, 3.5);  // 5 -> 3.5로 초기 위치 더 가깝게
                     
                     // Renderer 생성
                     const container = document.getElementById('container');
@@ -2141,7 +2141,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const size = box.getSize(new THREE.Vector3());
                     
                     const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = 2 / maxDim;
+                    const scale = 2.5 / maxDim;  // 2 -> 2.5로 모델을 더 크게
                     object.scale.set(scale, scale, scale);
                     
                     object.position.sub(center.multiplyScalar(scale));
@@ -2150,7 +2150,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     model = object;
                     
                     // 카메라 위치 조정 - 더 가까이 배치하여 UV 경계선 문제 완화
-                    const distance = maxDim * scale * 2.2; // 3 -> 2.2로 더 가까이
+                    const distance = maxDim * scale * 1.8; // 2.2 -> 1.8로 더욱 가까이
                     camera.position.set(distance * 0.9, distance * 0.6, distance * 0.9); // 약간 더 정면에서 보기
                     camera.lookAt(0, 0, 0);
                     
