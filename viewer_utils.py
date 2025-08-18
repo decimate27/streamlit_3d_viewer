@@ -844,7 +844,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             <!-- 퐁 쉐이딩 체크박스 -->
             <div class="phong-control" onclick="togglePhongShading(event)">
                 <input type="checkbox" id="phongCheckbox" onchange="applyPhongShading()">
-                <label for="phongCheckbox">퐁쉐이딩 효과 적용</label>
+                <label for="phongCheckbox">입체감 증가</label>
             </div>
             
             <!-- 수정점 입력 모달 -->
