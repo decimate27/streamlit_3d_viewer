@@ -1,5 +1,5 @@
 # CLAUDE.md
-
+Always respond in korean.
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 프로젝트 개요
