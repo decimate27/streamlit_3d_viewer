@@ -1870,10 +1870,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         alpha: false,
                         premultipliedAlpha: false,
                         stencil: false,
-                        depth: true
+                        depth: true,
+                        precision: "highp"
                     }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
-                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    renderer.setPixelRatio(window.devicePixelRatio);
                     renderer.setClearColor(0x{bg_color[1:]}, 1);
                     
                     // Linear 색상 공간 사용 (텍스처 원본 색상 보존)
@@ -2090,27 +2091,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     const object = objLoader.parse(`{obj_content}`);
                     
-                    // UV 좌표 조정 - 경계에서 약간 안쪽으로 + 부드러운 보간
+                    // UV 좌표 조정 - 0.001~0.999 범위로 제한
                     object.traverse((child) => {{
                         if (child.isMesh && child.geometry) {{
                             const geometry = child.geometry;
                             if (geometry.attributes.uv) {{
                                 const uvArray = geometry.attributes.uv.array;
-                                const epsilon = 0.005; // UV 경계에서 0.5% 안쪽으로
-                                const softEdge = 0.01; // 부드러운 가장자리 영역
                                 
+                                // 모든 UV 좌표를 0.001~0.999 범위로 제한
                                 for (let i = 0; i < uvArray.length; i++) {{
-                                    const value = uvArray[i];
-                                    
-                                    // 경계 근처의 값을 부드럽게 조정
-                                    if (value < softEdge) {{
-                                        // 0에 가까운 값을 epsilon으로 부드럽게 이동
-                                        uvArray[i] = epsilon + (value / softEdge) * epsilon;
-                                    }} else if (value > 1 - softEdge) {{
-                                        // 1에 가까운 값을 1-epsilon으로 부드럽게 이동
-                                        const dist = 1 - value;
-                                        uvArray[i] = 1 - epsilon - (dist / softEdge) * epsilon;
-                                    }}
+                                    uvArray[i] = Math.max(0.001, Math.min(0.999, uvArray[i]));
                                 }}
                                 
                                 geometry.attributes.uv.needsUpdate = true;
