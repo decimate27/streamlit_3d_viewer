@@ -1710,9 +1710,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 const yLine = createDimensionLine(yStart, yEnd, realDimensions.formatted.height, 0x00ff00);
                 dimensionGroup.add(yLine);
                 
-                // Z축 치수선 (깊이) - 모델 오른쪽에 배치 (위치 변경)
-                const zStart = new THREE.Vector3(box.max.x + offset, center.y, box.min.z);
-                const zEnd = new THREE.Vector3(box.max.x + offset, center.y, box.max.z);
+                // Z축 치수선 (깊이) - 모델 오른쪽 바닥에 배치
+                const zStart = new THREE.Vector3(box.max.x + offset, box.min.y - offset, box.min.z);
+                const zEnd = new THREE.Vector3(box.max.x + offset, box.min.y - offset, box.max.z);
                 const zLine = createDimensionLine(zStart, zEnd, realDimensions.formatted.depth, 0x0000ff);
                 dimensionGroup.add(zLine);
                 
