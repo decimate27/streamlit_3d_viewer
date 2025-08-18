@@ -2430,8 +2430,8 @@ def create_texture_loading_code(texture_base64):
                 tex_{safe_name}.flipY = true;
                 
                 // UV Seam 방지 + 색상 정확도
-                tex_{safe_name}.generateMipmaps = false;
-                tex_{safe_name}.minFilter = THREE.LinearFilter;
+                tex_{safe_name}.generateMipmaps = true;
+                tex_{safe_name}.minFilter = THREE.LinearMipmapLinearFilter;
                 tex_{safe_name}.magFilter = THREE.LinearFilter;
                 tex_{safe_name}.anisotropy = 1;
                 tex_{safe_name}.wrapS = THREE.ClampToEdgeWrapping;
