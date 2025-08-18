@@ -1649,11 +1649,20 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 canvas.width = 256;
                 canvas.height = 128;
                 const context = canvas.getContext('2d');
-                context.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                context.fillRect(0, 0, 256, 128);
+                // 배경을 투명하게 설정
+                context.clearRect(0, 0, 256, 128);
                 context.font = 'Bold 48px Arial';
-                context.fillStyle = 'rgba(0, 0, 255, 1.0)';
                 context.textAlign = 'center';
+                
+                // 흰색 테두리 그리기 (strokeText를 여러 번 그려서 굵게)
+                context.strokeStyle = 'rgba(255, 255, 255, 1.0)';
+                context.lineWidth = 8;
+                context.strokeText(label, 128, 75);
+                context.lineWidth = 6;
+                context.strokeText(label, 128, 75);
+                
+                // 파란색 텍스트 채우기
+                context.fillStyle = 'rgba(0, 0, 255, 1.0)';
                 context.fillText(label, 128, 75);
                 
                 const texture = new THREE.CanvasTexture(canvas);
