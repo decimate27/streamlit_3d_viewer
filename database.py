@@ -248,8 +248,14 @@ class ModelDatabase:
         cursor.execute("PRAGMA table_info(models)")
         columns = [column[1] for column in cursor.fetchall()]
         
-        if 'storage_type' in columns:
-            # 새 스키마
+        if 'real_height' in columns:
+            # 최신 스키마 (real_height 포함)
+            cursor.execute('''
+                SELECT id, name, author, description, created_at, access_count, share_token, storage_type, real_height
+                FROM models ORDER BY created_at DESC
+            ''')
+        elif 'storage_type' in columns:
+            # 중간 스키마 (real_height 없음)
             cursor.execute('''
                 SELECT id, name, author, description, created_at, access_count, share_token, storage_type
                 FROM models ORDER BY created_at DESC
@@ -263,7 +269,7 @@ class ModelDatabase:
         
         models = []
         for row in cursor.fetchall():
-            if len(row) >= 7:  # 새 스키마 (author 포함)
+            if len(row) >= 9:  # 최신 스키마 (real_height 포함)
                 models.append({
                     'id': row[0],
                     'name': row[1],
@@ -272,9 +278,34 @@ class ModelDatabase:
                     'created_at': row[4],
                     'access_count': row[5],
                     'share_token': row[6],
-                    'storage_type': row[7] if len(row) > 7 else 'local'
+                    'storage_type': row[7],
+                    'real_height': row[8] if row[8] is not None else 1.0
                 })
-            else:  # 구 스키마 (author 없음)
+            elif len(row) >= 8:  # 중간 스키마 (real_height 없음)
+                models.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'author': row[2],
+                    'description': row[3],
+                    'created_at': row[4],
+                    'access_count': row[5],
+                    'share_token': row[6],
+                    'storage_type': row[7],
+                    'real_height': 1.0  # 기본값
+                })
+            elif len(row) >= 7:  # 구 스키마 (author 포함)
+                models.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'author': row[2],
+                    'description': row[3],
+                    'created_at': row[4],
+                    'access_count': row[5],
+                    'share_token': row[6],
+                    'storage_type': 'local',
+                    'real_height': 1.0  # 기본값
+                })
+            else:  # 아주 구 스키마 (author 없음)
                 models.append({
                     'id': row[0],
                     'name': row[1],
@@ -283,7 +314,8 @@ class ModelDatabase:
                     'created_at': row[3],
                     'access_count': row[4],
                     'share_token': row[5],
-                    'storage_type': row[6] if len(row) > 6 else 'local'
+                    'storage_type': 'local',
+                    'real_height': 1.0  # 기본값
                 })
         
         conn.close()
