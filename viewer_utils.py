@@ -1859,7 +1859,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     
                     // Camera 생성 - 제품 전시용 FOV (45도)
                     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-                    camera.position.set(0, 0, 3.5);  // 5 -> 3.5로 초기 위치 더 가깝게
+                    camera.position.set(0, 0, 4);  // 5 -> 3.5로 했다가 너무 가까워서 4로 고침. 
                     
                     // Renderer 생성
                     const container = document.getElementById('container');
@@ -2141,7 +2141,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     const size = box.getSize(new THREE.Vector3());
                     
                     const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = 2.5 / maxDim;  // 2 -> 2.5로 모델을 더 크게
+                    const scale = 2.1 / maxDim;  // 2 -> 2.1로 모델을 더 크게
                     object.scale.set(scale, scale, scale);
                     
                     object.position.sub(center.multiplyScalar(scale));
