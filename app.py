@@ -579,7 +579,7 @@ def show_model_management():
             title_format = f"{model['name']} 🍀(조회수 : {model['access_count']}) - {author_text} - {created_date}"
         
         with st.expander(f"{title_format} {storage_icon}"):
-            col1, col2 = st.columns([3, 1])
+            col1, col2, col3 = st.columns([3, 1, 1])
             
             with col1:
                 st.write(f"**모델명:** {model['name']}")
@@ -593,8 +593,32 @@ def show_model_management():
                 st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
             
             with col2:
-                # 삭제 버튼 (상단에 배치)
-                st.write("")  # 여백
+                # 높이 수정
+                st.write("**실제 높이 (m)**")
+                current_height = model.get('real_height', 1.0)
+                
+                # 높이 입력 필드와 저장 버튼을 세로로 배치
+                new_height = st.number_input(
+                    "높이",
+                    min_value=0.1,
+                    max_value=100.0,
+                    value=float(current_height),
+                    step=0.1,
+                    format="%.1f",
+                    key=f"height_{model['id']}",
+                    label_visibility="collapsed"
+                )
+                
+                if st.button("📏 저장", key=f"save_height_{model['id']}", use_container_width=True):
+                    if db.update_model_height(model['id'], new_height):
+                        st.success(f"높이가 {new_height}m로 업데이트되었습니다.")
+                        st.rerun()
+                    else:
+                        st.error("높이 업데이트 중 오류가 발생했습니다.")
+            
+            with col3:
+                # 삭제 버튼
+                st.write("")  # 여백 (높이 레이블과 맞추기)
                 st.write("")  # 여백
                 if st.button("🗑️ 삭제", key=f"delete_{model['id']}", type="secondary", use_container_width=True):
                     if db.delete_model(model['id']):

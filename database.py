@@ -478,6 +478,26 @@ class ModelDatabase:
         
         conn.commit()
         conn.close()
+    
+    def update_model_height(self, model_id, height):
+        """모델의 실제 높이 업데이트"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                UPDATE models 
+                SET real_height = ?
+                WHERE id = ?
+            ''', (height, model_id))
+            
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating model height: {e}")
+            return False
+        finally:
+            conn.close()
 
 def load_model_files(model_data):
     """저장된 모델 파일들 로드"""
