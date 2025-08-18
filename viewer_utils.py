@@ -282,16 +282,47 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
             }}
             
+            /* 로딩 오버레이 */
+            #loadingOverlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: white;
+                z-index: 9999;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                transition: opacity 0.5s ease-in-out;
+            }}
+            
+            #loadingOverlay.fade-out {{
+                opacity: 0;
+                pointer-events: none;
+            }}
+            
             /* 로딩 스피너 스타일 */
             .loading-container {{
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
                 text-align: center;
-                z-index: 1000;
-                opacity: 1;
-                transition: opacity 0.5s ease-out;
+                color: #333;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            }}
+            
+            /* 간단한 로딩 스피너 */
+            .simple-loader {{
+                width: 40px;
+                height: 40px;
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #333;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }}
+            
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
             }}
             
             .loading-container.fade-out {{
@@ -784,22 +815,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         </button>
         <div id="dimensionInfo" style="position: fixed; top: 200px; right: 20px; z-index: 99999; min-width: 150px;"></div>''' if real_height and real_height > 0 else ''}
         
-        <div id="container">
-            <div class="loading-container" id="loading">
-                <div class="logo-container">
-                    <!-- 에어바이블 로고 SVG (위치 아이콘 스타일) -->
-                    <svg class="airbible-logo" id="airbibleLogo" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-                        <!-- 핀 모양 본체 -->
-                        <path d="M100 10 C50 10, 10 50, 10 100 C10 130, 30 160, 100 230 C170 160, 190 130, 190 100 C190 50, 150 10, 100 10 Z" 
-                              fill="#000000" id="logoBody"/>
-                        <!-- 내부 원 -->
-                        <circle cx="100" cy="85" r="35" fill="#ffffff" id="logoInner"/>
-                    </svg>
-                </div>
-                <div class="loading-text" id="loadingText">
-                    Loading<span class="loading-dots"></span>
-                </div>
+        <!-- 로딩 오버레이 -->
+        <div id="loadingOverlay">
+            <div class="loading-container">
+                <div class="simple-loader"></div>
+                <div class="loading-text">로딩 중<span class="loading-dots"></span></div>
             </div>
+        </div>
+        
+        <div id="container">
             
             <!-- 배경색 변경 컨트롤 -->
             <div class="controls">
@@ -2016,12 +2040,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             }}
             
             // 로딩 완료 시 페이드 아웃
-            function hideLoadingSpinner() {{
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) {{
-                    loadingEl.classList.add('fade-out');
+            function hideLoadingOverlay() {{
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {{
+                    loadingOverlay.classList.add('fade-out');
                     setTimeout(() => {{
-                        loadingEl.style.display = 'none';
+                        loadingOverlay.style.display = 'none';
                     }}, 500);
                 }}
             }}
@@ -2029,7 +2053,6 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             function init() {{
                 try {{
                     console.log('Three.js version:', THREE.REVISION);
-                    updateLoadingProgress('초기화 중...');
                     
                     // 모바일 감지
                     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -2110,7 +2133,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     window.addEventListener('resize', onWindowResize);
                 }} catch (error) {{
                     console.error('Init error:', error);
-                    document.getElementById('loading').innerHTML = 'Error: ' + error.message;
+                    const loadingText = document.querySelector('.loading-text');
+                    if (loadingText) {{
+                        loadingText.textContent = '초기화 실패: ' + error.message;
+                        loadingText.style.color = '#ff0000';
+                    }}
                 }}
             }}
             
@@ -2351,7 +2378,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         const delay = isAndroid ? 500 : 300;
                         
                         setTimeout(() => {{
-                            hideLoadingSpinner();
+                            hideLoadingOverlay();
                             renderer.domElement.style.opacity = '1';
                             renderer.render(scene, camera);
                             animate();
@@ -2359,12 +2386,19 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         }}, delay);
                     }} else {{
                         setTimeout(() => {{
-                            hideLoadingSpinner();
+                            hideLoadingOverlay();
+                            renderer.domElement.style.opacity = '1';
+                            renderer.render(scene, camera);
+                            animate();
                         }}, 500);
                     }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
-                    document.getElementById('loading').innerHTML = 'Model loading failed: ' + error.message;
+                    const loadingText = document.querySelector('.loading-text');
+                    if (loadingText) {{
+                        loadingText.textContent = '로딩 실패: ' + error.message;
+                        loadingText.style.color = '#ff0000';
+                    }}
                 }}
             }}
             
