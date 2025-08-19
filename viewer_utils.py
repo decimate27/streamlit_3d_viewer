@@ -101,6 +101,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 position: absolute !important;
                 top: 0 !important;
                 left: 0 !important;
+                background: transparent !important;
             }}
             .loading {{ 
                 position: absolute; 
@@ -289,7 +290,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                background: white;
+                background: {bg_color};
                 z-index: 9999;
                 display: flex;
                 justify-content: center;
@@ -2085,16 +2086,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer = new THREE.WebGLRenderer({{ 
                         antialias: true,
                         powerPreference: "high-performance",
-                        preserveDrawingBuffer: true,
-                        alpha: false,
+                        alpha: true,
                         premultipliedAlpha: false,
+                        preserveDrawingBuffer: false,
                         stencil: false,
                         depth: true,
                         precision: "highp"
                     }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
-                    renderer.setClearColor(0x{bg_color[1:]}, 1);
+                    // 투명 클리어로 초기 플래시 방지 (페이지 배경을 사용)
+                    renderer.setClearColor(0x{bg_color[1:]}, 0);
+                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(0); }}
                     
                     // Linear 색상 공간 사용 (텍스처 원본 색상 보존)
                     renderer.outputEncoding = THREE.LinearEncoding;
@@ -2102,13 +2105,17 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer.shadowMap.enabled = false; // 그림자 비활성화
                     renderer.physicallyCorrectLights = false; // 물리 기반 조명 비활성화
                     
-                    // 모바일에서는 초기에 캔버스 숨기기
-                    if (isMobile) {{
-                        renderer.domElement.style.opacity = '0';
-                        renderer.domElement.style.transition = 'opacity 0.3s';
-                    }}
-                    
+                    // 모든 플랫폼에서 초기에 캔버스 숨기기 (첫 유효 렌더 후 표시)
+                    renderer.domElement.style.opacity = '0';
+                    renderer.domElement.style.transition = 'opacity 0.3s';
+
                     container.appendChild(renderer.domElement);
+                    // 초기 프레임 프라임 렌더로 버퍼 상태 확정
+                    try {{
+                        renderer.clear(true, true, true);
+                        renderer.render(scene, camera);
+                        requestAnimationFrame(() => renderer.render(scene, camera));
+                    }} catch (e) {{ /* no-op */ }}
                     
                     // Controls 생성
                     controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -2445,7 +2452,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
                 
                 if (renderer) {{
-                    renderer.setClearColor(colors[color], 1);
+                    // 투명 클리어 유지 (페이지 배경 사용)
+                    renderer.setClearColor(colors[color], 0);
+                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(0); }}
                 }}
                 
                 document.body.style.background = bodyColors[color];
@@ -2455,6 +2464,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 if (container) {{
                     container.style.background = bodyColors[color];
                     container.style.backgroundColor = bodyColors[color];
+                }}
+
+                // 로딩 오버레이 배경도 동기화 (아직 표시 중인 경우)
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) {{
+                    overlay.style.background = bodyColors[color];
                 }}
                 
                 // 로고 색상도 변경
