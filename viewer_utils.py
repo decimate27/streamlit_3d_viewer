@@ -145,34 +145,34 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             /* 모바일 최적화 */
             @media (max-width: 768px) {{
                 .controls {{
-                    top: 10px;
-                    left: 10px;
-                    gap: 4px;
+                    top: 8px;
+                    left: 8px;
+                    gap: 2px;
                 }}
                 .bg-btn {{
-                    padding: 6px 8px;
-                    font-size: 10px;
-                    min-width: 40px;
+                    padding: 4px 6px;
+                    font-size: 9px;
+                    min-width: 36px;
                     border-width: 1px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
                 }}
                 .bg-btn:hover {{
                     transform: none;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
                 }}
             }}
             
             /* 아주 작은 화면 (스마트폰) */
             @media (max-width: 480px) {{
                 .controls {{
-                    top: 5px;
-                    left: 5px;
-                    gap: 3px;
+                    top: 4px;
+                    left: 4px;
+                    gap: 2px;
                 }}
                 .bg-btn {{
-                    padding: 4px 6px;
-                    font-size: 9px;
-                    min-width: 30px;
+                    padding: 3px 5px;
+                    font-size: 8px;
+                    min-width: 28px;
                     border-radius: 3px;
                 }}
             }}
@@ -235,27 +235,27 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             /* 모바일 최적화 - 제출완료 버튼 바로 아래 배치 */
             @media (max-width: 768px) {{
                 .phong-control {{
-                    top: 125px !important;  /* 제출완료 버튼(70px) + 간격 */
+                    top: 120px !important;  /* 제출완료 버튼(60~70px) + 간격 */
                     left: auto !important;
-                    right: 15px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
+                    right: 12px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 12px;
-                    padding: 8px 12px;
+                    padding: 8px 10px;
                     background: rgba(255, 255, 255, 0.95);
                 }}
                 
                 .phong-control input[type="checkbox"] {{
-                    width: 16px;
-                    height: 16px;
+                    width: 15px;
+                    height: 15px;
                 }}
             }}
             
             @media (max-width: 480px) {{
                 .phong-control {{
-                    top: 110px !important;  /* 제출완료 버튼(60px) + 간격 */
+                    top: 108px !important;  /* 제출완료 버튼(60px) + 간격 */
                     left: auto !important;
                     right: 10px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 11px;
-                    padding: 6px 10px;
+                    padding: 6px 8px;
                     gap: 6px;
                 }}
                 
@@ -448,6 +448,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     max-width: calc(100vw - 30px) !important;
                     border-radius: 15px !important;
                 }}
+                /* 실제 크기 정보 숨김 */
+                #dimensionInfo {{
+                    display: none !important;
+                }}
             }}
             
             @media (max-width: 480px) {{
@@ -521,18 +525,29 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             /* 모바일 반응형 - 태블릿 크기 */
             @media (max-width: 768px) {{
                 .annotation-btn, .db-save-btn {{
-                    right: 15px !important;
-                    padding: 10px 14px !important;
-                    font-size: 13px !important;
-                    min-width: 100px !important;
+                    right: 12px !important;
+                    padding: 8px 12px !important;
+                    font-size: 12px !important;
+                    min-width: 92px !important;
                 }}
                 
                 .annotation-btn {{
-                    top: 15px !important;
+                    top: 12px !important;
                 }}
                 
                 .db-save-btn {{
-                    top: 70px !important;
+                    top: 62px !important;
+                }}
+                
+                /* 치수 버튼: 입체감 증가(.phong-control) 바로 아래 */
+                .dimension-btn {{
+                    position: fixed !important;
+                    right: 12px !important;
+                    top: 158px !important; /* .phong-control 120px 아래 여백 */
+                    padding: 8px 10px !important;
+                    font-size: 12px !important;
+                    min-width: 92px !important;
+                    border-radius: 4px !important;
                 }}
             }}
             
@@ -540,9 +555,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             @media (max-width: 480px) {{
                 .annotation-btn, .db-save-btn {{
                     right: 10px !important;
-                    padding: 8px 12px !important;
-                    font-size: 12px !important;
-                    min-width: 90px !important;
+                    padding: 7px 10px !important;
+                    font-size: 11px !important;
+                    min-width: 86px !important;
                     border-radius: 4px !important;
                 }}
                 
@@ -551,7 +566,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 }}
                 
                 .db-save-btn {{
-                    top: 60px !important;
+                    top: 56px !important;
+                }}
+                
+                /* 치수 버튼: 입체감 증가 바로 아래 */
+                .dimension-btn {{
+                    position: fixed !important;
+                    right: 10px !important;
+                    top: 150px !important; /* 스마트폰에서 조금 더 촘촘하게 */
+                    padding: 7px 9px !important;
+                    font-size: 11px !important;
+                    min-width: 86px !important;
+                    border-radius: 4px !important;
                 }}
             }}
             
@@ -811,7 +837,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         </button>
         
         <!-- 치수 표시 버튼 (실제 높이가 설정된 경우에만 표시) -->
-        {f'''<button class="dimension-btn" id="dimensionBtn" onclick="toggleDimensions()" style="position: fixed; top: 140px; right: 20px; z-index: 99999; padding: 12px 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 3px 8px rgba(0,0,0,0.25); min-width: 120px; text-align: center; transition: all 0.2s ease;">
+        {f'''<button class="dimension-btn" id="dimensionBtn" onclick="toggleDimensions()" style="position: fixed; top: 140px; right: 20px; z-index: 99999; padding: 10px 12px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.2); min-width: 110px; text-align: center; transition: all 0.2s ease;">
             📐 치수 OFF
         </button>
         <div id="dimensionInfo" style="position: fixed; top: 200px; right: 20px; z-index: 99999; min-width: 150px;"></div>''' if real_height and real_height > 0 else ''}
@@ -2376,7 +2402,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}
                     
                     // 카메라 위치 조정 - 더 가까이 배치하여 UV 경계선 문제 완화
-                    const distance = maxDim * scale * 1.8; // 2.2 -> 1.8로 더욱 가까이
+                    let distance = maxDim * scale * 1.8; // 기본 데스크톱 거리
+                    if (isMobile) {{
+                        // 모바일에서는 더 멀리 보기 (버튼 가림 및 근접 왜곡 완화)
+                        const mobileFactor = isAndroid ? 2.3 : 2.1; // 플랫폼별 약간 다르게
+                        distance = maxDim * scale * mobileFactor;
+                    }}
                     camera.position.set(distance * 0.9, distance * 0.6, distance * 0.9); // 약간 더 정면에서 보기
                     camera.lookAt(0, 0, 0);
                     
