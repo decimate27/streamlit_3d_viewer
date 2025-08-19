@@ -24,16 +24,17 @@ def show_viewer_page(model_data):
     bg_param = query_params.get("bg", "white")
     bg_map = {"white": "#ffffff", "gray": "#808080", "black": "#000000"}
     host_bg = bg_map.get(bg_param, "#ffffff")
-    st.markdown(
-        f"""
+    from string import Template
+    _bg_css = Template(
+        """
         <style>
-        .stApp {{ background: {host_bg} !important; }}
-        html, body {{ background: {host_bg} !important; }}
-        iframe {{ background: {host_bg} !important; }}
+        .stApp { background: $bg !important; }
+        html, body { background: $bg !important; }
+        iframe { background: $bg !important; }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+    ).substitute(bg=host_bg)
+    st.markdown(_bg_css, unsafe_allow_html=True)
     
     # share_token 가져오기
     share_token = model_data.get('share_token', None)
@@ -156,7 +157,7 @@ def show_viewer_page(model_data):
             st.query_params.clear()
     
     # Streamlit UI 완전히 숨기기
-    hide_streamlit_style = f"""
+    hide_streamlit_style = """
     <style>
     /* Streamlit 기본 요소 숨기기 */
     #MainMenu {visibility: hidden !important;}
@@ -204,7 +205,7 @@ def show_viewer_page(model_data):
         margin: 0 !important; 
         padding: 0 !important;
         top: 0 !important;
-        background: {host_bg} !important;
+        background: transparent !important;
     }
     .stApp > div:first-child {
         margin-top: 0 !important;
@@ -239,7 +240,7 @@ def show_viewer_page(model_data):
         overflow: hidden !important;
         width: 100% !important;
         height: 100% !important;
-        background: {host_bg} !important;
+        background: transparent !important;
     }
     </style>
     """
