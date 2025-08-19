@@ -2073,9 +2073,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         console.log('Mobile device detected:', isAndroid ? 'Android' : 'iOS');
                     }}
                     
-                    // Scene 생성 (투명 배경: 페이지 배경 사용)
+                    // Scene 생성 (명시적 배경색 사용)
                     scene = new THREE.Scene();
-                    scene.background = null;
+                    scene.background = new THREE.Color(0x{bg_color[1:]});
                     
                     // Camera 생성 - 제품 전시용 FOV (45도)
                     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -2086,7 +2086,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     renderer = new THREE.WebGLRenderer({{ 
                         antialias: true,
                         powerPreference: "high-performance",
-                        alpha: true,
+                        alpha: false,
                         premultipliedAlpha: false,
                         preserveDrawingBuffer: false,
                         stencil: false,
@@ -2095,9 +2095,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }});
                     renderer.setSize(container.clientWidth, container.clientHeight);
                     renderer.setPixelRatio(window.devicePixelRatio);
-                    // 투명 클리어로 초기 플래시 방지 (페이지 배경을 사용)
-                    renderer.setClearColor(0x{bg_color[1:]}, 0);
-                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(0); }}
+                    // 명시적 배경색으로 초기화
+                    renderer.setClearColor(0x{bg_color[1:]}, 1);
+                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(1); }}
                     
                     // Linear 색상 공간 사용 (텍스처 원본 색상 보존)
                     renderer.outputEncoding = THREE.LinearEncoding;
@@ -2447,15 +2447,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     'black': '#000000'
                 }};
                 
-                // 투명 배경 유지 (페이지 배경과 동기화)
                 if (scene) {{
-                    scene.background = null;
+                    scene.background = new THREE.Color(colors[color]);
                 }}
                 
                 if (renderer) {{
-                    // 투명 클리어 유지 (페이지 배경 사용)
-                    renderer.setClearColor(colors[color], 0);
-                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(0); }}
+                    renderer.setClearColor(colors[color], 1);
+                    if (renderer.setClearAlpha) {{ renderer.setClearAlpha(1); }}
                 }}
                 
                 document.body.style.background = bodyColors[color];
