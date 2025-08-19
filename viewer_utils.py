@@ -2397,7 +2397,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     let distance = maxDim * scale * 1.8; // 기본 데스크톱 거리
                     if (isMobile) {{
                         // 모바일에서는 더 멀리 보기 (버튼 가림 및 근접 왜곡 완화)
-                        const mobileFactor = isAndroid ? 2.3 : 2.1; // 플랫폼별 약간 다르게
+                        const mobileFactor = isAndroid ? 3.0 : 2.8; // 이전보다 더 멀리 배치
                         distance = maxDim * scale * mobileFactor;
                     }}
                     camera.position.set(distance * 0.9, distance * 0.6, distance * 0.9); // 약간 더 정면에서 보기
