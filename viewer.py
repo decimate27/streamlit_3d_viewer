@@ -19,6 +19,21 @@ def show_viewer_page(model_data):
     # URL 파라미터 확인 및 annotation 처리
     query_params = st.query_params
     action = query_params.get("action", "")
+
+    # 배경색 파라미터 선계산 및 즉시 호스트 배경 동기화
+    bg_param = query_params.get("bg", "white")
+    bg_map = {"white": "#ffffff", "gray": "#808080", "black": "#000000"}
+    host_bg = bg_map.get(bg_param, "#ffffff")
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{ background: {host_bg} !important; }}
+        html, body {{ background: {host_bg} !important; }}
+        iframe {{ background: {host_bg} !important; }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     
     # share_token 가져오기
     share_token = model_data.get('share_token', None)
@@ -141,7 +156,7 @@ def show_viewer_page(model_data):
             st.query_params.clear()
     
     # Streamlit UI 완전히 숨기기
-    hide_streamlit_style = """
+    hide_streamlit_style = f"""
     <style>
     /* Streamlit 기본 요소 숨기기 */
     #MainMenu {visibility: hidden !important;}
@@ -189,7 +204,7 @@ def show_viewer_page(model_data):
         margin: 0 !important; 
         padding: 0 !important;
         top: 0 !important;
-        background: transparent !important;
+        background: {host_bg} !important;
     }
     .stApp > div:first-child {
         margin-top: 0 !important;
@@ -224,6 +239,7 @@ def show_viewer_page(model_data):
         overflow: hidden !important;
         width: 100% !important;
         height: 100% !important;
+        background: {host_bg} !important;
     }
     </style>
     """
@@ -231,21 +247,7 @@ def show_viewer_page(model_data):
     
     try:
         # URL 파라미터에서 배경색 가져오기 (기본값: white)
-        query_params = st.query_params
-        background_color = query_params.get("bg", "white")
-        bg_map = {"white": "#ffffff", "gray": "#808080", "black": "#000000"}
-        host_bg = bg_map.get(background_color, "#ffffff")
-        # 호스트 페이지(스트림릿)의 배경 동기화
-        st.markdown(
-            f"""
-            <style>
-            .stApp {{ background: {host_bg} !important; }}
-            html, body {{ background: {host_bg} !important; }}
-            iframe {{ background: {host_bg} !important; }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+        background_color = bg_param
         
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)

@@ -20,7 +20,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
     
     html_content = f"""
     <!DOCTYPE html>
-    <html>
+    <html style="background: {bg_color};">
     <head>
         <meta charset="utf-8">
         <title>3D Model Viewer</title>
@@ -2073,9 +2073,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                         console.log('Mobile device detected:', isAndroid ? 'Android' : 'iOS');
                     }}
                     
-                    // Scene 생성
+                    // Scene 생성 (투명 배경: 페이지 배경 사용)
                     scene = new THREE.Scene();
-                    scene.background = new THREE.Color(0x{bg_color[1:]});
+                    scene.background = null;
                     
                     // Camera 생성 - 제품 전시용 FOV (45도)
                     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -2391,7 +2391,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             renderer.render(scene, camera);
                         }}
                         
-                        const delay = isAndroid ? 500 : 300;
+                        const delay = isAndroid ? 300 : 200;
                         
                         setTimeout(() => {{
                             hideLoadingOverlay();
@@ -2406,7 +2406,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                             renderer.domElement.style.opacity = '1';
                             renderer.render(scene, camera);
                             animate();
-                        }}, 500);
+                        }}, 120);
                     }}
                 }} catch (error) {{
                     console.error('Model loading error:', error);
@@ -2447,8 +2447,9 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     'black': '#000000'
                 }};
                 
+                // 투명 배경 유지 (페이지 배경과 동기화)
                 if (scene) {{
-                    scene.background = new THREE.Color(colors[color]);
+                    scene.background = null;
                 }}
                 
                 if (renderer) {{
