@@ -2145,7 +2145,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     controls.rotateSpeed = 0.5;
                     controls.zoomSpeed = 0.8;
                     controls.minDistance = 1.5;  // 약간 더 가까이 갈 수 있도록
-                    controls.maxDistance = 5;   // 10 -> 5로 줄여서 멀리 못가도록 제한
+                    controls.maxDistance = 5;   // 기본 최대 거리
+                    // 모바일에서 더 멀리까지 줌 아웃 허용
+                    if (isMobile) {{
+                        controls.maxDistance = 20;
+                    }}
                     
                     // 상호작용 초기화
                     initInteraction();
@@ -2397,10 +2401,16 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     let distance = maxDim * scale * 1.8; // 기본 데스크톱 거리
                     if (isMobile) {{
                         // 모바일에서는 더 멀리 보기 (버튼 가림 및 근접 왜곡 완화)
-                        const mobileFactor = isAndroid ? 4.0 : 3.8; // 이전보다 더 멀리 배치
+                        const mobileFactor = isAndroid ? 2.3 : 2.1; // 이전보다 더 멀리 배치
                         distance = maxDim * scale * mobileFactor;
                     }}
                     camera.position.set(distance * 0.9, distance * 0.6, distance * 0.9); // 약간 더 정면에서 보기
+                    
+                    // 모바일에서 줌 아웃 한계 더 멀게 설정
+                    if (isMobile && controls) {{
+                        const desiredMax = Math.max(controls.maxDistance || 0, distance * 3.5);
+                        controls.maxDistance = desiredMax;
+                    }}
                     camera.lookAt(0, 0, 0);
                     
                     console.log('Model loaded successfully');
