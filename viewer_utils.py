@@ -235,7 +235,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             /* 모바일 최적화 - 제출완료 버튼 바로 아래 배치 */
             @media (max-width: 768px) {{
                 .phong-control {{
-                    top: 120px !important;  /* 제출완료 버튼(60~70px) + 간격 */
+                    top: 88px !important;  /* 제출완료 버튼 바로 아래, 간격 축소 */
                     left: auto !important;
                     right: 12px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 12px;
@@ -251,7 +251,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             @media (max-width: 480px) {{
                 .phong-control {{
-                    top: 108px !important;  /* 제출완료 버튼(60px) + 간격 */
+                    top: 86px !important;  /* 제출완료 버튼 바로 아래, 간격 축소 */
                     left: auto !important;
                     right: 10px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 11px;
@@ -531,19 +531,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     min-width: 92px !important;
                 }}
                 
-                .annotation-btn {{
-                    top: 12px !important;
-                }}
+                .annotation-btn {{ top: 12px !important; }}
                 
-                .db-save-btn {{
-                    top: 62px !important;
-                }}
+                .db-save-btn {{ top: 50px !important; }}
                 
                 /* 치수 버튼: 입체감 증가(.phong-control) 바로 아래 */
                 .dimension-btn {{
                     position: fixed !important;
                     right: 12px !important;
-                    top: 158px !important; /* .phong-control 120px 아래 여백 */
+                    top: 126px !important; /* .phong-control 88px 아래 동일 간격 */
                     padding: 8px 10px !important;
                     font-size: 12px !important;
                     min-width: 92px !important;
@@ -561,19 +557,15 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     border-radius: 4px !important;
                 }}
                 
-                .annotation-btn {{
-                    top: 10px !important;
-                }}
+                .annotation-btn {{ top: 10px !important; }}
                 
-                .db-save-btn {{
-                    top: 56px !important;
-                }}
+                .db-save-btn {{ top: 48px !important; }}
                 
                 /* 치수 버튼: 입체감 증가 바로 아래 */
                 .dimension-btn {{
                     position: fixed !important;
                     right: 10px !important;
-                    top: 150px !important; /* 스마트폰에서 조금 더 촘촘하게 */
+                    top: 124px !important; /* .phong-control 86px 아래 동일 간격 */
                     padding: 7px 9px !important;
                     font-size: 11px !important;
                     min-width: 86px !important;
