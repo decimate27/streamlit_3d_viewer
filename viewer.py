@@ -233,6 +233,19 @@ def show_viewer_page(model_data):
         # URL 파라미터에서 배경색 가져오기 (기본값: white)
         query_params = st.query_params
         background_color = query_params.get("bg", "white")
+        bg_map = {"white": "#ffffff", "gray": "#808080", "black": "#000000"}
+        host_bg = bg_map.get(background_color, "#ffffff")
+        # 호스트 페이지(스트림릿)의 배경 동기화
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{ background: {host_bg} !important; }}
+            html, body {{ background: {host_bg} !important; }}
+            iframe {{ background: {host_bg} !important; }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         
         # 모델 파일 로드
         obj_content, mtl_content, texture_data = load_model_files(model_data)

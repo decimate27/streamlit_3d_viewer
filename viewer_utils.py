@@ -794,7 +794,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
 
         </style>
     </head>
-    <body>
+    <body style="background: {bg_color};">
         <!-- 상단 안내 텍스트 -->
         <div class="top-notice">
             수정점표시 → 3D표면 클릭 → 텍스트 입력 → 확인 → 제출완료 눌러주세요
@@ -817,14 +817,14 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
         <div id="dimensionInfo" style="position: fixed; top: 200px; right: 20px; z-index: 99999; min-width: 150px;"></div>''' if real_height and real_height > 0 else ''}
         
         <!-- 로딩 오버레이 -->
-        <div id="loadingOverlay">
+        <div id="loadingOverlay" style="background: {bg_color};">
             <div class="loading-container">
                 <div class="simple-loader"></div>
                 <div class="loading-text">로딩 중<span class="loading-dots"></span></div>
             </div>
         </div>
         
-        <div id="container">
+        <div id="container" style="background: {bg_color};">
             
             <!-- 배경색 변경 컨트롤 -->
             <div class="controls">
