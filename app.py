@@ -590,7 +590,24 @@ def show_model_management():
                 
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
-                st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
+                col_link, col_btn = st.columns([4, 1])
+                with col_link:
+                    st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
+                with col_btn:
+                    st.markdown(f'''
+                    <a href="{share_url}" target="_blank">
+                        <button style="
+                            background-color: #4CAF50;
+                            color: white;
+                            padding: 8px 16px;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            margin-top: 25px;
+                            width: 100%;
+                        ">창 열기</button>
+                    </a>
+                    ''', unsafe_allow_html=True)
             
             with col2:
                 # 높이 수정
