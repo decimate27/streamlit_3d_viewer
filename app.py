@@ -590,24 +590,19 @@ def show_model_management():
                 
                 # 공유 링크
                 share_url = generate_share_url(model['share_token'])
-                col_link, col_btn = st.columns([4, 1])
+                col_link, col_btn = st.columns([5, 1])
                 with col_link:
                     st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
                 with col_btn:
-                    st.markdown(f'''
-                    <a href="{share_url}" target="_blank">
-                        <button style="
-                            background-color: #4CAF50;
-                            color: white;
-                            padding: 8px 16px;
-                            border: none;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            margin-top: 25px;
-                            width: 100%;
-                        ">창 열기</button>
-                    </a>
-                    ''', unsafe_allow_html=True)
+                    # Streamlit 네이티브 버튼 사용
+                    if st.button("🔗 창 열기", key=f"open_{model['id']}", use_container_width=True):
+                        # JavaScript를 통해 새 창 열기
+                        st.markdown(f'''
+                        <script>
+                            window.open("{share_url}", "_blank");
+                        </script>
+                        ''', unsafe_allow_html=True)
+                        st.info(f"새 창에서 열렸습니다: {share_url}")
             
             with col2:
                 # 높이 수정
