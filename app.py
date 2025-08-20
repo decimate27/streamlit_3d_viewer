@@ -7,6 +7,7 @@ import trimesh
 from PIL import Image
 import zipfile
 import shutil
+import webbrowser
 from database import ModelDatabase, load_model_files, generate_share_url, reset_database
 from mtl_generator import auto_generate_mtl
 from texture_optimizer import auto_optimize_textures
@@ -594,15 +595,22 @@ def show_model_management():
                 with col_link:
                     st.text_input("공유 링크", value=share_url, key=f"share_{model['id']}")
                 with col_btn:
-                    # Streamlit 네이티브 버튼 사용
-                    if st.button("🔗 창 열기", key=f"open_{model['id']}", use_container_width=True):
-                        # JavaScript를 통해 새 창 열기
-                        st.markdown(f'''
-                        <script>
-                            window.open("{share_url}", "_blank");
-                        </script>
-                        ''', unsafe_allow_html=True)
-                        st.info(f"새 창에서 열렸습니다: {share_url}")
+                    # HTML 링크로 직접 구현
+                    st.markdown(f'''
+                    <div style="margin-top: 20px;">
+                        <a href="{share_url}" target="_blank" style="
+                            background-color: #4CAF50;
+                            color: white;
+                            padding: 10px 20px;
+                            text-decoration: none;
+                            border-radius: 4px;
+                            display: inline-block;
+                            text-align: center;
+                            width: 100%;
+                            box-sizing: border-box;
+                        ">🔗 창 열기</a>
+                    </div>
+                    ''', unsafe_allow_html=True)
             
             with col2:
                 # 높이 수정
