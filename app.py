@@ -429,17 +429,15 @@ def show_upload_section():
     with st.expander("⚙️ 고급 설정", expanded=False):
         texture_quality = st.select_slider(
             "텍스처 품질",
-            options=["저품질 (1K)", "중품질 (2K)", "고품질 (4K)", "원본 유지"],
-            value="중품질 (2K)",
-            help="텍스처 해상도를 설정합니다. 높은 품질일수록 로딩 시간이 길어질 수 있습니다."
+            options=["표준 (1K)", "고품질 (2K)"],
+            value="표준 (1K)",
+            help="텍스처 해상도를 설정합니다. 고품질은 로딩 시간이 길어질 수 있습니다."
         )
         
         # 품질에 따른 max_size 설정
         quality_map = {
-            "저품질 (1K)": 1024,
-            "중품질 (2K)": 2048,
-            "고품질 (4K)": 4096,
-            "원본 유지": 8192
+            "표준 (1K)": 1024,
+            "고품질 (2K)": 2048
         }
         texture_max_size = quality_map[texture_quality]
     

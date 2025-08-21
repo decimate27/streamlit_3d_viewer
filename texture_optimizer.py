@@ -8,13 +8,13 @@ from PIL import Image
 import io
 import streamlit as st
 
-def optimize_texture_data(texture_data, max_size=2048, quality=90):
+def optimize_texture_data(texture_data, max_size=1024, quality=90):
     """
     텍스처 데이터를 최적화
     
     Args:
         texture_data: dict {filename: bytes_data}
-        max_size: 최대 이미지 크기 (기본: 2048px)
+        max_size: 최대 이미지 크기 (기본: 1024px)
         quality: JPEG 품질 (기본: 90)
     
     Returns:
@@ -162,7 +162,7 @@ def check_texture_size_warnings(texture_data):
     
     return warnings
 
-def auto_optimize_textures(texture_data, max_size=2048, quality=90):
+def auto_optimize_textures(texture_data, max_size=1024, quality=90):
     """
     자동 텍스처 최적화 (업로드 시 호출)
     
