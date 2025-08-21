@@ -8,14 +8,14 @@ from PIL import Image
 import io
 import streamlit as st
 
-def optimize_texture_data(texture_data, max_size=1024, quality=85):
+def optimize_texture_data(texture_data, max_size=2048, quality=90):
     """
     텍스처 데이터를 최적화
     
     Args:
         texture_data: dict {filename: bytes_data}
-        max_size: 최대 이미지 크기 (기본: 1024px)
-        quality: JPEG 품질 (기본: 85)
+        max_size: 최대 이미지 크기 (기본: 2048px)
+        quality: JPEG 품질 (기본: 90)
     
     Returns:
         dict: 최적화된 텍스처 데이터
@@ -35,7 +35,7 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                 # 최적화 여부 결정
                 needs_optimization = (
                     max(img.size) > max_size or  # 크기가 큰 경우
-                    original_size > 2 * 1024 * 1024  # 2MB 이상인 경우
+                    original_size > 5 * 1024 * 1024  # 5MB 이상인 경우
                 )
                 
                 if needs_optimization:
@@ -45,7 +45,35 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                     if max(img.size) > max_size:
                         ratio = max_size / max(img.size)
                         new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
-                        img = img.resize(new_size, Image.Resampling.LANCZOS)
+                        
+                        # UV seam 문제를 줄이기 위해 2의 제곱수로 크기 맞춤
+                        def nearest_power_of_2(n):
+                            """가장 가까운 2의 제곱수 반환"""
+                            if n <= 0:
+                                return 1
+                            power = 1
+                            while power < n:
+                                power *= 2
+                            # 더 가까운 2의 제곱수 선택
+                            if abs(n - power/2) < abs(n - power):
+                                return int(power/2)
+                            return power
+                        
+                        # 2의 제곱수로 크기 조정 (UV 매핑 최적화)
+                        new_width = nearest_power_of_2(new_size[0])
+                        new_height = nearest_power_of_2(new_size[1])
+                        
+                        # 원본 비율 유지하면서 2의 제곱수 크기에 맞춤
+                        if new_width / new_height > img.size[0] / img.size[1]:
+                            new_width = int(new_height * img.size[0] / img.size[1])
+                        else:
+                            new_height = int(new_width * img.size[1] / img.size[0])
+                        
+                        final_size = (new_width, new_height)
+                        st.write(f"   📐 크기 조정: {img.size} → {final_size} (2의 제곱수 최적화)")
+                        
+                        # LANCZOS 리샘플링 사용 (최고 품질)
+                        img = img.resize(final_size, Image.Resampling.LANCZOS)
                     
                     # 투명도 검사를 더 정확하게 수행
                     has_transparency = False
@@ -63,7 +91,8 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                         output = io.BytesIO()
                         if img.mode != 'RGBA':
                             img = img.convert('RGBA')
-                        img.save(output, format='PNG', optimize=True)
+                        # PNG 압축 레벨 낮춤 (품질 우선)
+                        img.save(output, format='PNG', optimize=True, compress_level=6)
                         optimized_data[filename] = output.getvalue()
                         final_filename = filename
                         st.write(f"   📝 투명도 감지 - PNG 형식 유지")
@@ -79,7 +108,8 @@ def optimize_texture_data(texture_data, max_size=1024, quality=85):
                             final_filename = filename
                         
                         output = io.BytesIO()
-                        img.save(output, format='JPEG', quality=quality, optimize=True)
+                        # 고품질 JPEG 저장 (서브샘플링 비활성화)
+                        img.save(output, format='JPEG', quality=quality, optimize=True, subsampling=0)
                         optimized_data[final_filename] = output.getvalue()
                         st.write(f"   📝 투명도 없음 - JPEG 형식으로 변환")
                     
@@ -132,7 +162,7 @@ def check_texture_size_warnings(texture_data):
     
     return warnings
 
-def auto_optimize_textures(texture_data, max_size=1024, quality=85):
+def auto_optimize_textures(texture_data, max_size=2048, quality=90):
     """
     자동 텍스처 최적화 (업로드 시 호출)
     

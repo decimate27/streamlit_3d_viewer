@@ -129,7 +129,7 @@ class ModelProcessor:
         
         return True, file_types
     
-    def save_uploaded_files(self, file_types, temp_dir):
+    def save_uploaded_files(self, file_types, temp_dir, texture_max_size=2048):
         """업로드된 파일들을 임시 디렉토리에 저장"""
         saved_files = {}
         
@@ -156,7 +156,7 @@ class ModelProcessor:
         
         # 🔧 텍스처 자동 최적화
         st.write("🎨 텍스처 최적화 중...")
-        optimized_texture_data, should_continue = auto_optimize_textures(texture_data)
+        optimized_texture_data, should_continue = auto_optimize_textures(texture_data, max_size=texture_max_size)
         
         if not should_continue:
             st.error("텍스처 최적화에 실패했습니다.")
@@ -425,6 +425,24 @@ def show_upload_section():
             help="모델의 실제 높이를 미터 단위로 입력하세요. 예: 1.8 (사람), 3.0 (차량), 10.0 (건물)"
         )
     
+    # 텍스처 품질 설정 추가
+    with st.expander("⚙️ 고급 설정", expanded=False):
+        texture_quality = st.select_slider(
+            "텍스처 품질",
+            options=["저품질 (1K)", "중품질 (2K)", "고품질 (4K)", "원본 유지"],
+            value="중품질 (2K)",
+            help="텍스처 해상도를 설정합니다. 높은 품질일수록 로딩 시간이 길어질 수 있습니다."
+        )
+        
+        # 품질에 따른 max_size 설정
+        quality_map = {
+            "저품질 (1K)": 1024,
+            "중품질 (2K)": 2048,
+            "고품질 (4K)": 4096,
+            "원본 유지": 8192
+        }
+        texture_max_size = quality_map[texture_quality]
+    
     model_description = st.text_area("설명 (선택사항)", placeholder="모델에 대한 간단한 설명")
     
     # 파일 업로드
@@ -503,8 +521,8 @@ def show_upload_section():
                     try:
                         # 임시 디렉토리 생성
                         with tempfile.TemporaryDirectory() as temp_dir:
-                            # 파일 저장
-                            saved_files = processor.save_uploaded_files(file_types, temp_dir)
+                            # 파일 저장 (텍스처 품질 설정 전달)
+                            saved_files = processor.save_uploaded_files(file_types, temp_dir, texture_max_size)
                             
                             # 파일 내용 읽기
                             with open(saved_files['model'], 'r') as f:
