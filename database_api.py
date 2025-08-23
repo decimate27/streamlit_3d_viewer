@@ -26,7 +26,8 @@ class ModelDatabase:
             'get_one': f"{self.api_base_url}/api_get_model.php",
             'save': f"{self.api_base_url}/api_save_model.php",  # 새로운 API 사용
             'delete': f"{self.api_base_url}/api_delete_model.php",
-            'scan': f"{self.api_base_url}/scan_and_rebuild_db.php"
+            'scan': f"{self.api_base_url}/scan_and_rebuild_db.php",
+            'update_height': f"{self.api_base_url}/api_update_height.php"
         }
         
         # 세션 캐시 (API 호출 최소화)
@@ -265,9 +266,28 @@ class ModelDatabase:
         }
     
     def update_model_height(self, model_id, height):
-        """모델 높이 업데이트 - 추후 구현 필요"""
-        st.warning("높이 업데이트는 아직 지원되지 않습니다.")
-        return False
+        """모델 높이 업데이트"""
+        data = {
+            'model_id': model_id,
+            'height': float(height)
+        }
+        
+        result = self._make_request(
+            self.endpoints['update_height'],
+            method='POST',
+            data=data
+        )
+        
+        if result and result.get('status') == 'success':
+            # 캐시 무효화
+            st.session_state.models_cache = None
+            return True
+        else:
+            if result:
+                st.error(f"높이 업데이트 실패: {result.get('message', 'Unknown error')}")
+            else:
+                st.error("높이 업데이트 중 오류가 발생했습니다.")
+            return False
     
     # Annotation 관련 메서드들 (추후 구현)
     def get_annotations(self, share_token):

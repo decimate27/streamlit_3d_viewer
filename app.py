@@ -581,12 +581,13 @@ def show_model_management():
     """모델 관리 섹션"""
     st.header("📋 저장된 모델 관리")
     
-    # 파일 스캔 및 DB 재구축 버튼
+    # 파일 스캔 버튼 (DB 재구축 버튼은 제거됨 - 위험하므로)
     col1, col2, col3 = st.columns([2, 1, 1])
     with col2:
-        if st.button("🔄 파일 스캔", key="scan_manage"):
+        if st.button("🔄 파일 스캔", key="scan_manage", help="웹서버의 파일을 스캔하여 DB와 동기화합니다"):
             with st.spinner("파일 스캔 중..."):
                 db = ModelDatabase()
+                # rebuild=False로 설정하여 DB를 재구축하지 않고 동기화만 수행
                 if db.scan_and_rebuild(rebuild=False, show_progress=False):
                     st.success("✅ 스캔 완료!")
                     import time
@@ -594,19 +595,6 @@ def show_model_management():
                     st.rerun()
                 else:
                     st.error("❌ 스캔 실패")
-    
-    with col3:
-        if st.button("🚨 DB 재구축", key="rebuild_db", type="primary"):
-            with st.spinner("DB 재구축 중..."):
-                db = ModelDatabase()
-                if db.scan_and_rebuild(rebuild=True, show_progress=False):
-                    st.success("✅ DB 재구축 완료!")
-                    st.balloons()
-                    import time
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error("❌ DB 재구축 실패")
     
     db = ModelDatabase()  # 웹서버 API 사용
     models = db.get_all_models()

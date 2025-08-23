@@ -26,11 +26,11 @@ try {
     ");
     $stmt->execute([$share_token]);
     
-    // 모델 정보 가져오기
+    // 모델 정보 가져오기 (real_height 포함)
     $stmt = $db->prepare("
         SELECT id, name, author, description, share_token, 
                obj_path, mtl_path, texture_paths, storage_type, 
-               access_count, created_at 
+               access_count, real_height, created_at 
         FROM models
         WHERE share_token = ?
     ");
@@ -75,7 +75,7 @@ try {
         'storage_type' => 'web',
         'access_count' => $model['access_count'],
         'created_at' => $model['created_at'],
-        'real_height' => 1.0
+        'real_height' => isset($model['real_height']) ? floatval($model['real_height']) : 1.0
     ];
     
     echo json_encode([

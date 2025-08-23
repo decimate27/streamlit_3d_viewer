@@ -33,9 +33,17 @@ try {
             texture_paths TEXT,
             storage_type TEXT DEFAULT 'web',
             access_count INTEGER DEFAULT 0,
+            real_height REAL DEFAULT 1.0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ");
+    
+    // 기존 테이블에 real_height 컬럼 추가 (없는 경우)
+    try {
+        $db->exec("ALTER TABLE models ADD COLUMN real_height REAL DEFAULT 1.0");
+    } catch (PDOException $e) {
+        // 컬럼이 이미 존재하는 경우 무시
+    }
     
     // 피드백 테이블 생성
     $db->exec("
