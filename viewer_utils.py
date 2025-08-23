@@ -1760,7 +1760,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     }}
                 }}
                 
-                render();
+                // render() 함수가 정의되지 않았으므로 제거
+                // animate() 루프가 자동으로 렌더링 처리
             }}
             
             // 치수 정보 UI 업데이트
