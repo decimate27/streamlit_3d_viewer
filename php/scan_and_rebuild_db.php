@@ -70,15 +70,16 @@ try {
         }
     }
     
-    // 2. 기존 DB 백업
+    // 2. DB 백업 기능 제거 (불필요한 백업 파일 생성 방지)
     $db_file = 'streamlit_3d.db';
-    if (file_exists($db_file)) {
-        $backup_file = 'backup_' . date('Ymd_His') . '_streamlit_3d.db';
-        copy($db_file, $backup_file);
-        if ($debug) {
-            echo "DB 백업 완료: $backup_file\n";
-        }
-    }
+    // 백업 코드 주석 처리
+    // if (file_exists($db_file)) {
+    //     $backup_file = 'backup_' . date('Ymd_His') . '_streamlit_3d.db';
+    //     copy($db_file, $backup_file);
+    //     if ($debug) {
+    //         echo "DB 백업 완료: $backup_file\n";
+    //     }
+    // }
     
     // 3. DB 연결 및 테이블 재생성
     $db = new PDO('sqlite:' . $db_file);
