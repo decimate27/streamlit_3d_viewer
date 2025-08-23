@@ -316,7 +316,8 @@ def load_model_files(model_data):
 def generate_share_url(share_token):
     """공유 URL 생성"""
     import os
-    base_url = os.getenv('BASE_URL', 'http://localhost:8501')
+    # Streamlit Cloud URL 사용 (환경변수로 설정 가능)
+    base_url = os.getenv('BASE_URL', 'https://airbible-3d-viewer.streamlit.app')
     return f"{base_url}/viewer?token={share_token}"
 
 def reset_database(db_path=None):
