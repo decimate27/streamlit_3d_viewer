@@ -135,7 +135,7 @@ class ModelDatabase:
         """모든 모델 목록 조회 - 웹서버 API 사용"""
         # 캐시 확인 (5초 유효)
         if st.session_state.models_cache and st.session_state.cache_time:
-            from datetime import datetime, timedelta
+            from datetime import timedelta
             if datetime.now() - st.session_state.cache_time < timedelta(seconds=5):
                 return st.session_state.models_cache
         
