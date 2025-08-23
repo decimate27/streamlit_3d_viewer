@@ -8,7 +8,7 @@ from PIL import Image
 import zipfile
 import shutil
 import webbrowser
-from database import ModelDatabase, load_model_files, generate_share_url, reset_database
+from database_api import ModelDatabase, load_model_files, generate_share_url, reset_database
 from mtl_generator import auto_generate_mtl
 from texture_optimizer import auto_optimize_textures
 from viewer import show_shared_model
@@ -382,9 +382,15 @@ def show_upload_section():
     """파일 업로드 섹션"""
     st.header("📤 새 모델 업로드")
     
-    # 데이터베이스 연결
+    # 데이터베이스 연결 (웹서버 API 사용)
     db = ModelDatabase()
     current_count = db.get_model_count()
+    
+    # 파일 시스템 스캔 버튼 추가
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🔄 파일 스캔", help="웹서버 files 폴더를 스캔하여 DB 업데이트"):
+            db.scan_and_rebuild(rebuild=False)
     
     if current_count >= 20:
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
@@ -405,7 +411,8 @@ def show_upload_section():
     else:
         storage_status = "저장소 준비됨"
     
-    st.info(f"현재 저장된 모델: {current_count}/20 ({storage_status})")
+    with col1:
+        st.info(f"현재 저장된 모델: {current_count}/20 ({storage_status})")
     
     # 모델 정보 입력
     col1, col2, col3 = st.columns(3)
@@ -567,11 +574,27 @@ def show_model_management():
     """모델 관리 섹션"""
     st.header("📋 저장된 모델 관리")
     
-    db = ModelDatabase()
+    # 파일 스캔 및 DB 재구축 버튼
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col2:
+        if st.button("🔄 파일 스캔", key="scan_manage"):
+            db = ModelDatabase()
+            db.scan_and_rebuild(rebuild=False)
+    
+    with col3:
+        if st.button("🚨 DB 재구축", key="rebuild_db", type="primary"):
+            with st.spinner("DB 재구축 중..."):
+                db = ModelDatabase()
+                if db.scan_and_rebuild(rebuild=True):
+                    st.success("✅ DB 재구축 완료!")
+                    st.balloons()
+    
+    db = ModelDatabase()  # 웹서버 API 사용
     models = db.get_all_models()
     
     if not models:
         st.info("저장된 모델이 없습니다.")
+        st.write("💡 웹서버에 저장된 모델이 있다면 '🔄 웹서버 동기화' 버튼을 클릭하세요.")
         return
     
     for model in models:
@@ -669,6 +692,10 @@ def main():
     
     # 페이지 활동시마다 세션 시간 갱신
     update_activity_time()
+    
+    # 초기화 상태 확인 (웹서버 API 사용으로 단순화)
+    if 'api_initialized' not in st.session_state:
+        st.session_state.api_initialized = True
     
     # 탭 생성
     tab1, tab2, tab3 = st.tabs(["📤 업로드", "📋 관리", "ℹ️ 사용법"])
