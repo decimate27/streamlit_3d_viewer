@@ -95,7 +95,20 @@ def show_viewer_page(model_data):
                                     message_parts.append(f"{saved_count}개의 새 수정점")
                                 if changed_count > 0:
                                     message_parts.append(f"{changed_count}개의 변경사항")
-                                st.success(f"✅ {', '.join(message_parts)}이 제출완료되었습니다!")
+                                # 성공 메시지를 검은색 텍스트로 표시
+                                st.markdown(f"""
+                                <div style="
+                                    background-color: #d4edda;
+                                    border: 1px solid #c3e6cb;
+                                    color: #155724;
+                                    padding: 12px;
+                                    border-radius: 4px;
+                                    margin-bottom: 1rem;
+                                    font-weight: 500;
+                                ">
+                                    ✅ {', '.join(message_parts)}이 제출완료되었습니다!
+                                </div>
+                                """, unsafe_allow_html=True)
                             else:
                                 st.warning("저장된 변경사항이 없습니다.")
                             
