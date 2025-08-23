@@ -81,11 +81,6 @@ with col2:
         if remaining_time > 0:
             mins = int(remaining_time // 60)
             st.success(f"세션: {mins}분")
-with col3:
-    # 데이터 갱신 버튼
-    if st.button("📊 데이터 갱신", key="header_refresh", 
-                 help="데이터베이스에서 최신 정보를 다시 불러옵니다"):
-        st.rerun()
 with col4:
     # 로그아웃 버튼
     if st.button("🚪 로그아웃", key="header_logout"):
