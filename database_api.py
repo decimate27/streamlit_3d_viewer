@@ -27,7 +27,8 @@ class ModelDatabase:
             'save': f"{self.api_base_url}/api_save_model.php",  # 새로운 API 사용
             'delete': f"{self.api_base_url}/api_delete_model.php",
             'scan': f"{self.api_base_url}/scan_and_rebuild_db.php",
-            'update_height': f"{self.api_base_url}/api_update_height.php"
+            'update_height': f"{self.api_base_url}/api_update_height.php",
+            'annotations': f"{self.api_base_url}/api_annotations.php"
         }
         
         # 세션 캐시 (API 호출 최소화)
@@ -50,6 +51,14 @@ class ModelDatabase:
                     response = requests.post(endpoint, json=data, headers=headers, timeout=30, verify=False)
                 else:
                     response = requests.post(endpoint, headers=headers, timeout=30, verify=False)
+            elif method == 'PUT':
+                if data:
+                    headers['Content-Type'] = 'application/json'
+                    response = requests.put(endpoint, json=data, headers=headers, timeout=30, verify=False)
+                else:
+                    response = requests.put(endpoint, headers=headers, timeout=30, verify=False)
+            elif method == 'DELETE':
+                response = requests.delete(endpoint, params=params, headers=headers, timeout=30, verify=False)
             else:
                 raise ValueError(f"Unsupported method: {method}")
             
@@ -289,21 +298,84 @@ class ModelDatabase:
                 st.error("높이 업데이트 중 오류가 발생했습니다.")
             return False
     
-    # Annotation 관련 메서드들 (추후 구현)
+    # Annotation 관련 메서드들
     def get_annotations(self, share_token):
-        """주석 조회 - 추후 구현"""
+        """수정점 조회"""
+        params = {'action': 'list', 'model_token': share_token}
+        result = self._make_request(
+            self.endpoints['annotations'],
+            method='GET',
+            params=params
+        )
+        
+        if result and result.get('status') == 'success':
+            return result.get('annotations', [])
         return []
     
-    def save_annotation(self, share_token, position, text):
-        """주석 저장 - 추후 구현"""
+    def add_annotation(self, share_token, position, text):
+        """수정점 추가"""
+        data = {
+            'model_token': share_token,
+            'position': position,
+            'text': text
+        }
+        
+        result = self._make_request(
+            self.endpoints['annotations'] + '?action=save',
+            method='POST',
+            data=data
+        )
+        
+        if result and result.get('status') == 'success':
+            return result.get('annotation_id')
         return None
     
+    def save_annotations_batch(self, model_token, annotations, changes):
+        """여러 수정점 일괄 저장"""
+        data = {
+            'model_token': model_token,
+            'annotations': annotations,
+            'changes': changes
+        }
+        
+        result = self._make_request(
+            self.endpoints['annotations'] + '?action=save_batch',
+            method='POST',
+            data=data
+        )
+        
+        if result and result.get('status') == 'success':
+            return True
+        return False
+    
     def update_annotation_status(self, annotation_id, completed):
-        """주석 상태 업데이트 - 추후 구현"""
+        """수정점 상태 업데이트"""
+        data = {
+            'id': annotation_id,
+            'completed': completed
+        }
+        
+        result = self._make_request(
+            self.endpoints['annotations'] + '?action=update_status',
+            method='PUT',
+            data=data
+        )
+        
+        if result and result.get('status') == 'success':
+            return True
         return False
     
     def delete_annotation(self, annotation_id):
-        """주석 삭제 - 추후 구현"""
+        """수정점 삭제"""
+        params = {'id': annotation_id}
+        result = self._make_request(
+            self.endpoints['annotations'],
+            method='DELETE',
+            params=params
+        )
+        
+        if result and result.get('status') == 'success':
+            return True
         return False
 
 # 기존 코드와의 호환성을 위한 함수들
