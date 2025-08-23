@@ -390,7 +390,14 @@ def show_upload_section():
     col1, col2 = st.columns([3, 1])
     with col2:
         if st.button("🔄 파일 스캔", help="웹서버 files 폴더를 스캔하여 DB 업데이트"):
-            db.scan_and_rebuild(rebuild=False)
+            with st.spinner("파일 스캔 중..."):
+                if db.scan_and_rebuild(rebuild=False, show_progress=False):
+                    st.success("✅ 스캔 완료!")
+                    import time
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ 스캔 실패")
     
     if current_count >= 20:
         st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
@@ -578,16 +585,28 @@ def show_model_management():
     col1, col2, col3 = st.columns([2, 1, 1])
     with col2:
         if st.button("🔄 파일 스캔", key="scan_manage"):
-            db = ModelDatabase()
-            db.scan_and_rebuild(rebuild=False)
+            with st.spinner("파일 스캔 중..."):
+                db = ModelDatabase()
+                if db.scan_and_rebuild(rebuild=False, show_progress=False):
+                    st.success("✅ 스캔 완료!")
+                    import time
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ 스캔 실패")
     
     with col3:
         if st.button("🚨 DB 재구축", key="rebuild_db", type="primary"):
             with st.spinner("DB 재구축 중..."):
                 db = ModelDatabase()
-                if db.scan_and_rebuild(rebuild=True):
+                if db.scan_and_rebuild(rebuild=True, show_progress=False):
                     st.success("✅ DB 재구축 완료!")
                     st.balloons()
+                    import time
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error("❌ DB 재구축 실패")
     
     db = ModelDatabase()  # 웹서버 API 사용
     models = db.get_all_models()

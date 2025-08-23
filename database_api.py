@@ -5,7 +5,6 @@
 """
 
 import json
-import os
 import uuid
 import requests
 import streamlit as st
@@ -25,7 +24,7 @@ class ModelDatabase:
         self.endpoints = {
             'get_all': f"{self.api_base_url}/api_get_models.php",
             'get_one': f"{self.api_base_url}/api_get_model.php",
-            'save': f"{self.api_base_url}/save_model.php",
+            'save': f"{self.api_base_url}/api_save_model.php",  # 새로운 API 사용
             'delete': f"{self.api_base_url}/api_delete_model.php",
             'scan': f"{self.api_base_url}/scan_and_rebuild_db.php"
         }
@@ -85,27 +84,16 @@ class ModelDatabase:
         
         st.success("✅ 파일 업로드 성공!")
         
-        # 2. DB에 메타데이터 저장 (PHP API 호출)
+        # 2. DB에 메타데이터 저장 (PHP API 호출) - 파일 내용은 보내지 않음
         st.write("💾 데이터베이스에 정보 저장 중...")
         
-        # texture_data를 base64로 변환
-        texture_data_base64 = {}
-        for filename, content in texture_data.items():
-            if isinstance(content, bytes):
-                import base64
-                texture_data_base64[filename] = base64.b64encode(content).decode('utf-8')
-            else:
-                texture_data_base64[filename] = content
-        
+        # 메타데이터만 전송 (파일은 이미 업로드됨)
         save_data = {
             'model_id': model_id,
             'name': name,
             'author': author,
             'description': description,
-            'share_token': share_token,
-            'obj_content': obj_content,
-            'mtl_content': mtl_content,
-            'texture_data': texture_data_base64
+            'share_token': share_token
         }
         
         result = self._make_request(self.endpoints['save'], method='POST', data=save_data)
@@ -215,14 +203,17 @@ class ModelDatabase:
         models = self.get_all_models()
         return len(models)
     
-    def scan_and_rebuild(self, rebuild=False):
+    def scan_and_rebuild(self, rebuild=False, show_progress=True):
         """웹서버 files 폴더 스캔하여 DB 재구축"""
-        st.info("🔍 웹서버 파일 시스템 스캔 중...")
         
         params = {}
         if rebuild:
             params['rebuild'] = 'true'
-            st.warning("⚠️ 기존 DB를 완전히 재구축합니다.")
+            if show_progress:
+                st.warning("⚠️ 기존 DB를 완전히 재구축합니다.")
+        
+        if show_progress:
+            st.info("🔍 웹서버 파일 시스템 스캔 중...")
         
         result = self._make_request(
             self.endpoints['scan'],
@@ -231,21 +222,24 @@ class ModelDatabase:
         
         if result and result.get('status') == 'success':
             summary = result.get('summary', {})
-            st.success(f"""
-            ✅ 스캔 완료!
-            - 스캔된 디렉토리: {summary.get('directories_scanned', 0)}개
-            - 발견된 모델: {summary.get('models_found', 0)}개
-            - 새로 추가: {summary.get('inserted', 0)}개
-            - 업데이트: {summary.get('updated', 0)}개
-            - 오류: {summary.get('errors', 0)}개
-            """)
+            
+            if show_progress:
+                st.success(f"""
+                ✅ 스캔 완료!
+                - 스캔된 디렉토리: {summary.get('directories_scanned', 0)}개
+                - 발견된 모델: {summary.get('models_found', 0)}개
+                - 새로 추가: {summary.get('inserted', 0)}개
+                - 업데이트: {summary.get('updated', 0)}개
+                - 오류: {summary.get('errors', 0)}개
+                """)
             
             # 캐시 무효화
             st.session_state.models_cache = None
             
             return True
         else:
-            st.error("❌ 스캔 실패")
+            if show_progress:
+                st.error("❌ 스캔 실패")
             return False
     
     # 호환성을 위한 메서드들 (더미 구현)
