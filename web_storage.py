@@ -135,7 +135,41 @@ class WebServerStorage:
             st.error(f"웹서버 삭제 중 네트워크 오류: {str(e)}")
             return False
     
-    def save_model_to_server(self, model_id, obj_content, mtl_content, texture_data):
+    def save_model_metadata(self, model_id, name, author, description, share_token, real_height):
+        """모델 메타데이터를 웹서버에 저장"""
+        try:
+            metadata = {
+                'model_id': model_id,
+                'name': name,
+                'author': author,
+                'description': description,
+                'share_token': share_token,
+                'real_height': real_height
+            }
+            
+            response = requests.post(
+                f"{self.web_url}/api_save_model.php",
+                json=metadata,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    st.write("📝 메타데이터 저장 성공")
+                    return True
+                else:
+                    st.error(f"메타데이터 저장 실패: {result.get('message', 'Unknown error')}")
+                    return False
+            else:
+                st.error(f"메타데이터 저장 실패 (HTTP {response.status_code})")
+                return False
+                
+        except Exception as e:
+            st.error(f"메타데이터 저장 중 오류: {str(e)}")
+            return False
+    
+    def save_model_to_server(self, model_id, obj_content, mtl_content, texture_data, name, author, description, share_token, real_height):
         """모델을 웹서버에 저장"""
         st.write(f"🔍 모델 저장 시작: {model_id}")
         st.write(f"📊 OBJ 크기: {len(obj_content)}, MTL 크기: {len(mtl_content)}, 텍스처 파일 수: {len(texture_data)}")
@@ -171,6 +205,15 @@ class WebServerStorage:
                 return None
         
         file_paths['texture_paths'] = texture_paths
+        
+        # 메타데이터 저장
+        metadata_saved = self.save_model_metadata(model_id, name, author, description, share_token, real_height)
+        if not metadata_saved:
+            st.error("메타데이터 저장 실패")
+            # 업로드된 파일들 삭제
+            self.delete_model(model_id)
+            return None
+        
         st.success(f"✅ 웹서버에 모든 파일 업로드 완료!")
         return file_paths
     

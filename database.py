@@ -197,7 +197,8 @@ class ModelDatabase:
         # 웹서버에 저장 시도
         st.write("🌐 웹서버 저장 시도 중...")
         file_paths = self.web_storage.save_model_to_server(
-            model_id, obj_content, mtl_content, texture_data
+            model_id, obj_content, mtl_content, texture_data, 
+            name, author, description, share_token, real_height
         )
         
         storage_type = 'web'
