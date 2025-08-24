@@ -8,20 +8,28 @@ import uuid
 import requests
 from datetime import datetime
 
-# 웹서버에서 인증 정보 가져오기
+# 웹서버에서 인증 정보 가져오기 (PHP 프록시 경유)
 @st.cache_data(ttl=3600)  # 1시간 캐싱
 def get_auth_config():
-    """웹서버에서 인증 설정 가져오기"""
+    """웹서버에서 인증 설정 가져오기 (PHP 프록시 사용)"""
     try:
-        # 웹서버에서 pwkey.json 가져오기
+        # PHP 프록시를 통해 pwkey.json 데이터 가져오기
         response = requests.get(
-            "http://decimate27.dothome.co.kr/streamlit_data/pwkey.json",
+            "http://decimate27.dothome.co.kr/streamlit_data/get_auth.php",
             timeout=10,
-            verify=False
+            headers={
+                "User-Agent": "Streamlit3DViewer/1.0"
+            }
         )
         
         if response.status_code == 200:
             data = response.json()
+            
+            # 에러 체크
+            if "error" in data:
+                st.error(f"❌ 인증 서버 오류: {data['error']}")
+                st.stop()
+            
             password = data.get("ADMIN_PASSWORD")
             secret = data.get("SECRET_KEY")
             
@@ -34,8 +42,9 @@ def get_auth_config():
                 st.error("❌ 인증 정보가 올바르지 않습니다.")
                 st.stop()
                 
-    except Exception as e:
-        # 개발 환경용: 환경 변수 체크 (실제 비밀번호는 환경 변수로 설정)
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ 인증 서버에 연결할 수 없습니다: {e}")
+        # 개발 환경용 폴백: 환경 변수 체크
         env_password = os.getenv("ADMIN_PASSWORD")
         env_secret = os.getenv("SECRET_KEY")
         
@@ -46,9 +55,11 @@ def get_auth_config():
                 "SECRET_KEY": env_secret
             }
         else:
-            st.error(f"❌ 인증 서버에 연결할 수 없습니다: {e}")
             st.error("💡 개발 환경에서는 ADMIN_PASSWORD와 SECRET_KEY 환경 변수를 설정하세요.")
             st.stop()
+    except Exception as e:
+        st.error(f"❌ 인증 시스템 오류: {e}")
+        st.stop()
     
     # 여기까지 오면 안 됨
     st.error("❌ 인증 시스템 오류")
