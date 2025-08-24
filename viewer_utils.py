@@ -199,13 +199,12 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 left: 150px;
                 z-index: 9999;
                 display: flex;
-                align-items: center;
-                gap: 8px;
+                flex-direction: column;
+                gap: 10px;
                 background: rgba(255, 255, 255, 0.9);
                 padding: 8px 12px;
                 border-radius: 6px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                cursor: pointer;
                 font-family: Arial, sans-serif;
                 font-size: 13px;
                 font-weight: 500;
@@ -219,6 +218,13 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 box-shadow: 0 3px 8px rgba(0,0,0,0.3);
             }}
             
+            .phong-checkbox-wrapper {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+            }}
+            
             .phong-control input[type="checkbox"] {{
                 width: 18px;
                 height: 18px;
@@ -230,6 +236,72 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 cursor: pointer;
                 margin: 0;
                 white-space: nowrap;
+            }}
+            
+            /* 슬라이더 컨테이너 */
+            .phong-slider-container {{
+                display: none;
+                flex-direction: column;
+                gap: 5px;
+                width: 150px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }}
+            
+            .phong-slider-container.active {{
+                display: flex;
+                opacity: 1;
+            }}
+            
+            .phong-slider-label {{
+                display: flex;
+                justify-content: space-between;
+                font-size: 11px;
+                color: #666;
+            }}
+            
+            .phong-slider {{
+                width: 100%;
+                height: 20px;
+                -webkit-appearance: none;
+                appearance: none;
+                background: transparent;
+                outline: none;
+                cursor: pointer;
+            }}
+            
+            .phong-slider::-webkit-slider-track {{
+                width: 100%;
+                height: 4px;
+                background: #ddd;
+                border-radius: 2px;
+            }}
+            
+            .phong-slider::-webkit-slider-thumb {{
+                -webkit-appearance: none;
+                appearance: none;
+                width: 16px;
+                height: 16px;
+                background: #4CAF50;
+                border-radius: 50%;
+                cursor: pointer;
+                margin-top: -6px;
+            }}
+            
+            .phong-slider::-moz-range-track {{
+                width: 100%;
+                height: 4px;
+                background: #ddd;
+                border-radius: 2px;
+            }}
+            
+            .phong-slider::-moz-range-thumb {{
+                width: 16px;
+                height: 16px;
+                background: #4CAF50;
+                border-radius: 50%;
+                border: none;
+                cursor: pointer;
             }}
             
             /* 모바일 최적화 - 제출완료 버튼 바로 아래 배치 */
@@ -247,6 +319,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     width: 15px;
                     height: 15px;
                 }}
+                
+                .phong-slider-container {{
+                    width: 120px;
+                }}
             }}
             
             @media (max-width: 480px) {{
@@ -262,6 +338,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 .phong-control input[type="checkbox"] {{
                     width: 14px;
                     height: 14px;
+                }}
+                
+                .phong-slider-container {{
+                    width: 100px;
                 }}
             }}
             
@@ -860,10 +940,21 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 </button>
             </div>
             
-            <!-- 퐁 쉐이딩 체크박스 -->
-            <div class="phong-control" onclick="togglePhongShading(event)">
-                <input type="checkbox" id="phongCheckbox" onchange="applyPhongShading()">
-                <label for="phongCheckbox">입체감 증가</label>
+            <!-- 퐁 쉐이딩 컨트롤 -->
+            <div class="phong-control">
+                <div class="phong-checkbox-wrapper" onclick="togglePhongShading(event)">
+                    <input type="checkbox" id="phongCheckbox" onchange="applyPhongShading()">
+                    <label for="phongCheckbox">입체감 증가</label>
+                </div>
+                <div class="phong-slider-container" id="phongSliderContainer">
+                    <div class="phong-slider-label">
+                        <span>조명 강도</span>
+                        <span id="phongValue">50%</span>
+                    </div>
+                    <input type="range" class="phong-slider" id="phongSlider" 
+                           min="10" max="100" value="50" 
+                           oninput="updatePhongIntensity(this.value)">
+                </div>
             </div>
             
             <!-- 수정점 입력 모달 -->
@@ -914,6 +1005,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             // Phong shading 관련 변수들
             let isPhongEnabled = false;
+            let phongIntensity = 50; // 기본 강도 50%
             let lights = [];
             let basicLight = null; // 기본 조명 (항상 활성)
             let originalMaterials = new Map();
@@ -1791,6 +1883,27 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 applyPhongShading();
             }}
             
+            // 조명 강도 업데이트 함수
+            function updatePhongIntensity(value) {{
+                phongIntensity = parseInt(value);
+                document.getElementById('phongValue').textContent = phongIntensity + '%';
+                
+                if (isPhongEnabled) {{
+                    // 조명 강도 실시간 업데이트
+                    const intensity = phongIntensity / 100;
+                    
+                    lights.forEach((light, index) => {{
+                        if (light.type === 'AmbientLight') {{
+                            light.intensity = 0.3 + (0.7 * intensity); // 0.3 ~ 1.0
+                        }} else if (light.type === 'DirectionalLight') {{
+                            light.intensity = 0.1 + (0.4 * intensity); // 0.1 ~ 0.5
+                        }} else if (light.type === 'PointLight') {{
+                            light.intensity = 0.05 + (0.25 * intensity); // 0.05 ~ 0.3
+                        }}
+                    }});
+                }}
+            }}
+            
             // Phong shading 적용/해제 함수
             function applyPhongShading() {{
                 try {{
@@ -1798,6 +1911,18 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                     isPhongEnabled = checkbox.checked;
                     
                     console.log('Phong shading:', isPhongEnabled ? 'enabled' : 'disabled');
+                    
+                    // 슬라이더 컨테이너 표시/숨김
+                    const sliderContainer = document.getElementById('phongSliderContainer');
+                    if (sliderContainer) {{
+                        if (isPhongEnabled) {{
+                            sliderContainer.classList.add('active');
+                            // 초기 강도 적용
+                            updatePhongIntensity(phongIntensity);
+                        }} else {{
+                            sliderContainer.classList.remove('active');
+                        }}
+                    }}
                     
                     // 조명 활성화/비활성화
                     lights.forEach(light => {{
@@ -1813,20 +1938,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                         (Array.isArray(child.material) && child.material[0]?.type === 'MeshPhongMaterial')) {{
                                         console.log('Already PhongMaterial, adjusting properties:', child.name || 'unnamed');
                                         
-                                        // PhongMaterial의 속성 조정
-                                        if (Array.isArray(child.material)) {{
-                                            child.material.forEach(mat => {{
-                                                if (mat.type === 'MeshPhongMaterial') {{
-                                                    mat.emissive = new THREE.Color(0x0a0a0a);
-                                                    mat.shininess = 0;
-                                                    mat.specular = new THREE.Color(0x000000);
-                                                }}
-                                            }});
-                                        }} else {{
-                                            child.material.emissive = new THREE.Color(0x0a0a0a);
-                                            child.material.shininess = 0;
-                                            child.material.specular = new THREE.Color(0x000000);
-                                        }}
+                                        // PhongMaterial은 이미 적용되어 있으므로 추가 조정 불필요
+                                        console.log('Already PhongMaterial, no adjustments needed');
                                         return;
                                     }}
                                     
@@ -1853,9 +1966,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                     side: THREE.DoubleSide,
                                                     transparent: mat.transparent || false,
                                                     opacity: mat.opacity !== undefined ? mat.opacity : 1,
-                                                    shininess: 0, // 광택 없음 (무광)
-                                                    specular: new THREE.Color(0x000000), // 반사광 없음
-                                                    emissive: new THREE.Color(0x080808), // 적절한 emissive
+                                                    shininess: 30, // 기본 광택
+                                                    specular: new THREE.Color(0x111111), // 약간의 반사광
                                                     vertexColors: mat.vertexColors || false,
                                                     flatShading: false // Smooth shading
                                                 }});
@@ -1921,9 +2033,8 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                                                 side: THREE.DoubleSide,
                                                 transparent: child.material.transparent || false,
                                                 opacity: child.material.opacity !== undefined ? child.material.opacity : 1,
-                                                shininess: 0, // 광택 없음 (무광)
-                                                specular: new THREE.Color(0x000000), // 반사광 없음
-                                                emissive: new THREE.Color(0x080808), // 적절한 emissive
+                                                shininess: 30, // 기본 광택
+                                                specular: new THREE.Color(0x111111), // 약간의 반사광
                                                 vertexColors: child.material.vertexColors || false,
                                                 flatShading: false // Smooth shading
                                             }});
