@@ -3,16 +3,21 @@ import os
 import uuid
 import shutil
 from datetime import datetime
+import pytz
 from pathlib import Path
 import sqlite3
 from web_storage import WebServerStorage, LocalBackupStorage
 from web_db_sync import WebDBSync
 import streamlit as st
 
+# 한국 시간대 설정
+KST = pytz.timezone('Asia/Seoul')
+
 def reset_database(db_path="data/models.db"):
     """데이터베이스 완전 초기화 (문제 해결용)"""
     if os.path.exists(db_path):
-        backup_path = f"{db_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        kst_now = datetime.now(KST)
+        backup_path = f"{db_path}.backup_{kst_now.strftime('%Y%m%d_%H%M%S')}"
         shutil.copy2(db_path, backup_path)
         st.write(f"🔄 기존 DB를 {backup_path}로 백업")
         os.remove(db_path)
@@ -135,7 +140,7 @@ class ModelDatabase:
                             
                             # share_token 확인
                             share_token = row[6] if len(row) > 6 and row[6] else str(uuid.uuid4())
-                            created_at = row[7] if len(row) > 7 and row[7] else datetime.now().isoformat()
+                            created_at = row[7] if len(row) > 7 and row[7] else datetime.now(KST).isoformat()
                             access_count = row[9] if len(row) > 9 else 0
                             
                             cursor.execute('''
@@ -231,13 +236,16 @@ class ModelDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # 한국 시간으로 created_at 설정
+        kst_now = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
+        
         cursor.execute('''
             INSERT INTO models (id, name, author, description, file_paths, backup_paths, 
-                              storage_type, share_token, real_height)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                              storage_type, share_token, real_height, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (model_id, name, author, description, json.dumps(file_paths), 
               json.dumps(backup_paths) if backup_paths else None, 
-              storage_type, share_token, real_height))
+              storage_type, share_token, real_height, kst_now))
         
         conn.commit()
         conn.close()

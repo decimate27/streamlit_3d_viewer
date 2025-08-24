@@ -73,6 +73,10 @@ with col2:
     # 세션 정보 표시
     import time
     from datetime import datetime
+    import pytz
+    
+    # 한국 시간대 설정
+    KST = pytz.timezone('Asia/Seoul')
     
     if st.session_state.get("password_correct", False):
         time_since_activity = time.time() - st.session_state.get("last_activity_time", 0)
@@ -609,8 +613,19 @@ def show_model_management():
             storage_icon = "💾"
             storage_text = "로컬 임시 저장"
         
-        # 날짜 포맷팅 (YYYY-MM-DD 형식으로)
-        created_date = model['created_at'][:10] if model['created_at'] else "날짜 없음"
+        # 날짜 포맷팅 (한국 시간으로 표시)
+        if model['created_at']:
+            try:
+                # 데이터베이스에서 가져온 시간을 한국 시간으로 변환
+                # 이미 한국 시간으로 저장되어 있으므로 그대로 사용
+                created_date = model['created_at'][:10]
+                created_time_full = model['created_at']
+            except:
+                created_date = "날짜 없음"
+                created_time_full = ""
+        else:
+            created_date = "날짜 없음"
+            created_time_full = ""
         author_text = model.get('author', '') or "작성자 없음"
         description_text = model['description'] or ""
         
@@ -627,7 +642,7 @@ def show_model_management():
                 st.write(f"**모델명:** {model['name']}")
                 st.write(f"**작성자:** {author_text}")
                 st.write(f"**설명:** {model['description'] or '설명 없음'}")
-                st.write(f"**생성일:** {model['created_at']}")
+                st.write(f"**생성일:** {created_time_full}")
                 st.write(f"**저장 위치:** {storage_text}")
                 
                 # 공유 링크
