@@ -335,16 +335,8 @@ def check_password():
         with st.sidebar:
             st.success("✅ 로그인 상태")
             
-            # 남은 세션 시간 계산
-            time_since_activity = time.time() - st.session_state.get("last_activity_time", 0)
-            remaining_time = SESSION_TIMEOUT - time_since_activity
-            
-            if remaining_time > 0:
-                mins = int(remaining_time // 60)
-                secs = int(remaining_time % 60)
-                st.info(f"⏱️ 세션 만료까지: {mins}분 {secs}초")
-                st.caption("페이지 활동시 자동 연장됩니다")
-                st.caption("🔒 새로고침 후에도 세션 유지")
+            # 세션 시간 표시 제거 (사용자 요청)
+            # 세션은 여전히 활성 상태로 유지되지만 시간은 표시하지 않음
             
             # 로그아웃 버튼
             if st.button("🚪 로그아웃", key="sidebar_logout"):
@@ -473,6 +465,5 @@ def show_session_info():
             st.metric("마지막 활동", last_activity.strftime('%H:%M:%S'))
         
         with col3:
-            time_since_activity = time.time() - st.session_state.get("last_activity_time", 0)
-            remaining = SESSION_TIMEOUT - time_since_activity
-            st.metric("남은 시간", f"{int(remaining//60)}분")
+            # 세션 시간 표시 제거 (사용자 요청)
+            pass

@@ -78,13 +78,7 @@ with col2:
     # 한국 시간대 설정
     KST = pytz.timezone('Asia/Seoul')
     
-    if st.session_state.get("password_correct", False):
-        time_since_activity = time.time() - st.session_state.get("last_activity_time", 0)
-        remaining_time = 3600 - time_since_activity  # 60분
-        
-        if remaining_time > 0:
-            mins = int(remaining_time // 60)
-            st.success(f"세션: {mins}분")
+    # 세션 시간 표시 제거 (사용자 요청)
 with col4:
     # 로그아웃 버튼
     if st.button("🚪 로그아웃", key="header_logout"):
