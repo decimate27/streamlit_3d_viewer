@@ -40,3 +40,9 @@ Thumbs.db
 
 # YoYo AI version control directory
 .yoyo/
+
+# Development and backup directories
+php/
+backup/
+.devcontainer/
+.claude/
