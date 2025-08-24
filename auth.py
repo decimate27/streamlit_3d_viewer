@@ -5,12 +5,59 @@ import os
 import time
 import sqlite3
 import uuid
-import json
-from datetime import datetime, timedelta
+import requests
+from datetime import datetime
 
-# 환경 변수에서 설정 가져오기
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "palbong211!")
-SECRET_KEY = os.getenv("SECRET_KEY", "3d-viewer-secret-2024")
+# 웹서버에서 인증 정보 가져오기
+@st.cache_data(ttl=3600)  # 1시간 캐싱
+def get_auth_config():
+    """웹서버에서 인증 설정 가져오기"""
+    try:
+        # 웹서버에서 pwkey.json 가져오기
+        response = requests.get(
+            "http://decimate27.dothome.co.kr/streamlit_data/pwkey.json",
+            timeout=10,
+            verify=False
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            password = data.get("ADMIN_PASSWORD")
+            secret = data.get("SECRET_KEY")
+            
+            if password and secret:
+                return {
+                    "ADMIN_PASSWORD": password,
+                    "SECRET_KEY": secret
+                }
+            else:
+                st.error("❌ 인증 정보가 올바르지 않습니다.")
+                st.stop()
+                
+    except Exception as e:
+        # 개발 환경용: 환경 변수 체크 (실제 비밀번호는 환경 변수로 설정)
+        env_password = os.getenv("ADMIN_PASSWORD")
+        env_secret = os.getenv("SECRET_KEY")
+        
+        if env_password and env_secret:
+            st.warning("⚠️ 개발 환경 모드 - 환경 변수 사용")
+            return {
+                "ADMIN_PASSWORD": env_password,
+                "SECRET_KEY": env_secret
+            }
+        else:
+            st.error(f"❌ 인증 서버에 연결할 수 없습니다: {e}")
+            st.error("💡 개발 환경에서는 ADMIN_PASSWORD와 SECRET_KEY 환경 변수를 설정하세요.")
+            st.stop()
+    
+    # 여기까지 오면 안 됨
+    st.error("❌ 인증 시스템 오류")
+    st.stop()
+
+# 인증 정보 가져오기
+auth_config = get_auth_config()
+ADMIN_PASSWORD = auth_config["ADMIN_PASSWORD"]
+SECRET_KEY = auth_config["SECRET_KEY"]
 
 # 보안 설정
 MAX_LOGIN_ATTEMPTS = 5
