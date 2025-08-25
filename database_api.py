@@ -85,7 +85,8 @@ class ModelDatabase:
         # 1. 파일을 웹서버에 업로드
         st.write("🌐 웹서버에 파일 업로드 중...")
         file_paths = self.web_storage.save_model_to_server(
-            model_id, obj_content, mtl_content, texture_data
+            model_id, obj_content, mtl_content, texture_data,
+            name, author, description, share_token, real_height
         )
         
         if not file_paths:
