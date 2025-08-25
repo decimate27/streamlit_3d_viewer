@@ -104,7 +104,8 @@ class ModelDatabase:
             'name': name,
             'author': author,
             'description': description,
-            'share_token': share_token
+            'share_token': share_token,
+            'real_height': real_height  # 실제 높이 추가
         }
         
         result = self._make_request(self.endpoints['save'], method='POST', data=save_data)
@@ -146,13 +147,17 @@ class ModelDatabase:
         if result and result.get('status') == 'success':
             models = result.get('models', [])
             
-            # file_paths JSON 파싱
+            # file_paths JSON 파싱 및 real_height 기본값 설정
             for model in models:
                 if isinstance(model.get('file_paths'), str):
                     try:
                         model['file_paths'] = json.loads(model['file_paths'])
                     except:
                         model['file_paths'] = {}
+                
+                # real_height 기본값 설정 (PHP API가 반환하지 않을 경우)
+                if 'real_height' not in model:
+                    model['real_height'] = 1.0
             
             # 캐시 저장
             st.session_state.models_cache = models
@@ -178,6 +183,10 @@ class ModelDatabase:
                     model['file_paths'] = json.loads(model['file_paths'])
                 except:
                     model['file_paths'] = {}
+            
+            # real_height 기본값 설정 (PHP API가 반환하지 않을 경우)
+            if model and 'real_height' not in model:
+                model['real_height'] = 1.0
             
             return model
         else:
