@@ -304,10 +304,10 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 cursor: pointer;
             }}
             
-            /* 모바일 최적화 - 제출완료 버튼 바로 아래 배치 */
+            /* 모바일 최적화 - 입체감 증가 버튼을 치수 버튼 아래로 배치 */
             @media (max-width: 768px) {{
                 .phong-control {{
-                    top: 88px !important;  /* 제출완료 버튼 바로 아래, 간격 축소 */
+                    top: 126px !important;  /* 치수 버튼(88px) 아래로 이동 */
                     left: auto !important;
                     right: 12px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 12px;
@@ -327,7 +327,7 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
             
             @media (max-width: 480px) {{
                 .phong-control {{
-                    top: 86px !important;  /* 제출완료 버튼 바로 아래, 간격 축소 */
+                    top: 124px !important;  /* 치수 버튼(86px) 아래로 이동 */
                     left: auto !important;
                     right: 10px !important;  /* 제출완료 버튼과 같은 오른쪽 정렬 */
                     font-size: 11px;
@@ -615,11 +615,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 .db-save-btn {{ top: 50px !important; }}
                 
-                /* 치수 버튼: 입체감 증가(.phong-control) 바로 아래 */
+                /* 치수 버튼: 제출완료 버튼 바로 아래 */
                 .dimension-btn {{
                     position: fixed !important;
                     right: 12px !important;
-                    top: 126px !important; /* .phong-control 88px 아래 동일 간격 */
+                    top: 88px !important; /* 제출완료 버튼(50px) 바로 아래 */
                     padding: 8px 10px !important;
                     font-size: 12px !important;
                     min-width: 92px !important;
@@ -641,11 +641,11 @@ def create_3d_viewer_html(obj_content, mtl_content, texture_data, background_col
                 
                 .db-save-btn {{ top: 48px !important; }}
                 
-                /* 치수 버튼: 입체감 증가 바로 아래 */
+                /* 치수 버튼: 제출완료 버튼 바로 아래 */
                 .dimension-btn {{
                     position: fixed !important;
                     right: 10px !important;
-                    top: 124px !important; /* .phong-control 86px 아래 동일 간격 */
+                    top: 86px !important; /* 제출완료 버튼(48px) 바로 아래 */
                     padding: 7px 9px !important;
                     font-size: 11px !important;
                     min-width: 86px !important;
