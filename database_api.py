@@ -127,8 +127,10 @@ class ModelDatabase:
             
             return model_id, share_token
         else:
-            st.error("❌ 데이터베이스 저장 실패")
-            return None, None
+            st.warning("⚠️ 데이터베이스 저장 실패 (파일은 업로드됨)")
+            # 데이터베이스 저장 실패해도 model_id와 share_token은 반환
+            # 파일은 이미 업로드되었으므로 접근 가능
+            return model_id, share_token
     
     def get_all_models(self):
         """모든 모델 목록 조회 - 웹서버 API 사용"""

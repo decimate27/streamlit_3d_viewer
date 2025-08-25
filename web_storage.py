@@ -13,6 +13,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class WebServerStorage:
     def __init__(self):
         self.base_url = "http://decimate27.dothome.co.kr/streamlit_data"
+        self.web_url = self.base_url  # web_url 속성 추가 (API 호출용)
         self.upload_url = f"{self.base_url}/upload.php"  # 업로드용 PHP 스크립트
         self.delete_url = f"{self.base_url}/delete.php"  # 삭제용 PHP 스크립트
         self.download_url = f"{self.base_url}/files"     # 파일 다운로드 경로
@@ -206,13 +207,13 @@ class WebServerStorage:
         
         file_paths['texture_paths'] = texture_paths
         
-        # 메타데이터 저장
+        # 메타데이터 저장 (선택적 - 실패해도 파일은 유지)
         metadata_saved = self.save_model_metadata(model_id, name, author, description, share_token, real_height)
         if not metadata_saved:
-            st.error("메타데이터 저장 실패")
-            # 업로드된 파일들 삭제
-            self.delete_model(model_id)
-            return None
+            st.warning("⚠️ 메타데이터 저장 실패 (파일은 업로드됨)")
+            # 메타데이터 저장 실패해도 파일 경로는 반환
+            # self.delete_model(model_id)  # 파일 삭제하지 않음
+            # return None
         
         st.success(f"✅ 웹서버에 모든 파일 업로드 완료!")
         return file_paths
