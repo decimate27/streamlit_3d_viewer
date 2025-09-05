@@ -392,8 +392,8 @@ def show_upload_section():
                 else:
                     st.error("❌ 스캔 실패")
     
-    if current_count >= 20:
-        st.error("최대 20개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
+    if current_count >= 50:
+        st.error("최대 50개의 모델만 저장할 수 있습니다. 기존 모델을 삭제 후 다시 시도하세요.")
         return
     
     # 저장된 모델들의 storage_type 확인
@@ -412,7 +412,7 @@ def show_upload_section():
         storage_status = "저장소 준비됨"
     
     with col1:
-        st.info(f"현재 저장된 모델: {current_count}/20 ({storage_status})")
+        st.info(f"현재 저장된 모델: {current_count}/50 ({storage_status})")
     
     # 모델 정보 입력
     col1, col2, col3 = st.columns(3)
@@ -744,7 +744,7 @@ def main():
         - 링크를 통해 누구나 접근 가능
         
         **5. 관리**
-        - 최대 20개 모델 저장
+        - 최대 50개 모델 저장
         - 미리보기 및 삭제 가능
         
         **6. 뷰어 조작**
